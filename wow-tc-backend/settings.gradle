@@ -1,0 +1,29 @@
+// WOW-TC Backend — Gradle 멀티모듈 루트 설정
+//
+// 설비 데이터 수집 및 제어 시스템. 하위 폴더 하나가 서브프로젝트 하나다.
+// - tc   : Tool Control — MES 와 PLC 사이 게이트웨이 (com.wow.be.tc, :8080)
+// - vplc : 가상 PLC 시뮬레이터 (com.wow.be.tc.vplc, :8088)
+
+pluginManagement {
+    repositories {
+        // 1순위: 사내 Nexus group (모든 maven 라이브러리/플러그인 해석)
+        maven {
+            name = 'nexus'
+            url = 'http://localhost:8081/repository/inzi-mes-platform-maven-group/'
+            allowInsecureProtocol = true   // 로컬 HTTP Nexus
+        }
+        // 폴백: Nexus 접속 불가/미보유 시 public 저장소에서 해석
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    // Java toolchain 자동 프로비저닝 (Java 25 JDK 가 로컬에 없으면 자동 다운로드)
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'wow-tc-backend'
+
+include 'tc'
+include 'vplc'

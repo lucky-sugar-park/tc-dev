@@ -25,6 +25,12 @@ pnpm-debug.log*
 *.ipr
 *.iws
 
+# --- Eclipse (Buildship) ---
+.project
+.classpath
+.settings/
+bin/
+
 # --- VS Code ---
 .vscode/*
 !.vscode/settings.json
@@ -42,3 +48,6 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+
+# --- 로컬 전용 설정 (비밀값) — 예시는 application-local.yml.example ---
+application-local.yml

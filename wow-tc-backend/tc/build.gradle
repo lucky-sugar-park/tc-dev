@@ -1,0 +1,36 @@
+// tc — Tool Control (실행형, :8080)
+//
+// MES 와 Mitsubishi PLC 사이 게이트웨이. 인터페이스(opcode) 정의대로 MELSEC MC 프로토콜로
+// PLC 를 읽고/쓰고, 결과를 REST·WebHook·SSE 로 전달하며 감사 로그를 남긴다.
+
+apply plugin: 'org.springframework.boot'
+
+dependencies {
+    // Bean Validation. 사내 Nexus 에 starter 가 없어 Boot 4 의 validation 모듈을 직접 쓴다.
+    implementation 'org.springframework.boot:spring-boot-validation'
+
+    // 스케줄러. 사내 Nexus 에 Boot 4 quartz starter 가 없어 Quartz 와 SchedulerFactoryBean 을 직접 쓴다
+    // (ScheduleConfig 가 SchedulerFactoryBean 을 직접 구성하므로 starter 자동 구성은 필요 없다).
+    implementation 'org.quartz-scheduler:quartz:2.5.0'
+    implementation 'org.springframework:spring-context-support'
+
+    // PLC 통신 (MELSEC MC 프로토콜)
+    implementation 'io.netty:netty-transport'
+    implementation 'io.netty:netty-codec-base'
+    implementation 'io.netty:netty-handler'
+
+    implementation 'org.apache.commons:commons-collections4:4.4'
+
+    // WebHook 전송
+    implementation 'org.apache.httpcomponents.client5:httpclient5'
+
+    // API 문서
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+}
+
+// 로컬 비밀값 파일(application-local.yml)은 실행 jar 에 넣지 않는다 — bootRun·IDE 실행에서만 읽힌다
+tasks.named("bootJar") {
+    exclude "application-local.yml"
+}

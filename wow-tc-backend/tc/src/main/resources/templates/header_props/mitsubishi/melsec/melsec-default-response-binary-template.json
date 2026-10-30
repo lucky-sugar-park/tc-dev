@@ -1,0 +1,58 @@
+[
+	{
+		"name": "subHeader",
+		"order": 1,
+		"type": "BYTE",
+		"length":"2",
+		"strValue": "D000",
+		"description": "Sub header"
+	},
+	{
+		"name": "netNumber",
+		"order": 2,
+		"type": "BYTE",
+		"length":"1",
+		"strValue": "00",
+		"description": "Network number"
+	},
+	{
+		"name": "plcNumber",
+		"order": 3,
+		"type": "BYTE",
+		"length":"1",
+		"strValue": "FF",
+		"description": "PLC number"
+	},
+	{
+		"name": "opponentIONumber",
+		"order": 4,
+		"type": "BYTE",
+		"length":"2",
+		"strValue": "FF03",
+		"description": "Opponent IO number"
+	},
+	{
+		"name": "opponentNumber",
+		"order": 5,
+		"type": "BYTE",
+		"length":"1",
+		"strValue": "00",
+		"description": "Opponent number"
+	},
+	{
+		"name": "respDataLen",
+		"order": 6,
+		"type": "BYTE",
+		"length":"2",
+		"strValue": "0A00",
+		"description": "Request data length for read or write (timer ~ wordCount), Little endian"
+	},
+	{
+		"name": "resultCode",
+		"order": 7,
+		"type": "BYTE",
+		"length":"2",
+		"strValue": "0000",
+		"description": "Result code (0000 is normal)"
+	}
+]

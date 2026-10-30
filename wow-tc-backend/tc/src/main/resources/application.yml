@@ -1,0 +1,122 @@
+# Tool Control(tc) 애플리케이션 설정
+#
+# 전제 인프라(로컬): MariaDB 3306, Redis 6379.
+# 비밀값(DB 비밀번호, JWT 서명 키)은 환경 변수로만 준다 — 기본값을 두지 않는다.
+#   TC_DB_PASSWORD, TC_JWT_SECRET
+# 접속 정보는 환경 변수로 바꿀 수 있고, 없으면 아래 로컬 기본값을 쓴다.
+# 로컬 개발: 같은 폴더의 application-local.yml(git 미추적, application-local.yml.example 참고)에 비밀값을 두면
+#   IDE 에서 환경 변수 없이 실행할 수 있다. 환경 변수가 있으면 환경 변수가 이긴다. 실행 jar(bootJar)에는 넣지 않는다.
+
+server:
+  port: ${TC_SERVER_PORT:8087}
+  servlet:
+    session:
+      timeout: 7200
+  shutdown: graceful
+
+spring:
+  config:
+    import: optional:classpath:application-local.yml
+  application:
+    name: wow-tc
+  datasource:
+    driver-class-name: org.mariadb.jdbc.Driver
+    url: ${TC_DB_URL:jdbc:mariadb://localhost:3306/tc}
+    username: ${TC_DB_USERNAME:root}
+    password: ${TC_DB_PASSWORD}
+  jpa:
+    database-platform: org.hibernate.dialect.MariaDBDialect
+    show-sql: true
+    hibernate:
+      # validate, update
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+  data:
+    redis:
+      # framework RedisConfig 가 host/port 로 LettuceConnectionFactory 를 만든다(비밀번호 미사용 — 레거시와 같음)
+      host: ${TC_REDIS_HOST:localhost}
+      port: ${TC_REDIS_PORT:6379}
+
+logging:
+  level:
+    root: info
+
+# JWT 서명/만료 (framework JwtConfig 가 요구 — 기본값 없음)
+jwt:
+  issuer: TC_APP
+  secret: ${TC_JWT_SECRET}
+  access-token-validity-ms: 10000000
+  refresh-token-validity-ms: 1000000000
+
+# X-Forwarded-For 를 믿을 리버스 프록시 주소(쉼표 목록). 비우면 헤더를 읽지 않고 소켓 상대 주소만 쓴다(framework ClientAddressResolver).
+security:
+  trusted-proxies: ${TC_TRUSTED_PROXIES:}
+
+app:
+  # framework CorsFilterConfig — 레거시 CorsFilterConfig 와 같은 허용 범위(프론트 개발 서버 localhost:3000, 쿠키 허용)
+  cors:
+    allowed-origin-patterns: ${TC_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000}
+    all-allow-headers: true
+    all-allow-methods: true
+    allowed-credential: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+    disable-swagger-default-url: true
+    doc-expansion: none
+    disable-query-params-without-oauth2: true
+
+#============================================================================
+# Tool Control
+#============================================================================
+tc:
+  shutdown:
+    # 종료 신호 후 강제 종료(System.exit)까지 기다리는 시간(ms) — ForceShutdownHook
+    grace-period: 7000
+  # Quartz 설정(ScheduleConfig 가 이 값을 그대로 Quartz 속성으로 넘긴다).
+  # JobStore 의 DataSource 는 ScheduleConfig 가 앱 DataSource 를 넘기므로 Quartz 자체 DataSource 는 두지 않는다.
+  quartz:
+    properties:
+      org.quartz.scheduler.instanceName: TestScheduler
+      # SYS_DROP : When to get from system properties
+      org.quartz.scheduler.instanceId: AUTO
+      org.quartz.scheduler.idleWaitTime: 5000
+      org.quartz.threadPool.class: org.quartz.simpl.SimpleThreadPool
+      org.quartz.threadPool.threadCount: 4
+      # 1 ~ 10
+      org.quartz.threadPool.threadPriority: 5
+      # org.quartz.jobStore.class 는 지정하지 않는다 — ScheduleConfig 가 앱 DataSource 를 넘기면 SchedulerFactoryBean 이
+      # LocalDataSourceJobStore 를 쓴다. JobStoreTX 를 지정하면 Quartz 자체 DataSource 이름을 찾다가 기동이 실패한다.
+      org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+      # default value is 60000
+      org.quartz.jobStore.misfireThreshold: 60000
+      org.quartz.jobStore.useProperties: true
+      org.quartz.jobStore.tablePrefix: qrtz_
+      org.quartz.jobStore.isClustered: true
+      org.quartz.jobStore.clusterCheckinInterval: 20000
+
+scheduler:
+  name:
+    default: TestScheduler
+
+plc:
+  connection:
+    retry:
+      count: 10
+      interval:
+        rate: 1500
+        increment: true
+
+oper:
+  duplication:
+    # default: single / multiple-active / active-standby
+    mode: active-standby

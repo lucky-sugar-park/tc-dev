@@ -1,0 +1,81 @@
+// WOW-TC Backend — 루트(부모) 빌드 스크립트
+//
+// 모든 서브프로젝트에 공통 적용되는 규약을 정의한다. (wow-mes-backend 루트 build.gradle 과 같은 규약)
+// - 스택: Java 25 · Spring Boot 4.x (Spring Framework 7 / Security 7)
+// - 사내 프레임워크 wow-mes-backend-framework-core 를 Nexus 아티팩트로 참조한다.
+//   framework-core 가 Boot 4 / Java 25 로 빌드되므로 이 프로젝트도 같은 버전을 쓴다.
+// - tc, vplc 는 둘 다 실행형이라 각자 build.gradle 에서 boot 플러그인을 적용한다.
+
+plugins {
+    id 'org.springframework.boot'              version '4.0.7'  apply false
+    id 'io.spring.dependency-management'       version '1.1.7'  apply false
+}
+
+ext {
+    springBootVersion = '4.0.7'
+    // Swagger UI(springdoc) — Spring Boot 4 / Framework 7 대응은 3.x 계열
+    springdocVersion  = '3.0.3'
+
+    // 사내 프레임워크. wow-mes-backend 의 frameworkCoreVersion 과 맞춘다.
+    frameworkCoreVersion = '0.8.45'
+
+    // 사내 Nexus (localhost HTTP)
+    nexusGroupUrl     = 'http://localhost:8081/repository/inzi-mes-platform-maven-group/'
+}
+
+allprojects {
+    group = 'com.wow.be'
+    version = '0.1.0-SNAPSHOT'
+
+    repositories {
+        // 1순위: 사내 Nexus group — 사내 jar + 외부 라이브러리 모두 여기서 설치
+        maven {
+            name = 'nexus'
+            url = nexusGroupUrl
+            allowInsecureProtocol = true   // 로컬 HTTP Nexus
+        }
+        // 폴백: Nexus 접속 불가 등 오류 시 public Maven 저장소에서 설치
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+        }
+    }
+
+    dependencies {
+        // 사내 프레임워크 — 보안/JWT, 세션 컨텍스트, Dispatch, Postbox, SSE, 영속성 기반 타입
+        implementation "com.wow.be:wow-mes-backend-framework-core:${frameworkCoreVersion}"
+
+        // Lombok — 전 모듈 공통
+        compileOnly         'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testCompileOnly         'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+
+        // 테스트 — 통합 테스트 기반 (Mock 미사용 정책)
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly    'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.compilerArgs << '-parameters'
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
+}

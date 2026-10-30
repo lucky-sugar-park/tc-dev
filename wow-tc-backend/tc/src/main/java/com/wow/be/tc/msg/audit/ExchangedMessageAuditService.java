@@ -1,0 +1,41 @@
+package com.wow.be.tc.msg.audit;
+
+import java.util.Date;
+import java.util.List;
+
+import com.wow.be.framework.Condition.PageInfo;
+import com.wow.be.framework.Condition.RangeInfo;
+import com.wow.be.framework.Condition;
+import com.wow.be.framework.persist.PageResponse;
+import com.wow.be.framework.persist.RangeResponse;
+
+public interface ExchangedMessageAuditService {
+
+	public abstract void writeAudit(ExchangedMessageAuditInfo auditInfo);
+
+	public abstract void deleteMessageAudit(long id);
+	
+	public abstract void deleteMessageAudits(List<Long> idArr);
+	
+	public abstract long deleteMessageAudits(Date timestamp);
+
+	public abstract ExchangedMessageAuditInfo findMessageAuditById(long id);
+	
+	public abstract List<ExchangedMessageAuditInfo> searchMessageAudits();
+	
+	public abstract List<ExchangedMessageAuditInfo> searchMessageAudits(PageInfo pageInfo);
+	
+	public abstract PageResponse<ExchangedMessageAuditInfo> searchMessageAuditsToPageResponse(PageInfo pageInfo);
+
+	public abstract List<ExchangedMessageAuditInfo> searchMessageAudits(Condition cond);
+	
+	public abstract PageResponse<ExchangedMessageAuditInfo> searchMessageAuditsToPageResponse(Condition cond);
+
+	public abstract List<ExchangedMessageAuditInfo> searchMessageAudits(Condition cond, PageInfo pageInfo);
+	
+	public abstract PageResponse<ExchangedMessageAuditInfo> searchMessageAuditsAToPageResponse(Condition cond, PageInfo pageInfo);
+	
+	public abstract RangeResponse<ExchangedMessageAuditInfo> searchMessageAuditsByRange(Condition cond);
+	
+	public abstract RangeResponse<ExchangedMessageAuditInfo> searchMessageAuditsByRange(Condition cond, RangeInfo rangeInfo);
+}

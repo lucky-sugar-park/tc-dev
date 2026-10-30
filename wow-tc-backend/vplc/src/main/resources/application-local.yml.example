@@ -1,0 +1,7 @@
+# vplc 로컬 개발용 비밀값 예시 — 이 파일을 application-local.yml 로 복사해 값을 채운다.
+# application-local.yml 은 git 이 추적하지 않고(.gitignore), 실행 jar(bootJar)에도 들어가지 않는다.
+#
+# application.yml 의 자리표시자(${VPLC_DB_PASSWORD} 등)를 채우는 방식이라, 같은 이름의 환경 변수가 있으면 환경 변수가 이긴다.
+
+VPLC_DB_URL: jdbc:mariadb://localhost:3306/tc
+VPLC_DB_PASSWORD:

@@ -1,0 +1,38 @@
+[
+	{
+		"id": 1,
+		"name": "mitsubishi.melsec.header_props.default.request.binary",
+		"plcManufacturer" :"Mitsubishi",
+		"plcModel": "Q-series",
+		"protocol": "melsec",
+		"description": "Melsec default header properties' template for request with binary manner",
+		"location": "./mitsubishi/melsec/melsec-default-request-binary-template.json"
+	},
+	{
+		"id": 2,
+		"name": "mitsubishi.melsec.header_props.default.request.ascii",
+		"plcManufacturer" :"Mitsubishi",
+		"plcModel": "Q-series",
+		"protocol": "melsec",
+		"description": "Melsec default header properties' template for request with ascii manner",
+		"location": "./mitsubishi/melsec/melsec-default-request-ascii-template.json"
+	},
+	{
+		"id": 3,
+		"name": "mitsubishi.melsec.header_props.response.default.binary",
+		"plcManufacturer" :"Mitsubishi",
+		"plcModel": "Q-series",
+		"protocol": "melsec",
+		"description": "Melsec default header properties' template for response with binary manner",
+		"location": "./mitsubishi/melsec/melsec-default-response-binary-template.json"
+	},
+	{
+		"id": 4,
+		"name": "mitsubishi.melsec.header_props.response.default.ascii",
+		"plcManufacturer" :"Mitsubishi",
+		"plcModel": "Q-series",
+		"protocol": "melsec",
+		"description": "Melsec default header properties' template for response with ascii manner",
+		"location": "./mitsubishi/melsec/melsec-default-response-ascii-template.json"
+	}
+]

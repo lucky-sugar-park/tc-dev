@@ -1,0 +1,43 @@
+# WOW-TC vplc — 가상 PLC 시뮬레이터 설정 (로컬 실행)
+#
+# 전제 인프라(로컬): MariaDB 3306.
+# 비밀값(DB 비밀번호)은 이 파일에 두지 않는다 — 환경 변수 VPLC_DB_PASSWORD 로 주입한다(기본값 없음).
+# 로컬 개발: 같은 폴더의 application-local.yml(git 미추적, application-local.yml.example 참고)에 두어도 된다. 실행 jar 에는 넣지 않는다.
+# 접속 주소·사용자명도 환경 변수로 바꿀 수 있고, 값이 없으면 아래 로컬 기본값(레거시와 같은 값)을 쓴다.
+#
+# 레거시 application.properties 에서 뺀 것:
+# - actuator(management.*)·Spring Boot Admin client(spring.boot.admin.*) — 의존성을 받을 수 없어 뺐다.
+# - spring.mvc.pathmatch.matching-strategy=ant_path_matcher — 기본 PathPattern 도 /api/v1/vplc* 를 그대로 해석한다.
+# - server.shutdown.grace-period — Spring Boot 에 없는 속성이라 원래도 효과가 없었다.
+
+server:
+  port: 8088
+  shutdown: graceful
+
+spring:
+  config:
+    import: optional:classpath:application-local.yml
+  application:
+    name: wow-tc-vplc
+  datasource:
+    url: ${VPLC_DB_URL:jdbc:mariadb://localhost:3306/quartz-test}
+    username: ${VPLC_DB_USERNAME:root}
+    password: ${VPLC_DB_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update   # validate, update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MariaDBDialect
+        format_sql: true
+  data:
+    redis:
+      # framework-core 가 spring-data-redis 를 끌고 오지만 vplc 는 Redis 를 쓰지 않는다 — 리포지터리 스캔을 끈다.
+      repositories:
+        enabled: false
+
+logging:
+  level:
+    root: info
