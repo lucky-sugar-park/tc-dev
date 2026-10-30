@@ -51,3 +51,7 @@ Desktop.ini
 
 # --- 로컬 전용 설정 (비밀값) — 예시는 application-local.yml.example ---
 application-local.yml
+
+# Python
+__pycache__/
+*.pyc

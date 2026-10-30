@@ -1,0 +1,23 @@
+{
+  "adapterClassName": "com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter",
+  "asyncRequestUse": false,
+  "asyncTimerRunInterval": 1000,
+  "asyncTimerStartDelay": 1000,
+  "commProtocolHeadersReqTemplate": {},
+  "commProtocolHeadersResTemplate": {},
+  "connLimitPerPort": 1,
+  "connectionVips": [
+    "127.0.0.1"
+  ],
+  "description": "tc e2e — vplc 가상 PLC(127.0.0.1:15000)",
+  "hostIp": "127.0.0.1",
+  "manufacturer": "MITSUBISHI",
+  "memTypes": [
+    "D*"
+  ],
+  "messageFrameFormat": "BINARY",
+  "name": "plc-e2e",
+  "ports": [
+    15000
+  ]
+}

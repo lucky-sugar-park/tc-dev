@@ -51,6 +51,23 @@ public class TcSecurityConfig {
 		return registration;
 	}
 
+	/**
+	 * 로드밸런서 헬스 체크({@code GET /api/health})는 인증 없이 받는다. framework 체인은 {@code /api/**} 에 JWT 를 요구하므로
+	 * 따로 둔다(docs/plc-ha-design.md §7).
+	 */
+	@Bean
+	@Order(0)
+	public SecurityFilterChain healthChain(HttpSecurity http) throws Exception {
+		http
+			.securityMatcher(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/health"))
+			.csrf(AbstractHttpConfigurer::disable)
+			.formLogin(AbstractHttpConfigurer::disable)
+			.httpBasic(AbstractHttpConfigurer::disable)
+			.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.authorizeHttpRequests(a -> a.anyRequest().permitAll());
+		return http.build();
+	}
+
 	@Bean
 	@Order(1)
 	public SecurityFilterChain machineApiChain(HttpSecurity http, ApiClientService apiClientService, ApiRequestLimiter limiter,

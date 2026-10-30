@@ -13,7 +13,6 @@ import com.wow.be.tc.plc.connector.PlcAdapterManager;
 import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -69,12 +68,6 @@ public class PlcConnectorLoader {
 		}
 	}
 
-	/**
-	 * 앱 종료 때 PLC 연결을 먼저 닫는다. 이벤트를 내지 않으므로 커넥터는 PUBLISHED 로 남아 다음 기동 때 다시 올라온다.
-	 * 연결을 먼저 닫아야 PLC 쪽 슬롯이 빨리 비어 다음 기동이 바로 연결할 수 있다(docs/plc-connection-design.md §5.3).
-	 */
-	@PreDestroy
-	public void shutdown() {
-		PlcAdapterManager.getPlcManager().shutdownAllQuietly();
-	}
+	// 앱 종료 때 PLC 연결을 닫는 일은 PlcShutdownLifecycle 이 한다 — 웹 서버가 진행 중 요청을 마친 뒤에 닫아야 해서
+	// @PreDestroy 가 아니라 SmartLifecycle 단계로 순서를 정한다(docs/plc-ha-design.md §5.2).
 }

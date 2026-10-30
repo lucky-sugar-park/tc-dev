@@ -29,6 +29,11 @@ public class PlcAdapterManager {
 		adapterMap.put(name, plcAdapter);
 	}
 	
+	/** 올라와 있는 어댑터 수(헬스 체크용) */
+	public int size() {
+		return adapterMap.size();
+	}
+
 	public ProgrammableControllerAdapter get(String name) {
 		return adapterMap.get(name);
 	}

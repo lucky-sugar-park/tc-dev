@@ -12,11 +12,16 @@ server:
   servlet:
     session:
       timeout: 7200
+  # 종료 신호를 받으면 새 요청을 받지 않고 진행 중 요청을 마친 뒤 멈춘다(docs/plc-ha-design.md §5.2).
+  # 그 뒤 PlcShutdownLifecycle 이 PLC 연결을 닫는다. 단계별 대기 상한은 spring.lifecycle.timeout-per-shutdown-phase
   shutdown: graceful
 
 spring:
   config:
     import: optional:classpath:application-local.yml
+  # 종료 단계마다 기다리는 상한 — 진행 중 PLC 요청의 시간 초과(20초)보다 조금 길게
+  lifecycle:
+    timeout-per-shutdown-phase: 25s
   application:
     name: wow-tc
   datasource:
@@ -47,7 +52,8 @@ logging:
 jwt:
   issuer: TC_APP
   secret: ${TC_JWT_SECRET}
-  access-token-validity-ms: 10000000
+  # access 30분(결정 D6) — refresh 로 계속 재발급되므로 사용자 불편은 없다. 바꾸면 재기동이 필요하다
+  access-token-validity-ms: 1800000
   refresh-token-validity-ms: 1000000000
 
 # X-Forwarded-For 를 믿을 리버스 프록시 주소(쉼표 목록). 비우면 헤더를 읽지 않고 소켓 상대 주소만 쓴다(framework ClientAddressResolver).
