@@ -35,22 +35,8 @@ public class PlcConnectionEventDbHandler implements PlcConnectionEventListener {
 
 		switch(pevent.getType()) {
 		case DISCONNECT:
-			if(pevent.getActiveChannelCount()<=0 && pevent.getOperStatus()==PlcConnectorOperStatus.RUNNING) {
-				// 모든 채널이 disconnected 되었으므로 release 시킨 이후에, 다시 start 시킴
-				plcConnectorManagementService.releasePlcConnector(pevent.getPlcConnectorId());
-				hInfo.setCause("NO_AVAILABLE_CONNECTION_AND_RELEASE_COMMAND_BY_SYSTEM");
-				hInfo.setStatus1(PlcConnectorInfoStatus.RELEASED);
-				hInfo.setStatus2(PlcConnectorOperStatus.STOPPED);
-				plcConnectorManagementService.savePlcConnectionEventHistory(hInfo);
-				
-				TimerUtil.waitFor(1500);
-
-				plcConnectorManagementService.publishPlcConnector(pevent.getPlcConnectorId());
-				hInfo.setCause("PUBLISH_COMMAND_BY_SYSTEM");
-				hInfo.setStatus1(PlcConnectorInfoStatus.PUBLISHED);
-				hInfo.setStatus2(PlcConnectorOperStatus.RUNNING);
-				plcConnectorManagementService.savePlcConnectionEventHistory(hInfo);
-			}
+			// 끊긴 채널은 어댑터가 스스로 다시 잇는다 — 커넥터는 PUBLISHED 그대로 둔다(docs/plc-connection-design.md §5.2).
+			// 예전에는 채널이 0개가 되면 여기서(Netty 스레드에서) 해제·재게시를 했는데, 이벤트 루프를 스스로 닫고 상태를 꼬이게 했다.
 			break;
 		case CONNECT:
 			// no need to handle (this would be sent for each channel's connection)

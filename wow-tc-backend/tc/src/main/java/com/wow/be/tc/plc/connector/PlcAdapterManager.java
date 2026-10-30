@@ -1,8 +1,8 @@
 package com.wow.be.tc.plc.connector;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Properties;
 
 import com.wow.be.tc.LegacyClassNames;
@@ -13,18 +13,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PlcAdapterManager {
 
-	private static PlcAdapterManager plcManager;
+	private static final PlcAdapterManager plcManager = new PlcAdapterManager();
 	
 	private Map<String, ProgrammableControllerAdapter> adapterMap;
 	
 	private PlcAdapterManager() {
-		adapterMap=new HashMap<>();
+		adapterMap=new ConcurrentHashMap<>();
 	}
 	
 	public static PlcAdapterManager getPlcManager() {
-		if(plcManager==null) {
-			plcManager=new PlcAdapterManager();
-		}
 		return plcManager;
 	}
 	
@@ -41,21 +38,42 @@ public class PlcAdapterManager {
 		adapterMap.remove(name);
 	}
 	
-	public void loadProgrammableControllerAdapter(Properties props) throws ToolControlException {
+	/**
+	 * 어댑터를 만들어 연결한다. 같은 이름의 어댑터가 이미 돌고 있으면 아무것도 하지 않는다(게시 멱등) — 다시 만들면 옛 연결이
+	 * PLC 슬롯을 붙잡은 채 새 연결이 거부된다. 설정을 바꿔 다시 올리려면 해제한 뒤 게시한다.
+	 * 연결에 실패하면 목록에 넣지 않는다.
+	 */
+	public synchronized void loadProgrammableControllerAdapter(Properties props) throws ToolControlException {
 		log.debug("PlcAdapterManager.loadProgrammableControllerAdapter(Properties props)...");
 		long id=(Long)props.get("id");
 		String name=(String)props.get("name");
 		String className=(String)props.get("className");
-		ProgrammableControllerAdapter adapter=createPlcAdapterInstance(className);
-		adapterMap.put(name, adapter);
-		
-		String operStatus=props.getProperty("operStatus");
-		if("RUNNING".equals(operStatus)) {
-			adapter.ready(id, name, props);
+		if(adapterMap.containsKey(name)) {
+			log.info("이미 게시된 PLC 커넥터라 다시 연결하지 않습니다: {}", name);
+			return;
 		}
+		String operStatus=props.getProperty("operStatus");
+		if(!"RUNNING".equals(operStatus)) {
+			return;
+		}
+		ProgrammableControllerAdapter adapter=createPlcAdapterInstance(className);
+		adapter.ready(id, name, props);
+		adapterMap.put(name, adapter);
 	}
-	
-	public void releaseProgrammableControllerAdapter(String name) throws ToolControlException {
+
+	/** 앱 종료 — 모든 어댑터의 연결을 이벤트 없이 닫는다(DB 상태는 그대로) */
+	public void shutdownAllQuietly() {
+		adapterMap.values().forEach(adapter -> {
+			try {
+				adapter.shutdownQuietly();
+			} catch (RuntimeException e) {
+				log.warn("PLC 어댑터를 닫지 못했습니다: {}", adapter.getName(), e);
+			}
+		});
+		adapterMap.clear();
+	}
+
+	public synchronized void releaseProgrammableControllerAdapter(String name) throws ToolControlException {
 		log.debug("PlcAdapterManager.releaseProgrammableControllerAdapter(String name)...");
 		ProgrammableControllerAdapter adapter=this.get(name);
 		if(adapter!=null) {

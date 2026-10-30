@@ -13,6 +13,7 @@ import com.wow.be.tc.plc.connector.PlcAdapterManager;
 import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -52,6 +53,9 @@ public class PlcConnectorLoader {
 				props.put("plcRetryCount", plcConfig.getRetryCount());
 				props.put("plcRetryIntervalRate", plcConfig.getRetryIntervalRate());
 				props.put("plcRetryIntervalIncrement", plcConfig.getRetryIntervalIncrement());
+				props.put("plcRequestTimeoutMs", plcConfig.getRequestTimeoutMs());
+				// 기동 때는 PLC 가 아직 안 떠 있어도 어댑터를 올리고 뒤에서 연결한다 — 예전에는 재시도를 다 쓰면 아래에서 앱이 종료됐다
+				props.put("startEvenIfDisconnected", Boolean.TRUE);
 				
 				PlcConnectionEventListener connEventListener=new PlcConnectionEventDbHandler(plcManagementService);
 				props.put("connectionListener", connEventListener);
@@ -63,5 +67,14 @@ public class PlcConnectorLoader {
 			// 시스템 시작 시에는 하나라도 load에 실패하면 시스템을 종료한다
 			System.exit(0);
 		}
+	}
+
+	/**
+	 * 앱 종료 때 PLC 연결을 먼저 닫는다. 이벤트를 내지 않으므로 커넥터는 PUBLISHED 로 남아 다음 기동 때 다시 올라온다.
+	 * 연결을 먼저 닫아야 PLC 쪽 슬롯이 빨리 비어 다음 기동이 바로 연결할 수 있다(docs/plc-connection-design.md §5.3).
+	 */
+	@PreDestroy
+	public void shutdown() {
+		PlcAdapterManager.getPlcManager().shutdownAllQuietly();
 	}
 }

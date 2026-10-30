@@ -214,6 +214,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 				props.put("plcRetryCount", plcConfig.getRetryCount());
 				props.put("plcRetryIntervalRate", plcConfig.getRetryIntervalRate());
 				props.put("plcRetryIntervalIncrement", plcConfig.getRetryIntervalIncrement());
+				props.put("plcRequestTimeoutMs", plcConfig.getRequestTimeoutMs());
 				
 				PlcConnectionEventListener connEventListener=new PlcConnectionEventDbHandler(this);
 				props.put("connectionListener", connEventListener);

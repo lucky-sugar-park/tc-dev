@@ -29,6 +29,12 @@ public interface ProgrammableControllerAdapter {
 	public abstract void resumeAsyncUse();
 	
 	public abstract void destroy();
+
+	/**
+	 * 앱 종료용 — 연결만 닫고 이벤트를 내지 않는다. 커넥터의 DB 상태(PUBLISHED)를 그대로 두어 다음 기동 때 다시 올라오게
+	 * 하고, PLC 쪽 연결 슬롯을 빨리 비워 다음 기동(이나 다른 인스턴스)이 바로 연결할 수 있게 한다.
+	 */
+	public abstract void shutdownQuietly();
 	
 	/**
 	 * PLC READ/WRITE 동기식으로 요청 
