@@ -7,7 +7,8 @@ package com.wow.be.tc.user;
  *   <li>ADMIN — 전부(사용자·API 클라이언트 관리 포함)</li>
  *   <li>OPERATOR — PLC·인터페이스·WebHook·전달 정의·스케줄의 등록·수정·삭제·제어, PLC 요청</li>
  *   <li>VIEWER — 조회만</li>
- *   <li>CLIENT — API 키 주체 전용(PLC 요청). 사용자 역할로는 기존 JWT 호출자 전환 기간에만 쓴다(설계 §6.10)</li>
+ *   <li>CLIENT — 예전 시스템 계정 역할. 전환이 끝나 사용자에게 새로 주지 않고 PLC 요청 권한도 주지 않는다 — 타 시스템은
+ *       API 키로 부른다(설계 §9 7단계). 남아 있는 행을 읽을 수 있게 값만 둔다</li>
  * </ul>
  * MANAGER·EMPLOYEE 는 레거시 역할이다 — 각각 OPERATOR·VIEWER 로 취급한다(사용자 정리 때 바꾼다).
  */

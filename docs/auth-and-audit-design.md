@@ -503,7 +503,7 @@ UPDATE USER SET PASSWORD = '<bcrypt 해시>', ENABLED = 1, PASSWORD_MUST_CHANGE 
 
 ## 9. 구현 순서
 
-> 진행 상황(2026-10-30): **1~6단계 구현 완료**(§9.1, §9.2). 남은 것은 7단계(전환 정리, 모든 호출자가 API 키로 옮긴 뒤)다.
+> 진행 상황(2026-10-30): **1~7단계 구현 완료**(§9.1~§9.3). 7단계는 코드 정리를 마쳤고, 실제 호출 시스템의 전환은 운영 절차(docs/operations.md §6.2)로 진행한다.
 
 1. **보안 체인 정리**: `JwtFilter` 서블릿 자동 등록 끄기, `machineApiChain`(API 키와 JWT 둘 다 받음, 전환 기간에는 `ROLE_CLIENT` 허용), `ApiKeyAuthenticationFilter`. 기존 JWT 호출이 그대로 되는지 확인한다.
 2. **API 클라이언트·키**: 테이블, 서비스, 관리 API(단건 조회, 삭제 정책 포함), 캐시, `ClientOpcodeGuard`, 감사 `PRINCIPAL`, 사용량 제한(§6.8), 만료 알림 Job(§6.9), 화면(§6.11), 시험(§6.12).
@@ -548,7 +548,7 @@ UPDATE USER SET PASSWORD = '<bcrypt 해시>', ENABLED = 1, PASSWORD_MUST_CHANGE 
 - `TcPermissionChecker`(역할 표), `TcPermissionModeSource`(모드는 Redis `tc:option:permission-mode`, 없으면 설정값 AUDIT), `PUT /api/v1/security/permission-mode`(관리자, 이력에 남음).
 - 컨트롤러 선언: 클래스에 자원, 상태를 바꾸는 GET(삭제 D·사용 변경 U·제어 X)과 조회용 POST(R)는 메서드에 동작을 명시했다(52곳). `/api/**` 아래 모든 컨트롤러에 선언이 있어 ENFORCE 로 바꿔도 막히는 API 는 없다.
 - 레거시 역할 MANAGER·EMPLOYEE 는 각각 OPERATOR·VIEWER 로 본다.
-- **전환 기간**: `tc.security.dispatch-any-user=true` 동안은 로그인한 사용자 누구나 PLC 요청 가능(§6.10). 7단계에서 false.
+- **전환 기간**: 전환 스위치가 켜져 있는 동안은 로그인한 사용자 누구나 PLC 요청 가능(§6.10). 7단계에서 기본 꺼짐으로 바꿨다(§9.3).
 - 관리 API 의 임시 관리자 검사(`TcRoles`)는 `@Requires("tc.apiclient")` 로 바꾸고 지웠다.
 
 **사용자(4단계)**
@@ -569,6 +569,15 @@ UPDATE USER SET PASSWORD = '<bcrypt 해시>', ENABLED = 1, PASSWORD_MUST_CHANGE 
 | 권한·사용자 | 54/54 |
 
 **확인하지 않은 것**: 최초 관리자 생성(빈 DB 가 필요), Redis 장애 시 fail-open, 여러 인스턴스, `ConfigChangePurger` 실제 삭제.
+
+### 9.3 7단계 전환 정리 (2026-10-30)
+
+- **전환 스위치를 런타임 옵션으로 바꿨다**: `DispatchTransitionOption`(Redis `tc:option:dispatch-any-user`, 없으면 설정값). 관리 API `GET/PUT /api/v1/security/dispatch-any-user`(관리자, 변경 이력에 남음). 인스턴스마다 5초 캐시.
+  - 처음 설계는 "다음 계획된 배포에 설정값을 false 로"였다. 그런데 실제 호출 시스템이 모두 옮겼는지는 운영 환경의 감사 기록으로만 알 수 있고, 잘못 판단하면 재기동해야 되돌릴 수 있었다. 그래서 **기본은 꺼짐(전환 끝)으로 두되 재기동 없이 즉시 켤 수 있게** 했다.
+- **PLC 요청 권한(CLIENT 표)은 API 키 주체에만** 준다. 사용자 역할의 `ROLE_CLIENT` 는 더 이상 권한이 없다.
+- **사용자에게 줄 수 있는 역할은 ADMIN·OPERATOR·VIEWER 셋뿐**이다(`ROLE_CLIENT`, 레거시 MANAGER·EMPLOYEE 는 새로 줄 수 없음, 400).
+- 로컬 확인: 지난 7일 JWT 로 PLC 요청을 보낸 계정은 시험 계정뿐, `ROLE_CLIENT` 사용자 없음. e2e `test_users.py` 에 스위치 꺼짐 403 → 켬 200 → 되돌림 403, `ROLE_CLIENT` 부여 400 을 더했다(60/60).
+- **운영 반영 때**: 운영 감사 기록으로 전환 대상이 남았는지 먼저 본다(operations.md §6.2). 남았다면 배포 직후 스위치를 켠다.
 
 ## 10. 결정할 것
 

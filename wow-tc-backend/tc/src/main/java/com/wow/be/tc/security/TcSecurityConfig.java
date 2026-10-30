@@ -27,8 +27,9 @@ import jakarta.servlet.http.HttpServletResponse;
  * <p>PLC 요청 두 경로만 따로 체인을 둔다. 이 체인은 API 키와 사용자 JWT 를 둘 다 받는다. 그 밖의 경로는 framework
  * {@code SecurityConfig} 의 체인(JWT)이 그대로 맡는다. 이 체인이 {@code @Order(1)} 이라 먼저 평가된다.
  *
- * <p>전환 기간(설계 §6.10)에는 JWT 쪽 역할을 제한하지 않는다(authenticated) — 지금 JWT 로 부르는 시스템 계정이 어떤 역할이든
- * 끊기지 않게 하기 위해서다. 모든 시스템이 API 키로 옮긴 뒤 역할을 좁힌다(설계 §9 7단계).
+ * <p>이 체인은 인증만 확인한다(authenticated). 누가 PLC 요청을 할 수 있는지는 {@code @Requires("action.tc.dispatch")} 와
+ * {@link TcPermissionChecker} 가 정한다 — API 키 클라이언트와 ADMIN·OPERATOR 사용자. 전환 스위치
+ * ({@link DispatchTransitionOption})를 켜면 로그인한 사용자 누구나 허용한다(설계 §6.10, §9 7단계).
  */
 @Configuration
 public class TcSecurityConfig {

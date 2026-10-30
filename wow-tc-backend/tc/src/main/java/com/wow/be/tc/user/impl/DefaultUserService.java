@@ -254,7 +254,9 @@ public class DefaultUserService implements UserService, UserDetailsService {
 		if (!StringUtils.hasText(info.getName())) {
 			throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "사용자 이름이 없습니다.");
 		}
-		if (info.getUserRoles() == null || info.getUserRoles().isEmpty() || info.getUserRoles().contains(UserRole.ROLE_UNKNOWN)) {
+		// 새로 주는 역할은 세 가지뿐이다. ROLE_CLIENT(시스템 계정)는 전환이 끝나 API 키로 대신하고, MANAGER·EMPLOYEE 는 레거시다
+		if (info.getUserRoles() == null || info.getUserRoles().isEmpty()
+				|| !java.util.Set.of(UserRole.ROLE_ADMIN, UserRole.ROLE_OPERATOR, UserRole.ROLE_VIEWER).containsAll(info.getUserRoles())) {
 			throw ToolControlException.of(ToolControlException.INVALID_REQUEST,
 				"역할을 하나 이상 고릅니다(ROLE_ADMIN, ROLE_OPERATOR, ROLE_VIEWER): " + info.getUserRoles());
 		}

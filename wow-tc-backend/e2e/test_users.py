@@ -111,7 +111,22 @@ check("조회자: 스케줄 전체 일시정지(GET X) 403", st("GET", "/api/v1/
 check("조회자: 권한 검사 모드 조회 403(관리자 전용)", st("GET", "/api/v1/security/permission-mode", vw) == 403)
 s, b, _ = call("POST", "/api/v1/ifsvc/request-and-reply", {"transactionId": f"t-u-{RUN}-2", "messageId": "m",
       "opcode": "plc.e2e.d100.read", "sender": "e2e", "receiver": "tc", "data": {}}, tok[vw])
-check("조회자: PLC 요청 — 전환 기간이라 허용(200)", s == 200, (s, b))
+check("조회자: PLC 요청 403 (전환 끝 — 스위치 꺼짐)", s == 403, (s, b))
+s, b, _ = call("PUT", "/api/v1/security/dispatch-any-user", {"on": True}, ADMIN)
+check("관리자: 전환 스위치 켬(재기동 없음)", s == 200 and b.get("on") is True, (s, b))
+s, b, _ = call("POST", "/api/v1/ifsvc/request-and-reply", {"transactionId": f"t-u-{RUN}-3", "messageId": "m",
+      "opcode": "plc.e2e.d100.read", "sender": "e2e", "receiver": "tc", "data": {}}, tok[vw])
+check("조회자: 스위치를 켜면 PLC 요청 200", s == 200, (s, b))
+s, b, _ = call("PUT", "/api/v1/security/dispatch-any-user", {"on": None}, ADMIN)
+check("관리자: 전환 스위치를 설정값(꺼짐)으로 되돌림", b.get("on") is False, (s, b))
+time.sleep(5.5)  # 인스턴스별 5초 캐시
+s, b, _ = call("POST", "/api/v1/ifsvc/request-and-reply", {"transactionId": f"t-u-{RUN}-4", "messageId": "m",
+      "opcode": "plc.e2e.d100.read", "sender": "e2e", "receiver": "tc", "data": {}}, tok[vw])
+check("조회자: 스위치를 끄면 다시 403", s == 403, (s, b))
+h = call("GET", "/api/v1/config-history/OPTION/dispatch-any-user", None, ADMIN)[1]
+check("전환 스위치 변경이 설정 변경 이력에 남음", len(h) >= 2, h[:2])
+s, b, _ = call("POST", "/api/v1/users", {"id": f"cl{RUN}", "name": "x", "userRoles": ["ROLE_CLIENT"], "initialPassword": pw()}, ADMIN)
+check("사용자에게 ROLE_CLIENT 는 줄 수 없음(400)", s == 400, (s, b))
 
 check("관리자(새): 사용자 목록 200", st("GET", "/api/v1/users", ad) == 200)
 check("관리자: 권한 검사 모드 AUDIT", call("GET", "/api/v1/security/permission-mode", None, ADMIN)[1].get("mode") == "AUDIT")

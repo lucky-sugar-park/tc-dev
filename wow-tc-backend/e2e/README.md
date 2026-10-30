@@ -9,7 +9,7 @@
 | `test_api_key.py` | API 키 인증·권한·사용량 제한·회전·만료·삭제 (docs/auth-and-audit-design.md §6) | 40 |
 | `test_paths.py` | WRITE·콜백과 허용 목록·스케줄 Job·커넥터 해제 (docs/dispatch-redesign.md §4.1.2) | 17 |
 | `test_config_history.py` | 설정 변경 이력 (§5) | 11 |
-| `test_users.py` | 권한(§4)·사용자(§3)·로그인 실패 제한 | 54 |
+| `test_users.py` | 권한(§4)·사용자(§3)·로그인 실패 제한·전환 스위치 | 60 |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |
 | `ShutdownViaJmx.java` | JMX 로 Spring Boot 정상 종료 요청(Windows 에서 SIGTERM 대신) | |
@@ -28,7 +28,7 @@
    | `SPRING_APPLICATION_ADMIN_ENABLED` | `true` | test_shutdown(JMX 정상 종료) |
 
 4. 시험 관리자 계정을 알려 준다: `TC_E2E_ADMIN_ID`, `TC_E2E_ADMIN_PASSWORD`(또는 `TC_E2E_ADMIN_FILE` — `id=…`, `password=…` 두 줄). 기본 아이디는 `tc-tester`.
-5. 정상 종료 시험을 돌리려면 `TC_E2E_TC_PID`(tc 프로세스 ID 또는 그 값이 든 파일), `TC_E2E_TC_LOG`(tc 표준 출력 로그)도 준다.
+5. `TC_E2E_TC_LOG`(tc 표준 출력 로그)를 주면 API 키 만료 알림 로그까지 확인한다(없으면 그 항목만 건너뜀). 정상 종료 시험은 `TC_E2E_TC_PID`(tc 프로세스 ID 또는 그 값이 든 파일)와 `TC_E2E_TC_LOG` 가 모두 필요하다.
 
 다른 경로는 `common.py` 머리말의 환경 변수로 바꾼다(`TC_E2E_BASE_URL`, `TC_E2E_MYSQL`, `TC_E2E_REDIS_CLI` 등).
 

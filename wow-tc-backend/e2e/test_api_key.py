@@ -89,7 +89,7 @@ check("감사 PRINCIPAL = client:{id}", p == f"client:{CID}", p)
 
 # 기존 JWT 호출 유지
 s, b = call("POST", "/api/v1/ifsvc/request-and-reply", plc(), bearer=TOKEN)
-check("JWT 동기 요청 200 (전환 기간)", s == 200 and b.get("success") is True, (s, b))
+check("관리자 JWT 동기 요청 200", s == 200 and b.get("success") is True, (s, b))
 p = sql(f"select distinct PRINCIPAL from EXCHANGED_MESSAGE_AUDIT where TRX_ID='t-auth-{RUN}-{seq[0]}'")
 check("감사 PRINCIPAL = user:tc-tester", p == "user:tc-tester", p)
 s, b = admin("GET", "/api/v1/ifsvc/delivery")
@@ -209,7 +209,7 @@ admin("PUT", f"/api/v1/api-clients/{CID}", {"name": "e2e auth", "allowedOpcodes"
 s, b = admin("POST", f"/api/v1/api-clients/{CID}/keys", {"expiresInDays": 6})
 K3ID = b["keyId"] if s == 201 else None
 check("만료 6일 키 발급 201", s == 201, (s, b and b.get("keyId")))
-if os.environ.get("EXPIRY_CRON_FAST"):
+if os.environ.get("EXPIRY_CRON_FAST") and common.tc_log():  # tc 로그 경로가 있어야 알림 로그를 본다
     time.sleep(35)
     log = open(common.tc_log(), encoding="utf-8", errors="replace").read()
     check("만료 임박 알림 로그(7일 안)", f"keyId={K3ID}" in log and "만료 임박(7일 안)" in log, "log 없음")

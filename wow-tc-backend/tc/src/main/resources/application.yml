@@ -108,8 +108,9 @@ tc:
   security:
     # 선언(@Requires) 없는 쓰기 API 처리 — AUDIT(기록만) / ENFORCE(403). 운영 중 바꾸기는 PUT /api/v1/security/permission-mode
     permission-mode: AUDIT
-    # 기존 JWT 호출자 전환 기간에는 로그인한 사용자 누구나 PLC 요청 가능(설계 §6.10). 전환이 끝나면 false
-    dispatch-any-user: true
+    # 기존 JWT 호출자 전환 스위치(설계 §6.10) — 전환이 끝나 false. 옮기지 못한 시스템이 드러나면
+    # 재기동 없이 PUT /api/v1/security/dispatch-any-user {"on":true} 로 켠다(Redis 값이 이 설정보다 우선)
+    dispatch-any-user: false
     login-throttle:
       max-failures: 5        # 아이디별
       max-ip-failures: 20    # IP별(NAT·프록시 뒤 사용자들이 나눠 쓰므로 크게)

@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -65,12 +64,12 @@ public class TcPermissionChecker implements PermissionChecker {
 		Map.entry("tc.option", "운영 옵션"),
 		Map.entry("action.tc.dispatch", "PLC 요청"));
 
-	/**
-	 * 기존 JWT 호출자 전환 기간(설계 §6.10)에는 로그인한 사용자라면 역할과 관계없이 PLC 요청을 허용한다 — 지금 JWT 로 부르는
-	 * 시스템 계정이 어떤 역할이든 끊기지 않게. 모든 시스템이 API 키로 옮긴 뒤 false 로 바꾼다(설계 §9 7단계).
-	 */
-	@Value("${tc.security.dispatch-any-user:true}")
-	private boolean dispatchAnyUser;
+	/** 기존 JWT 호출자 전환 스위치(설계 §6.10). 전환이 끝나 기본은 꺼짐 — 재기동 없이 다시 켤 수 있다 */
+	private final DispatchTransitionOption transition;
+
+	public TcPermissionChecker(DispatchTransitionOption transition) {
+		this.transition = transition;
+	}
 
 	@Override
 	public Decision check(String userId, String resourceCode, char action) {
@@ -90,10 +89,11 @@ public class TcPermissionChecker implements PermissionChecker {
 		if (allows(VIEWER, resourceCode, action) && (roles.contains("ROLE_VIEWER") || roles.contains("ROLE_EMPLOYEE"))) {
 			return Decision.allow(resourceCode, action, name);
 		}
-		if (allows(CLIENT, resourceCode, action) && roles.contains(ApiClientAuthentication.ROLE_CLIENT)) {
+		// PLC 요청 권한(CLIENT 표)은 API 키 주체에만 준다 — 사용자 역할의 ROLE_CLIENT 는 전환이 끝나 더 쓰지 않는다(설계 §9 7단계)
+		if (auth instanceof ApiClientAuthentication && allows(CLIENT, resourceCode, action)) {
 			return Decision.allow(resourceCode, action, name);
 		}
-		if (dispatchAnyUser && allows(CLIENT, resourceCode, action) && !(auth instanceof ApiClientAuthentication)) {
+		if (!(auth instanceof ApiClientAuthentication) && allows(CLIENT, resourceCode, action) && transition.isOn()) {
 			return Decision.allow(resourceCode, action, name);
 		}
 		return Decision.deny(resourceCode, action, name, "역할 " + roles + " 에 " + resourceCode + ":" + action + " 권한 없음");

@@ -39,7 +39,7 @@
 | PLC 커넥터·인터페이스·WebHook·전달 정의·스케줄 Job | access·refresh 토큰 수명(`jwt.*`) |
 | 커넥터 게시·해제 | DB·Redis 접속 정보 |
 | 권한 검사 모드(`PUT /api/v1/security/permission-mode`) | `tc.api-client.*` 기본값, `tc.security.login-throttle.*`, `tc.delivery.*`, `plc.*` |
-| | `tc.security.dispatch-any-user`(전환 정리, §6) |
+| 기존 JWT 호출자 전환 스위치(`PUT /api/v1/security/dispatch-any-user`, §6.2) | |
 
 ## 3. 설치와 업그레이드
 
@@ -126,7 +126,15 @@ redis-cli DEL tc:apikey-block:<ip> tc:apikey-fail:<ip>
    ```
 2. **시스템별 교체** — 클라이언트를 만들고(허용 opcode 는 그 계정이 실제로 쓴 opcode), 키를 발급해 전달하고, 그쪽 설정을 바꾼다. 감사의 `PRINCIPAL` 이 `client:…` 로 바뀌는지 본다.
 3. **옛 계정 중지** — 7일 동안 그 계정의 JWT 호출이 없으면 사용자 사용 중지(`POST /api/v1/users/{id}/disable`). 문제가 생기면 다시 켠다.
-4. **정리**(다음 계획된 배포) — `tc.security.dispatch-any-user=false`. 그 뒤로 PLC 요청은 API 키 클라이언트와 ADMIN·OPERATOR 사용자만 할 수 있다.
+4. **정리** — 전환 스위치는 **기본 꺼짐**이다(2026-10-30 정리 반영). PLC 요청은 API 키 클라이언트와 ADMIN·OPERATOR 사용자만 할 수 있고,
+   사용자에게 `ROLE_CLIENT` 를 새로 줄 수 없다.
+   - 1~3단계를 마치기 전에 이 버전을 배포한다면, 배포 직후 스위치를 켠다(재기동 없음, 모든 인스턴스에 5초 안에 반영).
+
+     ```bash
+     curl -X PUT -H "Authorization: Bearer …" -H 'Content-Type: application/json'           -d '{"on":true}' http://<tc>/api/v1/security/dispatch-any-user
+     ```
+   - 3단계까지 끝나면 `{"on":null}` 로 설정값(꺼짐)으로 되돌린다. 바꿀 때마다 설정 변경 이력에 남는다.
+   - 꺼진 상태에서 옮기지 못한 시스템이 부르면 403(`ERR_403`, 권한이 없습니다: PLC 요청)이다.
 
 ## 7. 사용자와 권한
 
@@ -188,4 +196,4 @@ redis-cli DEL tc:apikey-block:<ip> tc:apikey-fail:<ip>
 ## 11. 시험
 
 - 단위 테스트: `./gradlew :tc:test`(인프라 불필요)
-- e2e: `wow-tc-backend/e2e/README.md` — 실제 tc·vplc·DB·Redis 를 대상으로 137개 항목
+- e2e: `wow-tc-backend/e2e/README.md` — 실제 tc·vplc·DB·Redis 를 대상으로 143개 항목
