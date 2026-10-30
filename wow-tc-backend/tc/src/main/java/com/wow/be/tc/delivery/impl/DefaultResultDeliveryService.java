@@ -27,6 +27,7 @@ import com.wow.be.tc.interfs.InterfaceInfo;
 import com.wow.be.tc.interfs.InterfaceService;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditService;
+import com.wow.be.tc.security.RequestPrincipals;
 import com.wow.be.tc.webhook.WebHook;
 import com.wow.be.tc.webhook.WebHookManager;
 
@@ -219,6 +220,7 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 			info.setReceiver(target.type() + ":" + target.name() + ":" + target.url());
 			info.setDataMap(Map.of());
 			info.setDescription(failure == null ? "OK" : failure);
+			info.setPrincipal(request.getPrincipal() != null ? request.getPrincipal() : RequestPrincipals.SYSTEM);
 			auditService.writeAudit(info);
 		} catch (RuntimeException e) {
 			log.warn("결과 전달 감사 로그를 남기지 못했습니다: transactionId={}", request.getTransactionId(), e);

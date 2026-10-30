@@ -66,6 +66,10 @@ public class ExchangedMessageAuditEntity extends PersistentEntity<ExchangedMessa
 	
 	@Column(name="DESCRIPTION", length=1024)
 	private String description;
+
+	/** 실제 호출자 — client:{id}, user:{id}, system. 본문의 SENDER 는 호출자가 쓰는 값이라 따로 둔다(설계 §6.5) */
+	@Column(name="PRINCIPAL", length=200)
+	private String principal;
 	
 	public ExchangedMessageAuditEntity() {
 		super();
@@ -85,6 +89,7 @@ public class ExchangedMessageAuditEntity extends PersistentEntity<ExchangedMessa
 		Gson gson=new GsonBuilder().setPrettyPrinting().create();
 		info.setDataMap(gson.fromJson(jsonString, new TypeToken<Map<String, String>>(){}.getType()));
 		info.setDescription(this.getDescription());
+		info.setPrincipal(this.getPrincipal());
 		
 		info.setCreatedBy(super.getCreatedBy());
 		info.setCreatedDate(super.getCreatedDate());
@@ -109,6 +114,7 @@ public class ExchangedMessageAuditEntity extends PersistentEntity<ExchangedMessa
 		Gson gson=new GsonBuilder().setPrettyPrinting().create();
 		this.setJsonString(gson.toJson(info.getDataMap()));
 		this.setDescription(info.getDescription());
+		this.setPrincipal(info.getPrincipal());
 		
 		super.setCreatedBy(info.getCreatedBy());
 		super.setCreatedDate(info.getCreatedDate());

@@ -82,6 +82,19 @@ tc:
   shutdown:
     # 종료 신호 후 강제 종료(System.exit)까지 기다리는 시간(ms) — ForceShutdownHook
     grace-period: 7000
+  # API 클라이언트(타 시스템) 기본값 — 클라이언트별 값(API_CLIENT 표)이 없을 때 쓴다. 이 값은 기동 때 읽는다(바꾸면 재기동).
+  # 클라이언트별 한도·허용 범위·키는 관리 API 로 재기동 없이 바꾼다. docs/auth-and-audit-design.md §6
+  api-client:
+    default-rate-limit-per-sec: 50
+    default-max-concurrent: 20
+    default-key-days: 365
+    max-key-days: 730
+    cache-ttl: 30s
+    fail-limit-per-minute: 30
+    fail-block: 5m
+    expiry-notice-days: [30, 7, 1]
+    unused-days: 90
+    expiry-check-cron: "0 0 8 * * *"
   # Quartz 설정(ScheduleConfig 가 이 값을 그대로 Quartz 속성으로 넘긴다).
   # JobStore 의 DataSource 는 ScheduleConfig 가 앱 DataSource 를 넘기므로 Quartz 자체 DataSource 는 두지 않는다.
   quartz:

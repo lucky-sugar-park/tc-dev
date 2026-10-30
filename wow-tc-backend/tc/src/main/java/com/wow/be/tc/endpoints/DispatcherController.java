@@ -19,6 +19,7 @@ import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.delivery.ResultDeliveryService;
 import com.wow.be.tc.dispatch.TcMessageRequest;
 import com.wow.be.tc.dispatch.TcMessageResponse;
+import com.wow.be.tc.security.RequestPrincipals;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -60,11 +61,12 @@ public class DispatcherController {
 	)
 	@ApiResponse(responseCode = "202", description = "접수됨 — {transactionId, messageId, opcode}")
 	@PostMapping(value = "/request")
-	public ResponseEntity<Map<String, Object>> service(@RequestBody TcMessageRequest request) {
+	public ResponseEntity<Map<String, Object>> service(@RequestBody TcMessageRequest request) throws ToolControlException {
 		normalize(request);
 		if (!StringUtils.hasText(request.getOpcode())) {
 			return ResponseEntity.badRequest().body(accepted(request, "요청에 opcode 가 없습니다."));
 		}
+		RequestPrincipals.stampAndAuthorize(request);
 
 		messageDispatcher.dispatch(request, new MessageCallback<TcMessageResponse>() {
 			@Override
@@ -86,8 +88,10 @@ public class DispatcherController {
 	)
 	@ApiResponse(responseCode = "200", description = "PLC 와 교환을 마침 — 본문의 success 로 성공 여부를 본다")
 	@PostMapping(value = "/request-and-reply")
-	public ResponseEntity<TcMessageResponse> serviceWithSyncReply(@RequestBody TcMessageRequest request) {
+	public ResponseEntity<TcMessageResponse> serviceWithSyncReply(@RequestBody TcMessageRequest request)
+			throws ToolControlException {
 		normalize(request);
+		RequestPrincipals.stampAndAuthorize(request);
 
 		TcMessageResponse response;
 		int status;

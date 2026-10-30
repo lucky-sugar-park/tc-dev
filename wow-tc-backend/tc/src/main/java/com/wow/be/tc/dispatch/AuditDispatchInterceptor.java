@@ -12,6 +12,7 @@ import com.wow.be.framework.dispatch.RequestMessage;
 import com.wow.be.framework.dispatch.ResponseMessage;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditService;
+import com.wow.be.tc.security.RequestPrincipals;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +32,7 @@ public class AuditDispatchInterceptor implements DispatchInterceptor {
 
 	@Override
 	public void preDispatch(RequestMessage request) {
-		write(audit("REQUEST", request.getTransactionId(), request.getMessageId(), request.getOpcode(),
+		write(request, audit("REQUEST", request.getTransactionId(), request.getMessageId(), request.getOpcode(),
 			request.getTimestamp(), request.getSender(), request.getReceiver(), request.getData(), ""));
 	}
 
@@ -39,7 +40,7 @@ public class AuditDispatchInterceptor implements DispatchInterceptor {
 	public void postDispatch(RequestMessage request, ResponseMessage response) {
 		String description = Boolean.FALSE.equals(response.getSuccess())
 			? response.getErrorCode() + ": " + response.getErrorMessage() : "";
-		write(audit("RESPONSE", response.getTransactionId(), response.getMessageId(), response.getOpcode(),
+		write(request, audit("RESPONSE", response.getTransactionId(), response.getMessageId(), response.getOpcode(),
 			response.getTimestamp(), response.getSender(), response.getReceiver(), response.getData(), description));
 	}
 
@@ -49,12 +50,15 @@ public class AuditDispatchInterceptor implements DispatchInterceptor {
 		Map<String, Object> data = new LinkedHashMap<>();
 		data.put("errorCode", errorCode);
 		data.put("errorMessage", cause.getMessage());
-		write(audit("ERROR", request.getTransactionId(), RequestMessage.generateMessageId(), request.getOpcode(),
+		write(request, audit("ERROR", request.getTransactionId(), RequestMessage.generateMessageId(), request.getOpcode(),
 			System.currentTimeMillis(), request.getReceiver(), request.getSender(), data,
 			errorCode + ": " + cause.getMessage()));
 	}
 
-	private void write(ExchangedMessageAuditInfo info) {
+	private void write(RequestMessage request, ExchangedMessageAuditInfo info) {
+		// 실제 호출자 — 컨트롤러가 요청 스레드에서 찍어 둔 값. 없으면(스케줄 Job 등 내부) system
+		String principal = request instanceof TcMessageRequest tc ? tc.getPrincipal() : null;
+		info.setPrincipal(principal != null ? principal : RequestPrincipals.SYSTEM);
 		try {
 			auditService.writeAudit(info);
 		} catch (RuntimeException e) {

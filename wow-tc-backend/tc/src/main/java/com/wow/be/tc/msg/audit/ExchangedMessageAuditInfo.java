@@ -41,6 +41,9 @@ public class ExchangedMessageAuditInfo extends AbstractInfo {
 	
 	private String description;
 
+	/** 실제 호출자 — client:{id}, user:{id}, system (요청 본문의 sender 와 별개) */
+	private String principal;
+
 	public ExchangedMessageAuditInfo() {
 		dataMap=new HashMap<>();
 	}

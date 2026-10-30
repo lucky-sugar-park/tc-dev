@@ -299,7 +299,9 @@ tc의 관리 API 상당수가 **GET으로 상태를 바꾼다.** 예를 들면 �
 
 ### 6.4 opcode 권한 검사
 
-- 필터에서는 본문을 읽지 않으므로 opcode를 모른다. 그래서 opcode 검사는 **`ClientOpcodeGuard`(framework `DispatchInterceptor`)**에서 한다.
+- 필터에서는 본문을 읽지 않으므로 opcode를 모른다. 그래서 opcode 검사는 **컨트롤러(`DispatcherController`)가 디스패치 전에 `RequestPrincipals.stampAndAuthorize`로** 한다.
+  - (구현하며 바꿈) 처음에는 framework `DispatchInterceptor`에서 하려 했다. 그런데 비동기 요청(`/request`)은 디스패치가 다른 스레드에서 돌아 보안 컨텍스트가 없다. 그래서 요청 스레드에서 판단한다.
+  - 같은 자리에서 실제 호출자를 요청(`TcMessageRequest.principal`, 본문으로는 받지 않음)에 찍는다. 감사 인터셉터와 결과 전달 감사는 이 값을 쓴다.
 - 인증이 `ApiClientAuthentication`일 때만 검사한다. 사용자(JWT)의 시험 호출과 스케줄 Job의 내부 호출은 이 검사를 받지 않는다. 사용자 호출은 `action.tc.dispatch` 권한으로 따로 막는다.
 
 ### 6.5 감사
@@ -325,7 +327,9 @@ tc의 관리 API 상당수가 **GET으로 상태를 바꾼다.** 예를 들면 �
 
 - 운영에서는 삭제보다 **중지를 권장한다.**
 - 삭제해도 호출 감사(`PRINCIPAL`)와 설정 변경 이력은 clientId 문자열로 남으므로 추적은 끊기지 않는다.
-- 다만 같은 clientId를 다시 만들면 옛 기록과 섞인다. 그래서 **삭제한 clientId는 재사용하지 않는다.** 설정 변경 이력에 `API_CLIENT`·`DELETE`가 있는 ID로는 생성을 거부한다(409).
+- 다만 같은 clientId를 다시 만들면 옛 기록과 섞인다. 그래서 **삭제한 clientId는 재사용하지 않는다.**
+  - (구현하며 바꿈) 설정 변경 이력(3단계)에 기대지 않도록, 삭제는 `API_CLIENT` 행을 지우지 않고 `DELETED_AT`만 남긴다.
+  - 그 ID로 생성하면 거부한다(409). 키 행은 지운다.
 
 **무중단 키 회전 절차**
 
@@ -364,7 +368,8 @@ SecurityFilterChain machineApiChain(HttpSecurity http, ApiKeyAuthenticationFilte
 - 지금은 보안 체인 안의 `JwtFilter`가 먼저 실행되고, `OncePerRequestFilter` 표시 때문에 서블릿 단계의 두 번째 실행은 건너뛴다.
 - 그런데 `machineApiChain`에는 `JwtFilter`가 없다. 그래서 서블릿 단계의 `JwtFilter`가 실행되고, Bearer 헤더가 없는 API 키 요청에 **401 `EXPIRED_TOKEN`을 낸다.**
 - 대처: tc에서 `FilterRegistrationBean<JwtFilter>`를 `setEnabled(false)`로 등록해 서블릿 자동 등록을 끈다. framework 체인 안의 동작은 그대로다.
-- 구현할 때 실제로 두 번 등록되는지 시험으로 확인한다. framework에서 고칠 후보이기도 하다.
+- **확인함(2026-10-30)**: 대처 빈을 뺀 상태에서 올바른 API 키만으로 호출하면 401 `EXPIRED_TOKEN`이 났다. 빈을 넣으면 200이다. framework에서 고칠 후보로 둔다(`JwtFilter` 빈 등록 방식).
+- 필터(`ApiKeyAuthenticationFilter`, `MachineBearerFilter`, `ApiClientQuotaFilter`)는 같은 이유로 **빈으로 등록하지 않고** 체인 설정 안에서 만든다.
 
 ### 6.8 사용량 제한(quota)
 
@@ -421,6 +426,8 @@ SecurityFilterChain machineApiChain(HttpSecurity http, ApiKeyAuthenticationFilte
 전환 상태(대상 계정, 클라이언트 생성, 교체 확인, 계정 중지)는 운영 문서에 표로 관리한다.
 
 ### 6.11 화면
+
+> 상태: 백엔드 API만 구현했다. 화면은 프론트(레거시 tc-frontend, 이 저장소 밖)에서 따로 만든다.
 
 메뉴: **시스템 관리 → API 클라이언트**. 조회와 편집 모두 `ROLE_ADMIN` 전용이다.
 
@@ -496,6 +503,8 @@ UPDATE USER SET PASSWORD = '<bcrypt 해시>', ENABLED = 1, PASSWORD_MUST_CHANGE 
 
 ## 9. 구현 순서
 
+> 진행 상황(2026-10-30): **1·2단계 구현 완료**, 로컬 e2e 40개 항목 통과(§9.1). 3단계부터 남았다.
+
 1. **보안 체인 정리**: `JwtFilter` 서블릿 자동 등록 끄기, `machineApiChain`(API 키와 JWT 둘 다 받음, 전환 기간에는 `ROLE_CLIENT` 허용), `ApiKeyAuthenticationFilter`. 기존 JWT 호출이 그대로 되는지 확인한다.
 2. **API 클라이언트·키**: 테이블, 서비스, 관리 API(단건 조회, 삭제 정책 포함), 캐시, `ClientOpcodeGuard`, 감사 `PRINCIPAL`, 사용량 제한(§6.8), 만료 알림 Job(§6.9), 화면(§6.11), 시험(§6.12).
    - **이 단계를 배포하면 전환 계획(§6.10) 1~4단계를 운영 작업으로 시작한다.** 이후 코드 단계와는 독립적으로 진행된다.
@@ -507,17 +516,37 @@ UPDATE USER SET PASSWORD = '<bcrypt 해시>', ENABLED = 1, PASSWORD_MUST_CHANGE 
 
 단계마다 로컬 e2e(tc ↔ vplc)로 PLC 요청 경로가 끊기지 않는지 확인한다.
 
+### 9.1 1·2단계 구현 메모
+
+- **코드 위치**
+  - `com.wow.be.tc.apiclient`: 클라이언트·키 정보, 서비스, 설정(`tc.api-client.*`), 만료 알림
+  - `com.wow.be.tc.security`: 보안 체인, 필터, 요청 제한, 호출자 판단, 관리자 검사
+  - `endpoints/ApiClientManagementController`: 관리 API
+- **관리자 검사**: `@Requires`를 켜기 전(5단계)까지는 관리 API가 `TcRoles.requireAdmin()`으로 `ROLE_ADMIN`을 확인한다.
+- **설정 변경 이력**: 클라이언트·키 변경은 지금은 INFO 로그로만 남는다. 3단계에서 `CONFIG_CHANGE_HIST`에 연결한다.
+- **DB**: `migration/002_api_client.sql`. 표 두 개와 감사 `PRINCIPAL` 칼럼을 추가한다(이 문서의 6단계 중 API 키 부분).
+- **로컬 e2e에서 확인한 것**(§6.12 항목 기준)
+  - 인증 성공, 인증 실패(형식·없는 키·해시 불일치는 본문까지 같은지, 폐기·만료·중지·인증 없음은 401인지), 경로 범위, opcode·IP·pushUrl 권한
+  - 회전(2개 한도, 폐기 즉시 반영), 만료, 중지·재개, 단건 조회에 해시 없음
+  - 초당·동시 처리 한도, 대입 차단, 삭제 정책, 만료 임박 알림
+  - 감사 `PRINCIPAL`, 기존 JWT 호출과 관리 API 유지, `JwtFilter` 이중 등록 대처
+- **확인하지 않은 것**
+  - Redis 장애 시 fail-open
+  - 여러 인스턴스에서의 캐시 지연
+  - 관리자가 아닌 사용자의 403(관리자가 아닌 시험 계정이 없음)
+- **대입 차단 집계**: IP별 실패 수에는 폐기·만료·중지 키의 401도 들어간다. 키가 만료된 시스템이 계속 재시도하면 그 IP가 5분 막힐 수 있다. 새 키로 바꾼 뒤에도 차단이 남아 있으면 Redis에서 `tc:apikey-block:{ip}`를 지운다.
+
 ## 10. 결정할 것
 
 | # | 질문 | 제안 |
 |---|---|---|
 | D1 | 역할을 셋(ADMIN, OPERATOR, VIEWER)으로 할지, ADMIN 하나로 시작할지 | 구조는 셋으로 만들고 처음에는 ADMIN만 써도 된다 |
-| D2 | API 키 헤더 이름 | `X-API-Key` |
+| D2 | API 키 헤더 이름 | **확정(2026-10-30)**: `X-API-Key` |
 | D3 | 요청 본문의 `sender`를 인증된 clientId로 덮어쓸지 | 덮어쓰지 않는다. `PRINCIPAL`을 따로 남긴다 |
 | D4 | 설정 변경 이력 보존 기간 | 1년 |
 | D5 | 상태를 바꾸는 GET API를 POST·DELETE로 바꿀지 | 별도 과제. 우선은 메서드 단위 `@Requires`로 막는다 |
 | D6 | access 토큰 수명 | 30분 |
 | D7 | 여러 인스턴스 운영(무중단 재기동) 검토 | 별도 운영 설계. PLC 동시 접속 가능 여부와 변경 감지 상태 공유를 확인해야 한다 |
-| D8 | 사용량 한도 전역 기본값 | 초당 50건, 동시 20건. 실제 호출량을 전환 2단계(§6.10)에서 보고 조정 |
-| D9 | 키 만료: 강제 만료(기본 365일, 최대 730일)와 무기한 키(나이 경고만) 중 무엇으로 할지 | 강제 만료 + 30·7·1일 전 알림. 만료로 인한 장애가 더 걱정되면 무기한 + 나이 경고로 바꾼다 |
+| D8 | 사용량 한도 전역 기본값 | **확정(2026-10-30)**: 초당 50건, 동시 20건. 실제 호출량을 전환 2단계(§6.10)에서 보고 조정 |
+| D9 | 키 만료: 강제 만료(기본 365일, 최대 730일)와 무기한 키(나이 경고만) 중 무엇으로 할지 | **확정(2026-10-30)**: 강제 만료 + 30·7·1일 전 알림 |
 | D10 | 전환 기간에 옛 계정의 JWT 호출이 없어야 하는 기간 | 7일 |

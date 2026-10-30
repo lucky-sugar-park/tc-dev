@@ -38,6 +38,29 @@ public class ToolControlException extends MesGeneralException {
 	/** PLC 가 오류 종료 코드를 돌려줌 */
 	public static final String PLC_ERROR = "ERR_502_TC_PLC_ERROR";
 
+	// ── 인증·권한 오류 코드 (docs/auth-and-audit-design.md §6.3, §6.8) ──
+
+	/** API 키가 없거나 틀림(형식·없는 키·해시 불일치·폐기·만료·클라이언트 중지 모두 같은 코드와 문구) */
+	public static final String API_KEY_INVALID = "ERR_401_TC_API_KEY";
+
+	/** 권한 없음(관리 API 를 관리자가 아닌 사용자가 부름 등) */
+	public static final String FORBIDDEN = "ERR_403";
+
+	/** API 클라이언트에 허용되지 않은 IP 에서 호출 */
+	public static final String API_CLIENT_IP_FORBIDDEN = "ERR_403_TC_API_CLIENT_IP";
+
+	/** API 클라이언트에 허용되지 않은 opcode */
+	public static final String OPCODE_FORBIDDEN = "ERR_403_TC_OPCODE_FORBIDDEN";
+
+	/** 같은 자원이 이미 있거나, 지금 상태에서 할 수 없는 변경 */
+	public static final String CONFLICT = "ERR_409";
+
+	/** API 클라이언트의 초당 요청 한도 초과, 또는 API 키 대입 시도 차단 */
+	public static final String RATE_LIMITED = "ERR_429_TC_RATE_LIMIT";
+
+	/** API 클라이언트의 동시 처리 한도 초과 */
+	public static final String CONCURRENCY_LIMITED = "ERR_429_TC_CONCURRENCY";
+
 	public ToolControlException() {
 		super(ERR_TC, "Tool Control 처리 중 오류가 발생했습니다.", null);
 	}

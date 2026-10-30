@@ -1,5 +1,6 @@
 package com.wow.be.tc.dispatch;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.wow.be.framework.dispatch.RequestMessage;
 
 import lombok.Data;
@@ -23,6 +24,13 @@ public class TcMessageRequest extends RequestMessage {
 
 	/** 처리 결과를 받을 주소(PUT). {@link #pushResult} 가 true 일 때만 쓴다. */
 	private String pushUrl;
+
+	/**
+	 * 실제 호출자 — {@code client:{id}}, {@code user:{id}}, {@code system}. 서버가 인증 정보로 채운다(본문으로 받지 않음).
+	 * 감사 기록의 PRINCIPAL 에 남는다.
+	 */
+	@JsonIgnore
+	private String principal;
 
 	public TcMessageRequest() {
 		super();
