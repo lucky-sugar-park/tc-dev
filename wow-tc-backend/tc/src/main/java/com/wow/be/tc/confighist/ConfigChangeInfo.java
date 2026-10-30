@@ -52,7 +52,7 @@ public class ConfigChangeInfo extends AbstractInfo {
 	}
 
 	public enum TargetType {
-		PLC_CONNECTOR, INTERFACE, WEBHOOK, DELIVERY, SCHEDULE_JOB, USER, API_CLIENT, API_KEY, OPTION
+		PLC_CONNECTOR, INTERFACE, WEBHOOK, DELIVERY, DB_CONNECTION, SCHEDULE_JOB, USER, API_CLIENT, API_KEY, OPTION
 	}
 
 	public enum Action {

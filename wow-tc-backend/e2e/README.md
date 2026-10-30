@@ -10,6 +10,9 @@
 | `test_paths.py` | WRITE·콜백과 허용 목록·스케줄 Job·커넥터 해제 (docs/dispatch-redesign.md §4.1.2) | 17 |
 | `test_config_history.py` | 설정 변경 이력 (§5) | 11 |
 | `test_users.py` | 권한(§4)·사용자(§3)·로그인 실패 제한·전환 스위치 | 60 |
+| `test_framework_046.py` | framework 0.8.46 반영 — 공개 경로 설정, 검색 조건(conjType 없음 AND, 없는 항목 400) | 8 |
+| `test_http_methods.py` | 상태를 바꾸는 API 의 메서드(#9) — 예전 GET 은 405, 삭제는 DELETE·제어·사용 변경은 POST 로 처리, 토큰 없으면 401 | 55 |
+| `test_db_table.py` | DB_TABLE 결과 전달(#10) — 외부 DB 연결 등록(암호화·금지 옵션·예약 이름), 테이블 검증, 성공·실패 행 기록, 사용 중지, 삭제 보호. **`TC_SECRET_KEY` 필요** | 33 |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |
 | `ShutdownViaJmx.java` | JMX 로 Spring Boot 정상 종료 요청(Windows 에서 SIGTERM 대신) | |
@@ -26,6 +29,7 @@
    | `PLC_REQUEST_TIMEOUT_MS` | `3000` | test_plc_adapter(늦은 응답) |
    | `TC_APICLIENT_EXPIRYCHECKCRON` | `*/30 * * * * *` | test_api_key(만료 알림) |
    | `SPRING_APPLICATION_ADMIN_ENABLED` | `true` | test_shutdown(JMX 정상 종료) |
+   | `TC_SECRET_KEY` | Base64 32바이트(예: `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`). 재기동해도 같은 값을 쓴다 | test_db_table(DB 연결 비밀번호 암호화) |
 
 4. 시험 관리자 계정을 알려 준다: `TC_E2E_ADMIN_ID`, `TC_E2E_ADMIN_PASSWORD`(또는 `TC_E2E_ADMIN_FILE` — `id=…`, `password=…` 두 줄). 기본 아이디는 `tc-tester`.
 5. `TC_E2E_TC_LOG`(tc 표준 출력 로그)를 주면 API 키 만료 알림 로그까지 확인한다(없으면 그 항목만 건너뜀). 정상 종료 시험은 `TC_E2E_TC_PID`(tc 프로세스 ID 또는 그 값이 든 파일)와 `TC_E2E_TC_LOG` 가 모두 필요하다.

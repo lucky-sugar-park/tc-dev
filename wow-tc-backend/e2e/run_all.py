@@ -11,7 +11,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SUITES = ["setup_e2e.py", "test_plc_adapter.py main", "test_api_key.py", "test_paths.py", "test_config_history.py", "test_users.py"]
+SUITES = ["setup_e2e.py", "test_plc_adapter.py main", "test_api_key.py", "test_paths.py", "test_config_history.py", "test_users.py", "test_framework_046.py", "test_http_methods.py", "test_db_table.py"]
 
 
 def start_fake_plc(*args):

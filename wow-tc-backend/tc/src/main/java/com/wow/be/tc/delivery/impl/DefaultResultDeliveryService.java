@@ -109,6 +109,8 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 					targets.add(new DeliveryTarget(DeliveryType.WEBHOOK, webHook.getName(), webHook.getUrl(),
 						def.getDeliverOn(), def.isOnChangeOnly()));
 				}
+				case DB_TABLE -> targets.add(new DeliveryTarget(DeliveryType.DB_TABLE, def.getTargetName(), null,
+					def.getDeliverOn(), def.isOnChangeOnly(), def.getTableName()));
 			}
 		}
 		if (includeCallback && request.wantsCallback()
@@ -174,7 +176,8 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 	}
 
 	private void deliverOne(DeliveryTarget target, TcMessageRequest request, TcMessageResponse response) {
-		if (!isAllowed(target.url())) {
+		// 주소 허용 목록은 HTTP 전달에만 — DB_TABLE 은 관리자가 등록한 DB 연결만 쓸 수 있다
+		if (target.type() != DeliveryType.DB_TABLE && !isAllowed(target.url())) {
 			record(target, request, response, "허용되지 않은 주소라 보내지 않았습니다: " + target.url());
 			return;
 		}
@@ -203,10 +206,10 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 	private void record(DeliveryTarget target, TcMessageRequest request, TcMessageResponse response, String failure) {
 		if (failure == null) {
 			log.info("결과 전달 완료: {} {} → {}, opcode={}, transactionId={}",
-				target.type(), target.name(), target.url(), request.getOpcode(), request.getTransactionId());
+				target.type(), target.name(), target.destination(), request.getOpcode(), request.getTransactionId());
 		} else {
 			log.warn("결과 전달 실패: {} {} → {}, opcode={}, transactionId={} — {}",
-				target.type(), target.name(), target.url(), request.getOpcode(), request.getTransactionId(), failure);
+				target.type(), target.name(), target.destination(), request.getOpcode(), request.getTransactionId(), failure);
 		}
 
 		try {
@@ -217,7 +220,7 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 			info.setMessageType("DELIVERY");
 			info.setTimestamp(new Date());
 			info.setSender(response.getSender());
-			info.setReceiver(target.type() + ":" + target.name() + ":" + target.url());
+			info.setReceiver(target.type() + ":" + target.name() + ":" + target.destination());
 			info.setDataMap(Map.of());
 			info.setDescription(failure == null ? "OK" : failure);
 			info.setPrincipal(request.getPrincipal() != null ? request.getPrincipal() : RequestPrincipals.SYSTEM);

@@ -15,8 +15,8 @@ tc는 설비에 붙어 있는 PLC와 통신하면서 PLC 데이터를 READ하거
 | 1 | PLC 데이터를 READ/WRITE하는 서비스 | ✅ `ProgrammableControllerAdapter.request()` (동기·비동기) |
 | 2 | 미쯔비시 PLC 어댑터만 구현. Modbus, OPC UA 어댑터를 추가할 계획 | ⚠️ 어댑터 인터페이스는 있으나 공통 모델이 MELSEC에 맞춰져 있음 (1.4 참고) |
 | 3 | PLC 정보를 관리하고, PLC마다 주고받는 인터페이스(READ 또는 WRITE)를, 인터페이스마다 세부 속성(헤더, 데이터)을 정의 | ✅ `PLC_CONNECTOR` → `INTERFACE` → `HEADER_PROP`, `DATA_PROP` |
-| 4 | 타 시스템(예: MES)이 REST API로 설비 데이터를 요청하면 결과를 바로 응답하거나, 특정 DB 테이블에 기록하거나, WebHook에 등록된 상대방 REST API로 전달 | 바로 응답 ✅, WebHook과 pushUrl ✅, **DB 테이블 기록 ❌** |
-| 5 | 요청이 없어도 스케줄로 일정 주기마다 PLC 데이터를 가져와 WebHook을 호출하거나 DB 테이블에 기록 | WebHook ✅ (`PlcGeneralScheduleJob`), **DB 테이블 기록 ❌** |
+| 4 | 타 시스템(예: MES)이 REST API로 설비 데이터를 요청하면 결과를 바로 응답하거나, 특정 DB 테이블에 기록하거나, WebHook에 등록된 상대방 REST API로 전달 | 바로 응답 ✅, WebHook과 pushUrl ✅, DB 테이블 기록 ✅ (2026-10-31, [db-table-delivery.md](db-table-delivery.md)) |
+| 5 | 요청이 없어도 스케줄로 일정 주기마다 PLC 데이터를 가져와 WebHook을 호출하거나 DB 테이블에 기록 | WebHook ✅ (`PlcGeneralScheduleJob`), DB 테이블 기록 ✅ (같은 전달 정의 경로, 2026-10-31) |
 | 6 | 타 시스템 요청은 `DispatcherController`로 받고, 요청 본문은 모두 같은 JSON 구조 | ✅ (1.3 참고) |
 
 ### 1.2 처리 흐름
@@ -29,7 +29,7 @@ Quartz 스케줄(일정 주기) ────────────────
                                                    ↓
                           PLC 어댑터(현재 MELSEC) ──TCP──→ PLC (또는 vplc)
                                                    ↓
-                결과 전달: 바로 응답 / pushUrl / WebHook / (DB 테이블 — 미구현)
+                결과 전달: 바로 응답 / pushUrl / WebHook / DB 테이블(DB_TABLE)
                 감사 로그 저장(EXCHANGED_MESSAGE_AUDIT) → SSE 알림
 ```
 
@@ -59,7 +59,7 @@ Quartz 스케줄(일정 주기) ────────────────
 
 ### 1.4 설계와 코드가 다른 곳
 
-**결과를 특정 DB 테이블에 기록하는 기능이 없다**
+**결과를 특정 DB 테이블에 기록하는 기능이 없다** — **2026-10-31 해결**: DB_TABLE 전달([db-table-delivery.md](db-table-delivery.md)). 아래는 당시 기록
 - 지금 DB에 남는 것은 감사 로그(`EXCHANGED_MESSAGE_AUDIT`)뿐이다. 레거시 코드에도 없었다.
 - 구현 전에 정할 것:
   - 대상 DB: tc DB인지, 외부 DB인지

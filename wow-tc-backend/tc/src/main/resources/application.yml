@@ -127,6 +127,13 @@ tc:
       max-failures: 5        # 아이디별
       max-ip-failures: 20    # IP별(NAT·프록시 뒤 사용자들이 나눠 쓰므로 크게)
       window: 15m
+  # DB 에 저장하는 비밀값(외부 DB 비밀번호) 암호화 키 — Base64 32바이트. 없어도 뜨지만 DB 연결 비밀번호를 저장·사용할 수 없다.
+  # 바꾸면 저장된 비밀번호를 다시 입력해야 한다(기동 때 읽음 → 재기동). docs/db-table-delivery.md
+  secret-key: ${TC_SECRET_KEY:}
+  # 결과 기록용 외부 DB 연결(DB_TABLE 전달). 연결 자체는 /api/v1/db-connections 로 재기동 없이 등록한다.
+  db-connection:
+    allowed-url-prefixes: [ "jdbc:mariadb:", "jdbc:mysql:" ]
+    connect-timeout: 5s
   # 설정 변경 이력(CONFIG_CHANGE_HIST) 보존 — docs/auth-and-audit-design.md §5.4
   config-history:
     retention-days: 365

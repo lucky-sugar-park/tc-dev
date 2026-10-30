@@ -49,6 +49,10 @@ public class DeliveryDefinitionEntity extends PersistentEntity<DeliveryDefinitio
 	@Column(name = "TARGET_NAME", nullable = false, length = 200)
 	private String targetName;
 
+	/** DB_TABLE 만 — 같은 DB 연결에는 인터페이스당 테이블 하나(유니크 제약이 대상 이름까지만 본다) */
+	@Column(name = "TABLE_NAME", length = 200)
+	private String tableName;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "DELIVER_ON", nullable = false, length = 20)
 	private DeliverOn deliverOn;
@@ -69,6 +73,7 @@ public class DeliveryDefinitionEntity extends PersistentEntity<DeliveryDefinitio
 		info.setInterfaceName(interfaceName);
 		info.setDeliveryType(deliveryType);
 		info.setTargetName(targetName == null || targetName.isEmpty() ? null : targetName);
+		info.setTableName(tableName);
 		info.setDeliverOn(deliverOn);
 		info.setOnChangeOnly(onChangeOnly);
 		info.setUse(use);
@@ -86,6 +91,7 @@ public class DeliveryDefinitionEntity extends PersistentEntity<DeliveryDefinitio
 		this.interfaceName = info.getInterfaceName();
 		this.deliveryType = info.getDeliveryType();
 		this.targetName = info.getTargetName() == null ? "" : info.getTargetName();
+		this.tableName = info.getTableName();
 		this.deliverOn = info.getDeliverOn() == null ? DeliverOn.ALL : info.getDeliverOn();
 		this.onChangeOnly = info.isOnChangeOnly();
 		this.use = info.isUse();

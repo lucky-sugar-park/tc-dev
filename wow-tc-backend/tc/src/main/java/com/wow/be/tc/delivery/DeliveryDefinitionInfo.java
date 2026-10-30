@@ -29,8 +29,11 @@ public class DeliveryDefinitionInfo extends AbstractInfo {
 
 	private DeliveryType deliveryType;
 
-	/** 대상 이름 — WEBHOOK 이면 WebHook 이름. CALLBACK_URL 은 비운다(주소는 요청이 준다). */
+	/** 대상 이름 — WEBHOOK 이면 WebHook 이름, DB_TABLE 이면 DB 연결 이름(tc 자체 DB 는 {@code tc}). CALLBACK_URL 은 비운다(주소는 요청이 준다). */
 	private String targetName;
+
+	/** DB_TABLE 의 테이블 이름(스키마를 붙이려면 {@code schema.table}). 표준 칼럼을 가져야 한다 — docs/db-table-delivery.md */
+	private String tableName;
 
 	/** 전달 시점 — 성공/실패 상관없이, 성공일 때만, 실패일 때만 */
 	private DeliverOn deliverOn = DeliverOn.ALL;
@@ -48,6 +51,7 @@ public class DeliveryDefinitionInfo extends AbstractInfo {
 
 	@Override
 	public String toPlainText() {
-		return id + " [" + interfaceName + " → " + deliveryType + (targetName != null ? ":" + targetName : "") + "]";
+		return id + " [" + interfaceName + " → " + deliveryType + (targetName != null ? ":" + targetName : "")
+			+ (tableName != null ? "/" + tableName : "") + "]";
 	}
 }

@@ -12,6 +12,7 @@ import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
 import com.wow.be.tc.confighist.ConfigChangeRecorder;
+import com.wow.be.tc.dbconn.DbConnectionService;
 import com.wow.be.tc.delivery.DeliveryDefinitionInfo;
 import com.wow.be.tc.delivery.DeliveryDefinitionInfo.DeliverOn;
 import com.wow.be.tc.delivery.DeliveryDefinitionService;
@@ -34,6 +35,8 @@ public class DefaultDeliveryDefinitionService
 	private final InterfaceService interfaceService;
 
 	private final WebHookManagementService webHookService;
+
+	private final DbConnectionService dbConnectionService;
 
 	private final ConfigChangeRecorder changeRecorder;
 
@@ -147,7 +150,18 @@ public class DefaultDeliveryDefinitionService
 					throw ToolControlException.of("ERR_404", "WebHook 이 없습니다: " + info.getTargetName());
 				}
 			}
+			case DB_TABLE -> {
+				if (!StringUtils.hasText(info.getTargetName()) || !StringUtils.hasText(info.getTableName())) {
+					throw ToolControlException.of(ToolControlException.INVALID_REQUEST,
+						"DB_TABLE 전달에는 DB 연결 이름(targetName, tc 자체 DB 는 'tc')과 테이블 이름(tableName)이 필요합니다.");
+				}
+				// 연결이 있고 사용 중인지, 테이블에 표준 칼럼이 다 있는지 — 등록 시점에 대상 DB 에 실제로 물어본다
+				dbConnectionService.validateTable(info.getTargetName(), info.getTableName(), DbTableDeliveryChannel.COLUMNS);
+			}
 			case CALLBACK_URL -> info.setTargetName(null);   // 주소는 요청이 준다
+		}
+		if (info.getDeliveryType() != DeliveryType.DB_TABLE) {
+			info.setTableName(null);
 		}
 	}
 

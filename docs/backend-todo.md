@@ -43,9 +43,9 @@
 | # | 일 | 상태 | 조건·메모 |
 |---|---|---|---|
 | 7 | 인증 7단계: 전환 정리 | ✅ | 코드 정리 완료(2026-10-30). 전환 스위치를 **런타임 옵션(기본 꺼짐)**으로 바꿔, 옮기지 못한 시스템이 드러나면 재기동 없이 켠다. PLC 요청 권한은 API 키 주체에만, 사용자 역할은 ADMIN·OPERATOR·VIEWER 만. 실제 호출 시스템 전환은 운영 절차([operations.md](operations.md) §6.2, 아래 #16) |
-| 8 | framework 다음 버전 반영 | ⏸ | 수정 명세 작성 완료 → [framework-core-0.8.46-changes.md](framework-core-0.8.46-changes.md)(SearchSpec, JwtFilter 이중 등록, 공개 경로 설정화). framework 0.8.46 배포 뒤 tc 반영(명세 §4) |
-| 9 | 상태를 바꾸는 GET 을 POST·DELETE 로 (결정 D5) | ⏸ | 프론트 수정이 함께 필요. 지금은 권한 선언으로 막아 둠 |
-| 10 | DB_TABLE 결과 전달 채널 | ⏸ | 대상 DB(tc 자체/외부)와 행 단위 결정 필요 |
+| 8 | framework 다음 버전 반영 | ✅ | framework-core **0.8.46** 배포·tc 반영 완료(2026-10-31). 명세 [framework-core-0.8.46-changes.md](framework-core-0.8.46-changes.md) §5 에 결과 |
+| 9 | 상태를 바꾸는 GET 을 POST·DELETE 로 (결정 D5) | ✅ | 29개 — 경로는 그대로, 삭제는 DELETE·제어·사용 변경·연결 시험은 POST, 예전 GET 은 405(2026-10-31). e2e `test_http_methods.py`. 새 프론트는 이 메서드로 만든다 |
+| 10 | DB_TABLE 결과 전달 채널 | ✅ | [db-table-delivery.md](db-table-delivery.md). 런타임 등록 DB 연결(비밀번호 AES-GCM, `TC_SECRET_KEY`), 결과 1건 = 1행(공통 칼럼 + `PAYLOAD` JSON), 테이블은 받는 쪽이 만들고 tc 는 검증, 실패도 기록. 운영 반영에 `TC_SECRET_KEY`·migration 006 필요 |
 | 11 | 비동기 결과 전달 실패 재시도(outbox) | ⏸ | 필요 여부 미정 |
 
 ## 장기 과제
@@ -62,3 +62,6 @@
 
 - 2026-10-30: 문서 작성. 1~6번 진행 — 1·2·3·5·6 완료, 4는 1단계까지 완료. 3번에서 비동기 어댑터 큐가 죽은 코드임을 찾아 #15 추가.
 - 2026-10-30: 7번 완료(코드 정리). 전환 스위치를 런타임 옵션으로, 실제 전환은 운영 작업 #16 으로 분리. e2e 138개 항목 통과.
+- 2026-10-31: 8번 완료 — framework-core 0.8.46(SearchSpec·JwtFilter·공개 경로) 반영, `SearchSpecs` 우회 제거, e2e 151개 항목 통과.
+- 2026-10-31: 9번 완료 — 상태를 바꾸는 GET 29개를 DELETE·POST 로. 기존 프론트는 mes-dev 프론트 패턴으로 다시 만들 예정이라 GET 을 남기지 않음. e2e 201개 항목 통과(정상 종료 시험 제외).
+- 2026-10-31: 10번 완료 — DB_TABLE 전달. 결정 T1~T5(db-table-delivery.md §1). 단위 테스트 36개, e2e 234개 항목 통과(정상 종료 시험 제외). 스케줄 Job 도 같은 전달 경로를 타지만 e2e 는 요청 경로만 확인.

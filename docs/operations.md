@@ -28,6 +28,7 @@
 | `TC_TRUSTED_PROXIES` | | 리버스 프록시 주소(쉼표). 이 주소에서 온 요청만 `X-Forwarded-For` 를 믿는다 |
 | `TC_CORS_ALLOWED_ORIGIN_PATTERNS` | | 화면 출처 |
 | `TC_BOOTSTRAP_ADMIN_ID`, `TC_BOOTSTRAP_ADMIN_PASSWORD_HASH` | 처음만 | 최초 관리자(§3) |
+| `TC_SECRET_KEY` | DB_TABLE 전달을 쓰면 | 외부 DB 연결 비밀번호 암호화 키(Base64 32바이트). **바꾸거나 잃으면 저장된 비밀번호를 다시 입력해야 한다** — DB 백업과 따로 보관. [db-table-delivery.md](db-table-delivery.md) §3.1 |
 
 비밀값은 저장소에 두지 않는다. 로컬 개발은 `application-local.yml`(gitignored, 실행 jar 에서 빠짐)을 쓴다.
 
@@ -37,6 +38,7 @@
 |---|---|
 | 사용자, API 클라이언트·키, 허용 범위·사용량 한도 | `TC_JWT_SECRET`(바꾸면 모든 사용자 토큰 무효. API 키 호출은 영향 없음) |
 | PLC 커넥터·인터페이스·WebHook·전달 정의·스케줄 Job | access·refresh 토큰 수명(`jwt.*`) |
+| 결과 기록용 DB 연결(`/api/v1/db-connections`) | `TC_SECRET_KEY`, `tc.db-connection.*` |
 | 커넥터 게시·해제 | DB·Redis 접속 정보 |
 | 권한 검사 모드(`PUT /api/v1/security/permission-mode`) | `tc.api-client.*` 기본값, `tc.security.login-throttle.*`, `tc.delivery.*`, `plc.*` |
 | 기존 JWT 호출자 전환 스위치(`PUT /api/v1/security/dispatch-any-user`, §6.2) | |
@@ -54,6 +56,7 @@
 | `003_schedule_hist_remark_longtext.sql` | 스케줄 실행 이력 `REMARK` LONGTEXT(성공 이력 저장 실패 해결) |
 | `004_config_change_hist.sql` | 설정 변경 이력 표 |
 | `005_user_cleanup.sql` | 사용자 새 칼럼, `enabled` NULL → 1. **옛 칼럼 DROP 은 주석 — 백업 확인 뒤 따로 실행** |
+| `006_db_table_delivery.sql` | 결과 기록용 DB 연결 표, 전달 정의 `TABLE_NAME` 칼럼 |
 
 ```bash
 mysql -u root -p tc < migration/002_api_client.sql
@@ -171,7 +174,7 @@ redis-cli DEL tc:apikey-block:<ip> tc:apikey-fail:<ip>
 
 증상: 게시 상태인데 요청이 503 이거나 연결·끊김이 반복된다.
 
-1. 커넥터를 해제한다(`GET /api/v1/plc-connector/control/release/byName/{name}`).
+1. 커넥터를 해제한다(`POST /api/v1/plc-connector/control/release/byName/{name}`).
 2. PLC 쪽에 옛 연결이 남았는지 확인하고(남았으면 끊거나 생존 확인 시간을 기다린다) 다시 게시한다.
 
 게시를 여러 번 눌러도 연결이 더 열리지는 않는다(이미 돌고 있으면 무시).
@@ -196,4 +199,4 @@ redis-cli DEL tc:apikey-block:<ip> tc:apikey-fail:<ip>
 ## 11. 시험
 
 - 단위 테스트: `./gradlew :tc:test`(인프라 불필요)
-- e2e: `wow-tc-backend/e2e/README.md` — 실제 tc·vplc·DB·Redis 를 대상으로 143개 항목
+- e2e: `wow-tc-backend/e2e/README.md` — 실제 tc·vplc·DB·Redis 를 대상으로 151개 항목

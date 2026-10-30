@@ -26,7 +26,7 @@ public class TcPermissionChecker implements PermissionChecker {
 
 	private static final String READ = "R";
 
-	/** 운영자: 설정 자원은 전부, 감사·이력은 조회만, PLC 요청 가능 */
+	/** 운영자: 설정 자원은 전부, 감사·이력·DB 연결은 조회만, PLC 요청 가능 */
 	private static final Map<String, String> OPERATOR = Map.of(
 		"tc.plc", ALL,
 		"tc.interface", ALL,
@@ -35,6 +35,7 @@ public class TcPermissionChecker implements PermissionChecker {
 		"tc.schedule", ALL,
 		"tc.audit", READ,
 		"tc.confighist", READ,
+		"tc.dbconn", READ,
 		"action.tc.dispatch", "X");
 
 	/** 조회 전용: 사용자·API 클라이언트·보안 설정을 뺀 조회 */
@@ -56,6 +57,7 @@ public class TcPermissionChecker implements PermissionChecker {
 		Map.entry("tc.interface", "인터페이스"),
 		Map.entry("tc.webhook", "WebHook"),
 		Map.entry("tc.delivery", "결과 전달 정의"),
+		Map.entry("tc.dbconn", "DB 연결"),
 		Map.entry("tc.schedule", "스케줄 Job"),
 		Map.entry("tc.audit", "송수신 감사"),
 		Map.entry("tc.confighist", "설정 변경 이력"),

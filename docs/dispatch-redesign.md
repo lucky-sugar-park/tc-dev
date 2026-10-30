@@ -125,7 +125,7 @@ DispatcherController ─┐                               ┌→ 동기 리턴 (
 | 3 | `TcMessageRequest`/`Response`와 오류 모델 정리 | tc |
 | 4 | 전달 채널 추상화: callback과 WebHook을 채널로 옮기고 스케줄 Job을 같은 경로로 통합 | tc |
 | 5 | `INTERFACE_DELIVERY` 테이블과 관리 API | tc |
-| 6 | DB_TABLE 채널 | tc |
+| 6 | DB_TABLE 채널 — ✅ 2026-10-31 ([db-table-delivery.md](db-table-delivery.md)) | tc |
 | 7 | 어댑터별 값 코덱 분리 (Modbus 확장 준비) | tc |
 | 8 | vplc 통합 테스트: 동기, 비동기, WebHook, DB 경로 | tc |
 
@@ -225,7 +225,7 @@ tc(:8087)와 vplc(:8088)를 띄우고 실제 MC 3E 바이너리로 주고받았�
 |---|---|
 | `ID` | 영문 소문자·점 계층. 비워서 등록하면 `{인터페이스}.{유형}.{대상}`으로 만든다 |
 | `INTERFACE_NAME` | 요청 인터페이스(opcode). 인덱스 |
-| `DELIVERY_TYPE` | `CALLBACK_URL`, `WEBHOOK` (`DB_TABLE`은 6단계) |
+| `DELIVERY_TYPE` | `CALLBACK_URL`, `WEBHOOK`, `DB_TABLE`(6단계, [db-table-delivery.md](db-table-delivery.md)) |
 | `TARGET_NAME` | WEBHOOK이면 WebHook 이름. CALLBACK_URL은 빈 값(주소는 요청이 준다) |
 | `DELIVER_ON` | `ALL`, `SUCCESS`, `FAILURE` — 성공·실패 중 언제 보낼지 |
 | `ON_CHANGE_ONLY` | PLC 응답 원본이 직전과 달라졌을 때만 보냄. 실패 응답에는 적용하지 않는다 |
