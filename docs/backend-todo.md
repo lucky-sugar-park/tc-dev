@@ -43,7 +43,7 @@
 | # | 일 | 상태 | 조건·메모 |
 |---|---|---|---|
 | 7 | 인증 7단계: 전환 정리 | ✅ | 코드 정리 완료(2026-10-30). 전환 스위치를 **런타임 옵션(기본 꺼짐)**으로 바꿔, 옮기지 못한 시스템이 드러나면 재기동 없이 켠다. PLC 요청 권한은 API 키 주체에만, 사용자 역할은 ADMIN·OPERATOR·VIEWER 만. 실제 호출 시스템 전환은 운영 절차([operations.md](operations.md) §6.2, 아래 #16) |
-| 8 | framework 다음 버전 반영 | ⏸ | SearchSpec conjType null, `JwtFilter` 서블릿 이중 등록, SecurityConfig 의 tc 와 무관한 공개 경로. 다음 배포부터 버전을 올린다 |
+| 8 | framework 다음 버전 반영 | ⏸ | 수정 명세 작성 완료 → [framework-core-0.8.46-changes.md](framework-core-0.8.46-changes.md)(SearchSpec, JwtFilter 이중 등록, 공개 경로 설정화). framework 0.8.46 배포 뒤 tc 반영(명세 §4) |
 | 9 | 상태를 바꾸는 GET 을 POST·DELETE 로 (결정 D5) | ⏸ | 프론트 수정이 함께 필요. 지금은 권한 선언으로 막아 둠 |
 | 10 | DB_TABLE 결과 전달 채널 | ⏸ | 대상 DB(tc 자체/외부)와 행 단위 결정 필요 |
 | 11 | 비동기 결과 전달 실패 재시도(outbox) | ⏸ | 필요 여부 미정 |
