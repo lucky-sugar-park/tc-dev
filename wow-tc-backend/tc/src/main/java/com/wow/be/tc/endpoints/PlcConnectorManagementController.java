@@ -27,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/api/v1/plc-connector")
 @Slf4j
-// 권한(설계 §4) — 상태를 바꾸는 GET·조회용 POST 는 메서드에 동작을 명시한다
+// 권한(설계 §4) — 기본 동작과 다른 메서드(제어·사용 변경 POST, 조회용 POST)는 동작을 명시한다
 @Requires("tc.plc")
 public class PlcConnectorManagementController {
 
@@ -53,7 +53,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'D')
-	@RequestMapping(value="/delete/{plcConnectorId}", method=RequestMethod.GET)
+	@RequestMapping(value="/delete/{plcConnectorId}", method=RequestMethod.DELETE)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deletePlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) {
 		log.debug("PlcConnectorManagementController.deletePlcConnector(long plcConnectorId)...");
@@ -61,7 +61,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'D')
-	@RequestMapping(value="/delete/byName/{plcConnectorName}", method=RequestMethod.GET)
+	@RequestMapping(value="/delete/byName/{plcConnectorName}", method=RequestMethod.DELETE)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deletePlcConnector(@PathVariable("plcConnectorName") String plcConnectorName) {
 		log.debug("PlcConnectorManagementController.deletePlcConnector(String plcConnectorName)...");
@@ -102,7 +102,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/control/publish/{plcConnectorId}", method=RequestMethod.GET)
+	@RequestMapping(value="/control/publish/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public Map<String, Boolean> publishPlcConnector(@PathVariable long plcConnectorId) {
@@ -112,7 +112,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/control/publish/byName/{plcConnectorName}", method=RequestMethod.GET)
+	@RequestMapping(value="/control/publish/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public Map<String, Boolean> publishPlcConnectorByName(@PathVariable String plcConnectorName) {
@@ -122,7 +122,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/control/release/{plcConnectorId}", method=RequestMethod.GET)
+	@RequestMapping(value="/control/release/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public Map<String, Boolean> releasePlcConnector(@PathVariable long plcConnectorId) {
@@ -132,7 +132,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/control/release/byName/{plcConnectorName}", method=RequestMethod.GET)
+	@RequestMapping(value="/control/release/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public Map<String, Boolean> releasePlcConnectorByName(@PathVariable String plcConnectorName) {
@@ -142,7 +142,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/control/pause/{plcConnectorId}", method=RequestMethod.GET)
+	@RequestMapping(value="/control/pause/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public Map<String, Boolean> pausePlcConnector(@PathVariable long plcConnectorId) {
@@ -152,7 +152,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/control/pause/byName/{plcConnectorName}", method=RequestMethod.GET)
+	@RequestMapping(value="/control/pause/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public Map<String, Boolean> pausePlcConnectorByName(@PathVariable String plcConnectorName) {
@@ -162,7 +162,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/control/resume/{plcConnectorId}", method=RequestMethod.GET)
+	@RequestMapping(value="/control/resume/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public Map<String, Boolean> resumePlcConnector(@PathVariable long plcConnectorId) {
@@ -172,7 +172,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/control/resume/byName/{plcConnectorName}", method=RequestMethod.GET)
+	@RequestMapping(value="/control/resume/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public Map<String, Boolean> resumePlcConnectorByName(@PathVariable String plcConnectorName) {
@@ -182,7 +182,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/test-connection/{plcConnectorId}", method=RequestMethod.GET)
+	@RequestMapping(value="/test-connection/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value=HttpStatus.OK)
 	@ResponseBody
 	public Map<String, String> testConnection(@PathVariable long plcConnectorId) {
@@ -191,7 +191,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/test-connection/byName/{plcConnectorName}", method=RequestMethod.GET)
+	@RequestMapping(value="/test-connection/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value=HttpStatus.OK)
 	@ResponseBody
 	public Map<String, String> testConnectionByName(@PathVariable String plcConnectorName) {
@@ -200,7 +200,7 @@ public class PlcConnectorManagementController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/test-connection/byIpAddress/{ip}/{port}", method=RequestMethod.GET)
+	@RequestMapping(value="/test-connection/byIpAddress/{ip}/{port}", method=RequestMethod.POST)
 	@ResponseStatus(value=HttpStatus.OK)
 	@ResponseBody
 	public Map<String, String> testConnectionByIpAddress(@PathVariable String ip, @PathVariable int port) {

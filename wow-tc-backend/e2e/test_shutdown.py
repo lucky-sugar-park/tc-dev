@@ -46,7 +46,7 @@ check("헬스 체크: 인증 없이 200 UP (db·redis UP)", s == 200 and b.get("
 s, b = call("POST", "/api/health", token=None)
 check("헬스 체크 외 메서드는 공개 아님(401)", s == 401, (s, b))
 
-call("GET", "/api/v1/plc-connector/control/publish/byName/plc-fake")
+call("POST", "/api/v1/plc-connector/control/publish/byName/plc-fake")
 time.sleep(2)
 
 # 5초 걸리는 PLC 요청을 보내 둔 채 정상 종료를 요청한다

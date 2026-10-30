@@ -58,7 +58,7 @@ def setup():
                 d["replyName"] = reply
             s, b = call("POST", "/api/v1/ifsvc/management/register", d)
             print("interface register", name, s, "" if s == 200 else b)
-    s, b = call("GET", "/api/v1/plc-connector/control/publish/byName/plc-fake")
+    s, b = call("POST", "/api/v1/plc-connector/control/publish/byName/plc-fake")
     print("publish", s)
     time.sleep(2)
 
@@ -95,7 +95,7 @@ if PHASE == "main":
     check("동시 6건 모두 200, 값이 서로 다르고 d100==d101", len(vals) == 6 and len(set(vals)) == 6 and all(v == w for _, v, w in out), out)
     # 6. 게시 멱등 — 다시 게시해도 새 연결을 열지 않는다
     before = open(FAKE_LOG, encoding="utf-8", errors="replace").read().count("거부")
-    s, b = call("GET", "/api/v1/plc-connector/control/publish/byName/plc-fake")
+    s, b = call("POST", "/api/v1/plc-connector/control/publish/byName/plc-fake")
     time.sleep(2)
     after = open(FAKE_LOG, encoding="utf-8", errors="replace").read().count("거부")
     s, b, dt = read()

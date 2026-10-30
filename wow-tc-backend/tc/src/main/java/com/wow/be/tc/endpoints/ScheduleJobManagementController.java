@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/api/v1/schedule-job/management")
 @Slf4j
-// 권한(설계 §4) — 상태를 바꾸는 GET·조회용 POST 는 메서드에 동작을 명시한다
+// 권한(설계 §4) — 기본 동작과 다른 메서드(제어·사용 변경 POST, 조회용 POST)는 동작을 명시한다
 @Requires("tc.schedule")
 public class ScheduleJobManagementController {
 
@@ -46,7 +46,7 @@ public class ScheduleJobManagementController {
 	}
 	
 	@Requires(action = 'D')
-	@RequestMapping(value="/delete/{id}", method=RequestMethod.GET)
+	@RequestMapping(value="/delete/{id}", method=RequestMethod.DELETE)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public void deleteScheduleJobById(@PathVariable("id") String id) {
@@ -55,7 +55,7 @@ public class ScheduleJobManagementController {
 	}
 	
 	@Requires(action = 'D')
-	@RequestMapping(value="/delete/byName/{name}", method=RequestMethod.GET)
+	@RequestMapping(value="/delete/byName/{name}", method=RequestMethod.DELETE)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public void deleteScheduleJobByName(@PathVariable("name") String name) {

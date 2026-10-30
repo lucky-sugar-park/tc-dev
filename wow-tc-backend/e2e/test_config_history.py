@@ -59,7 +59,7 @@ s, c = call("GET", "/api/v1/plc-connector/find/byName/plc-fake")
 pid = str(c["id"])
 c2 = dict(c); c2["description"] = f"fake PLC {RUN}"
 call("POST", "/api/v1/plc-connector/update", c2)
-call("GET", "/api/v1/plc-connector/control/publish/byName/plc-fake")  # 가짜 PLC 가 꺼져 있어 실패
+call("POST", "/api/v1/plc-connector/control/publish/byName/plc-fake")  # 가짜 PLC 가 꺼져 있어 실패
 h = hist("PLC_CONNECTOR", pid)
 recent = [x for x in h if x["changedAt"] >= h[0]["changedAt"] - 60_000] if h and isinstance(h[0]["changedAt"], int) else h[:3]
 check("PLC 커넥터 UPDATE(설명 변경) 기록", any(x["action"] == "UPDATE" and RUN in (x["afterJson"] or "") for x in h), h[:2])
@@ -90,7 +90,7 @@ s, j = call("POST", "/api/v1/schedule-job/management/register", {"name": jn, "sc
      "jobClassName": "com.wow.be.tc.schedule.jobs.PlcGeneralScheduleJob", "triggerType": "cron", "cronExpression": "0 0 0 1 1 ?",
      "startDelay": 0, "repeatInterval": 0, "jobDetails": [{"entryKey": "interfaceName", "entryValue": "plc.fake.read", "entryValueType": "string", "oper": "C"}]})
 jid = j.get("id") if isinstance(j, dict) else None
-call("GET", f"/api/v1/schedule-job/management/delete/byName/{jn}")
+call("DELETE", f"/api/v1/schedule-job/management/delete/byName/{jn}")
 jh = hist("SCHEDULE_JOB", jid)
 check("스케줄 Job CREATE→DELETE, 삭제 전 값에 상세(interfaceName) 포함", [x["action"] for x in reversed(jh)] == ["CREATE", "DELETE"]
       and "plc.fake.read" in (jh[0]["beforeJson"] or ""), jh)

@@ -123,7 +123,7 @@ ok_name, bad_name = f"e2e-sched-ok-{RUN}", f"e2e-sched-bad-{RUN}"
 for j in (job(ok_name, "plc.e2e.d100.read"), job(bad_name, "no.such.interface")):
     s, b = call("POST", "/api/v1/schedule-job/management/register", j)
     print("job register", j["name"], s, "" if s == 200 else b)
-s, b = call("GET", "/api/v1/schedule-job/monitoring/reloadAllScheduleJobs")
+s, b = call("POST", "/api/v1/schedule-job/monitoring/reloadAllScheduleJobs")
 print("reload", s)
 time.sleep(14)
 ok_hist = sql(f"select EXEC_RESULT, count(*) from SCHEDULE_JOB_EXEC_HIST where JOB_NAME='{ok_name}' group by EXEC_RESULT")
@@ -135,7 +135,7 @@ check("스케줄 Job 없는 인터페이스 → FAIL 이력", "FAIL" in bad_hist
 p = sql("select distinct PRINCIPAL from EXCHANGED_MESSAGE_AUDIT where SENDER='Internal-Schedule-Job' and CREATED_DATE > now() - interval 1 minute")
 check("스케줄 Job 감사 PRINCIPAL = system", p == "system", p)
 for n in (ok_name, bad_name):
-    s, b = call("GET", f"/api/v1/schedule-job/management/delete/byName/{n}")
+    s, b = call("DELETE", f"/api/v1/schedule-job/management/delete/byName/{n}")
     check(f"스케줄 Job 삭제 200: {n[:15]}", s == 200, (s, b))
 before = sql(f"select count(*) from SCHEDULE_JOB_EXEC_HIST where JOB_NAME='{ok_name}'")
 time.sleep(5)
@@ -144,12 +144,12 @@ q = sql(f"select count(*) from QRTZ_JOB_DETAILS where JOB_NAME in ('{ok_name}','
 check("삭제한 Job 은 더 실행되지 않고 Quartz 에서도 내려감", before == after and q == "0", (before, after, q))
 
 # ── 4. 커넥터 해제·게시 ──
-s, b = call("GET", "/api/v1/plc-connector/control/release/byName/plc-e2e")
+s, b = call("POST", "/api/v1/plc-connector/control/release/byName/plc-e2e")
 time.sleep(1)
 s2, c = call("GET", "/api/v1/plc-connector/find/byName/plc-e2e")
 tx, (s3, b3) = plc("/api/v1/ifsvc/request-and-reply", "plc.e2e.d100.read")
 check("해제 → RELEASED, 요청 503", s == 200 and c.get("status1") == "RELEASED" and s3 == 503, (s, c.get("status1"), s3))
-s, b = call("GET", "/api/v1/plc-connector/control/publish/byName/plc-e2e")
+s, b = call("POST", "/api/v1/plc-connector/control/publish/byName/plc-e2e")
 time.sleep(1)
 s2, c = call("GET", "/api/v1/plc-connector/find/byName/plc-e2e")
 tx, (s3, b3) = plc("/api/v1/ifsvc/request-and-reply", "plc.e2e.d100.read")

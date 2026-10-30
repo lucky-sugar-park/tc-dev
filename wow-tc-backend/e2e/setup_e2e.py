@@ -44,7 +44,7 @@ for fixture in ("fixture-if-read.json", "fixture-if-read-reply.json"):
         print("인터페이스 등록:", d["name"], s)
 s, c = call("GET", "/api/v1/plc-connector/find/byName/plc-e2e")
 if c.get("status1") != "PUBLISHED":
-    s, _ = call("GET", "/api/v1/plc-connector/control/publish/byName/plc-e2e")
+    s, _ = call("POST", "/api/v1/plc-connector/control/publish/byName/plc-e2e")
     print("plc-e2e 게시:", s)
     time.sleep(2)
 s, b = call("POST", "/api/v1/ifsvc/request-and-reply", {"transactionId": f"t-setup-{int(time.time())}", "messageId": "m",

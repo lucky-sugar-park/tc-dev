@@ -93,9 +93,9 @@ def st(method, path, who, body=None):
 
 check("운영자: 전달 정의 조회 200", st("GET", "/api/v1/ifsvc/delivery", op) == 200)
 check("운영자: 커넥터 검색(POST R) 200", st("POST", "/api/v1/plc-connector/search", op, {"conditions": []}) == 200)
-check("운영자: 인터페이스 사용 변경(GET U) 허용(200)", st("GET", "/api/v1/ifsvc/management/update/apply-use/" +
+check("운영자: 인터페이스 사용 변경(POST U) 허용(200)", st("POST", "/api/v1/ifsvc/management/update/apply-use/" +
       sql("select id from interface where name='plc.fake.read'") + "/true", op) == 200)
-check("운영자: 감사 삭제(GET D) 403", st("GET", "/api/v1/ifsvc/audit/delete/999999999", op) == 403)
+check("운영자: 감사 삭제(DELETE D) 403", st("DELETE", "/api/v1/ifsvc/audit/delete/999999999", op) == 403)
 check("운영자: 사용자 목록 403", st("GET", "/api/v1/users", op) == 403)
 check("운영자: API 클라이언트 목록 403", st("GET", "/api/v1/api-clients", op) == 403)
 check("운영자: 설정 변경 이력 검색 200", st("POST", "/api/v1/config-history/search", op, {"size": 1}) == 200)
@@ -104,10 +104,10 @@ check("운영자: PLC 요청 200", call("POST", "/api/v1/ifsvc/request-and-reply
 
 check("조회자: 전달 정의 조회 200", st("GET", "/api/v1/ifsvc/delivery", vw) == 200)
 check("조회자: 커넥터 검색(POST R) 200", st("POST", "/api/v1/plc-connector/search", vw, {"conditions": []}) == 200)
-check("조회자: 커넥터 해제(GET X) 403", st("GET", "/api/v1/plc-connector/control/release/byName/no-such-plc", vw) == 403)
-check("조회자: 인터페이스 삭제(GET D) 403", st("GET", "/api/v1/ifsvc/management/delete/999999999", vw) == 403)
+check("조회자: 커넥터 해제(POST X) 403", st("POST", "/api/v1/plc-connector/control/release/byName/no-such-plc", vw) == 403)
+check("조회자: 인터페이스 삭제(DELETE D) 403", st("DELETE", "/api/v1/ifsvc/management/delete/999999999", vw) == 403)
 check("조회자: 전달 정의 등록(POST C) 403", st("POST", "/api/v1/ifsvc/delivery", vw, {"interfaceName": "x", "deliveryType": "CALLBACK_URL"}) == 403)
-check("조회자: 스케줄 전체 일시정지(GET X) 403", st("GET", "/api/v1/schedule-job/monitoring/pauseAllScheduleJobs", vw) == 403)
+check("조회자: 스케줄 전체 일시정지(POST X) 403", st("POST", "/api/v1/schedule-job/monitoring/pauseAllScheduleJobs", vw) == 403)
 check("조회자: 권한 검사 모드 조회 403(관리자 전용)", st("GET", "/api/v1/security/permission-mode", vw) == 403)
 s, b, _ = call("POST", "/api/v1/ifsvc/request-and-reply", {"transactionId": f"t-u-{RUN}-2", "messageId": "m",
       "opcode": "plc.e2e.d100.read", "sender": "e2e", "receiver": "tc", "data": {}}, tok[vw])

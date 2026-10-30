@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/api/v1/schedule-job/monitoring")
 @Slf4j
-// 권한(설계 §4) — 상태를 바꾸는 GET·조회용 POST 는 메서드에 동작을 명시한다
+// 권한(설계 §4) — 기본 동작과 다른 메서드(제어·사용 변경 POST, 조회용 POST)는 동작을 명시한다
 @Requires("tc.schedule")
 public class ScheduleJobMonitoringController {
 
@@ -54,7 +54,7 @@ public class ScheduleJobMonitoringController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/reloadAllScheduleJobs", method=RequestMethod.GET)
+	@RequestMapping(value="/reloadAllScheduleJobs", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public List<ScheduleJobInfo> reloadScheduleJobs() {
@@ -64,7 +64,7 @@ public class ScheduleJobMonitoringController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/pauseAllScheduleJobs", method=RequestMethod.GET)
+	@RequestMapping(value="/pauseAllScheduleJobs", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public List<ScheduleJobInfo> pauseAllScheduleJob() {
@@ -74,7 +74,7 @@ public class ScheduleJobMonitoringController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/resumeAllScheduleJobs", method=RequestMethod.GET)
+	@RequestMapping(value="/resumeAllScheduleJobs", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public List<ScheduleJobInfo> resumeAllScheduleJob() {
@@ -84,7 +84,7 @@ public class ScheduleJobMonitoringController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/pauseScheduleJob/{jobName}", method=RequestMethod.GET)
+	@RequestMapping(value="/pauseScheduleJob/{jobName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public ScheduleJobInfo pauseScheduleJob(@PathVariable(value="jobName") String jobName) {
@@ -102,7 +102,7 @@ public class ScheduleJobMonitoringController {
 	}
 
 	@Requires(action = 'X')
-	@RequestMapping(value="/resumeScheduleJob/{jobName}", method=RequestMethod.GET)
+	@RequestMapping(value="/resumeScheduleJob/{jobName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public ScheduleJobInfo resumeScheduleJob(@PathVariable(value="jobName") String jobName) {
@@ -120,7 +120,7 @@ public class ScheduleJobMonitoringController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/unscheduleJob/{jobName}", method=RequestMethod.GET)
+	@RequestMapping(value="/unscheduleJob/{jobName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public ScheduleJobInfo unscheduleJob(@PathVariable(value="jobName") String jobName) {
@@ -138,7 +138,7 @@ public class ScheduleJobMonitoringController {
 	}
 	
 	@Requires(action = 'X')
-	@RequestMapping(value="/rescheduleJob/{jobName}", method=RequestMethod.GET)
+	@RequestMapping(value="/rescheduleJob/{jobName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
 	public ScheduleJobInfo rescheduleJob(@PathVariable(value="jobName") String jobName) {
