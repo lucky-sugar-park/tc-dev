@@ -28,6 +28,9 @@ import com.wow.be.tc.apiclient.ApiClientService;
 import com.wow.be.tc.apiclient.IpRanges;
 import com.wow.be.tc.apiclient.IssuedApiKey;
 import com.wow.be.tc.apiclient.VerifiedApiClient;
+import com.wow.be.tc.confighist.ConfigChangeInfo.Action;
+import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
+import com.wow.be.tc.confighist.ConfigChangeRecorder;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +61,8 @@ public class DefaultApiClientService implements ApiClientService, PersistentServ
 	private final ApiClientProperties properties;
 
 	private final PlatformTransactionManager transactionManager;
+
+	private final ConfigChangeRecorder changeRecorder;
 
 	private final Map<String, CachedKey> cache = new ConcurrentHashMap<>();
 
@@ -118,7 +123,9 @@ public class DefaultApiClientService implements ApiClientService, PersistentServ
 		entity.setClientId(info.getClientId());
 		entity.setEnabled(true);
 		entity.from(info);
-		return summarize(clientRepository.save(entity).info(), List.of(), true);
+		ApiClientInfo created = clientRepository.save(entity).info();
+		changeRecorder.created(TargetType.API_CLIENT, created.getClientId(), created.getName(), created);
+		return summarize(created, List.of(), true);
 	}
 
 	@Override
@@ -126,9 +133,11 @@ public class DefaultApiClientService implements ApiClientService, PersistentServ
 	public ApiClientInfo update(ApiClientInfo info) throws ToolControlException {
 		ApiClientEntity entity = load(info.getClientId());
 		validate(info);
+		ApiClientInfo before = entity.info();
 		entity.from(info);
 		ApiClientEntity saved = clientRepository.save(entity);
 		invalidateClient(saved.getClientId());
+		changeRecorder.updated(TargetType.API_CLIENT, saved.getClientId(), saved.getName(), before, saved.info());
 		return summarize(saved.info(), keyRepository.findByClientIdOrderByCreatedDateDesc(saved.getClientId()), true);
 	}
 
@@ -139,6 +148,8 @@ public class DefaultApiClientService implements ApiClientService, PersistentServ
 		entity.setEnabled(enabled);
 		ApiClientEntity saved = clientRepository.save(entity);
 		invalidateClient(clientId);
+		changeRecorder.record(TargetType.API_CLIENT, clientId, saved.getName(), enabled ? Action.ENABLE : Action.DISABLE,
+			null, null, null);
 		log.info("API 클라이언트 {}: {}", enabled ? "사용 재개" : "사용 중지", clientId);
 		return summarize(saved.info(), keyRepository.findByClientIdOrderByCreatedDateDesc(clientId), true);
 	}
@@ -153,11 +164,13 @@ public class DefaultApiClientService implements ApiClientService, PersistentServ
 			throw ToolControlException.of(ToolControlException.CONFLICT,
 				"활성 키가 " + active + "개 있습니다. 먼저 모두 폐기해야 삭제할 수 있습니다: " + clientId);
 		}
+		ApiClientInfo before = entity.info();
 		keyRepository.deleteByClientId(clientId);
 		entity.setEnabled(false);
 		entity.setDeletedAt(new Date(now));
 		clientRepository.save(entity);
 		invalidateClient(clientId);
+		changeRecorder.deleted(TargetType.API_CLIENT, clientId, before.getName(), before);
 		log.info("API 클라이언트 삭제: {}", clientId);
 	}
 
@@ -191,6 +204,8 @@ public class DefaultApiClientService implements ApiClientService, PersistentServ
 		key.setStatus(KeyStatus.ACTIVE);
 		key.setExpiresAt(new Date(now + TimeUnit.DAYS.toMillis(days)));
 		keyRepository.save(key);
+		// 키 값과 해시는 남기지 않는다 — KEY_ID·만료 시각만(ApiClientKeyInfo 에는 해시가 없다)
+		changeRecorder.record(TargetType.API_KEY, key.getKeyId(), clientId, Action.CREATE, "key-issue", null, key.info());
 		log.info("API 키 발급: client={}, keyId={}, expiresAt={}", clientId, key.getKeyId(), key.getExpiresAt());
 		return new IssuedApiKey(clientId, key.getKeyId(), generated.apiKey(), key.getExpiresAt());
 	}
@@ -205,6 +220,7 @@ public class DefaultApiClientService implements ApiClientService, PersistentServ
 			key.setStatus(KeyStatus.REVOKED);
 			key.setRevokedAt(new Date());
 			key = keyRepository.save(key);
+			changeRecorder.record(TargetType.API_KEY, keyId, clientId, Action.CONTROL, "key-revoke", null, key.info());
 			log.info("API 키 폐기: client={}, keyId={}", clientId, keyId);
 		}
 		cache.remove(keyId);

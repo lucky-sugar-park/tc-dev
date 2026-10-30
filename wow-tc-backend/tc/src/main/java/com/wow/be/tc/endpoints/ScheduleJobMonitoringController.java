@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryInfo;
 import com.wow.be.tc.schedule.ScheduleJobInfo;
@@ -23,11 +24,14 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/api/v1/schedule-job/monitoring")
 @Slf4j
+// 권한(설계 §4) — 상태를 바꾸는 GET·조회용 POST 는 메서드에 동작을 명시한다
+@Requires("tc.schedule")
 public class ScheduleJobMonitoringController {
 
 	@Autowired
 	private ScheduleJobService scheduleJobService;
 	
+	@Requires(action = 'R')
 	@RequestMapping(value="/searchJobExecutionHistory", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -49,6 +53,7 @@ public class ScheduleJobMonitoringController {
 		return scheduleJobService.searchScheduleJobs();
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/reloadAllScheduleJobs", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -58,6 +63,7 @@ public class ScheduleJobMonitoringController {
 		return this.searchScheduleJobs();
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/pauseAllScheduleJobs", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -67,6 +73,7 @@ public class ScheduleJobMonitoringController {
 		return this.searchScheduleJobs();
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/resumeAllScheduleJobs", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -76,6 +83,7 @@ public class ScheduleJobMonitoringController {
 		return this.searchScheduleJobs();
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/pauseScheduleJob/{jobName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -85,6 +93,7 @@ public class ScheduleJobMonitoringController {
 		return scheduleJobService.findScheduleJobByName(jobName);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/pauseScheduleJob/byBatch", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void pauseScheduleJobByBatch(@RequestBody List<String> scheduleJobNames) {
@@ -92,6 +101,7 @@ public class ScheduleJobMonitoringController {
 		scheduleJobService.pauseByBatch(scheduleJobNames);
 	}
 
+	@Requires(action = 'X')
 	@RequestMapping(value="/resumeScheduleJob/{jobName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -101,6 +111,7 @@ public class ScheduleJobMonitoringController {
 		return scheduleJobService.findScheduleJobByName(jobName);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/resumeScheduleJob/byBatch", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void resumeJobsByBatch(@RequestBody List<String> scheduleJobNames) {
@@ -108,6 +119,7 @@ public class ScheduleJobMonitoringController {
 		scheduleJobService.resumeByBatch(scheduleJobNames);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/unscheduleJob/{jobName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -117,6 +129,7 @@ public class ScheduleJobMonitoringController {
 		return scheduleJobService.findScheduleJobByName(jobName);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/unscheduleJob/byBatch", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void unscheduleJobsByBatch(@RequestBody List<String> scheduleJobNames) {
@@ -124,6 +137,7 @@ public class ScheduleJobMonitoringController {
 		scheduleJobService.unscheduleByBatch(scheduleJobNames);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/rescheduleJob/{jobName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -133,6 +147,7 @@ public class ScheduleJobMonitoringController {
 		return scheduleJobService.findScheduleJobByName(jobName);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/rescheduleJob/byBatch", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void rescheduleJobsByBatch(@RequestBody List<String> scheduleJobNames) {

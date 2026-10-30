@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PageResponse;
 import com.wow.be.framework.persist.RangeResponse;
@@ -26,11 +27,14 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/api/v1/ifsvc/audit")
 @Slf4j
+// 권한(설계 §4) — 상태를 바꾸는 GET·조회용 POST 는 메서드에 동작을 명시한다(클래스 선언은 GET 을 검사하지 않고 POST 를 C 로 본다)
+@Requires("tc.audit")
 public class InterfaceAuditController {
 
 	@Autowired
 	private ExchangedMessageAuditService exchangedMessageAuditService;
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/{id}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deleteMessageAudit(@PathVariable("id") long id) {
@@ -38,6 +42,7 @@ public class InterfaceAuditController {
 		exchangedMessageAuditService.deleteMessageAudit(id);
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deleteMessageAuditList(@RequestBody List<Long> idArr) {
@@ -45,6 +50,7 @@ public class InterfaceAuditController {
 		exchangedMessageAuditService.deleteMessageAudits(idArr);
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/timestamp", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -72,6 +78,7 @@ public class InterfaceAuditController {
 		return exchangedMessageAuditService.searchMessageAudits();
 	}
 	
+	@Requires(action = 'R')
 	@RequestMapping(value="/search/page", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -80,6 +87,7 @@ public class InterfaceAuditController {
 		return exchangedMessageAuditService.searchMessageAuditsToPageResponse(cond);
 	}
 	
+	@Requires(action = 'R')
 	@RequestMapping(value="/search/range", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody

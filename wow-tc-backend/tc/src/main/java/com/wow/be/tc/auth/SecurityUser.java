@@ -1,6 +1,5 @@
 package com.wow.be.tc.auth;
 
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.User;
 
 import com.wow.be.framework.security.JwTokenInfo;
@@ -23,7 +22,7 @@ public class SecurityUser extends User {
 		super(
 			userInfo.getId(), 
 			"{noop}"+userInfo.getPassword(),
-			AuthorityUtils.createAuthorityList(userInfo.getUserRoles().get(0).toString())
+			userInfo.getAuthorities()
 		);
 		this.userInfo=userInfo;
 	}

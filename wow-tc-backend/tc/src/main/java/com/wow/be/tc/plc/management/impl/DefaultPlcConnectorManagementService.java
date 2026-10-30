@@ -28,6 +28,8 @@ import com.wow.be.tc.Types.PlcConnectorInfoStatus;
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.connector.PlcAdapterManager;
 import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
+import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
+import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.plc.management.PlcConfig;
 import com.wow.be.tc.plc.management.PlcConnectionEventDbHandler;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistInfo;
@@ -63,6 +65,9 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	@Autowired
 	private PlcConfig plcConfig;
 
+	@Autowired
+	private ConfigChangeRecorder changeRecorder;
+
 	@Transactional
 	@Override
 	public void registerPlcConnector(PlcConnectorInfo plcInfo) {
@@ -71,8 +76,8 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		entity.from(plcInfo);
 		entity.setStatus1(PlcConnectorInfoStatus.REGISTERED.name());
 		entity.setStatus2(PlcConnectorOperStatus.CONNECTION_TEST_NONE.name());
-		plcConnectorRepository.save(entity);
-		log.debug("");
+		PlcConnectorEntity saved=plcConnectorRepository.save(entity);
+		changeRecorder.created(TargetType.PLC_CONNECTOR, String.valueOf(saved.getId()), saved.getName(), saved.info());
 	}
 	
 	@Transactional
@@ -80,15 +85,20 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	public void updatePlcConnector(PlcConnectorInfo plcConnectorInfo) {
 		log.debug("DefaultPlcConnectorManagementService.updatePlcConnector(PlcConnectorInfo plcConnectorInfo)...");
 		PlcConnectorEntity entity=plcConnectorRepository.findById(plcConnectorInfo.getId()).get();
+		PlcConnectorInfo before=entity.info();
 		entity.from(plcConnectorInfo);
 		// perform more sets and save it
-		plcConnectorRepository.save(entity);
+		PlcConnectorEntity saved=plcConnectorRepository.save(entity);
+		// 게시·해제 때의 상태 갱신은 CONTROL 로 따로 남으므로, 상태 칼럼만 바뀐 갱신은 이력에서 빠진다(기록기가 상태 필드를 비교에서 뺀다)
+		changeRecorder.updated(TargetType.PLC_CONNECTOR, String.valueOf(saved.getId()), saved.getName(), before, saved.info());
 	}
 	
 	@Transactional
 	@Override
 	public void deletePlcConnectorById(long plcConnectorId) {
 		log.debug("DefaultPlcConnectorManagementService.deletePlcConnectorById(long plcConnectorId)...");
+		plcConnectorRepository.findById(plcConnectorId).ifPresent(e->
+			changeRecorder.deleted(TargetType.PLC_CONNECTOR, String.valueOf(e.getId()), e.getName(), e.info()));
 		plcConnectorRepository.deleteById(plcConnectorId);
 	}
 
@@ -96,6 +106,10 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	@Override
 	public void deletePlcConnectorByName(String plcConnectorName) {
 		log.debug("DefaultPlcConnectorManagementService.deletePlcConnectorByName(String plcConnectorName)...");
+		PlcConnectorEntity e=this.findPlcConnectorEntityByName(plcConnectorName);
+		if(e!=null) {
+			changeRecorder.deleted(TargetType.PLC_CONNECTOR, String.valueOf(e.getId()), e.getName(), e.info());
+		}
 		plcConnectorRepository.deleteByName(plcConnectorName);
 	}
 
@@ -189,6 +203,16 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		return manageAndControlPlcConnector(entity, true, PlcConnectorInfoStatus.PUBLISHED, PlcConnectorOperStatus.RUNNING, PlcConnectorOperStatus.ERROR);
 	}
 	
+	private static String controlName(PlcConnectorOperStatus state) {
+		return switch(state) {
+		case RUNNING -> "publish";
+		case STOPPED -> "release";
+		case PAUSED -> "pause";
+		case RESUMED -> "resume";
+		default -> state.name().toLowerCase();
+		};
+	}
+
 	private boolean manageAndControlPlcConnector(PlcConnectorEntity entity, boolean published, PlcConnectorInfoStatus status1, PlcConnectorOperStatus successState, PlcConnectorOperStatus failState) {
 		log.debug("DefaultPlcConnectorManagementService.manageAndControlPlcConnector(PlcEntity entity, boolean published, String status1, String successState, String failState)...");
 		PlcConnectorInfo pInfo=entity.info();
@@ -236,11 +260,13 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 			pInfo.setStatus2(successState);
 			entity.from(pInfo);
 			plcConnectorRepository.save(entity);
+			changeRecorder.controlled(TargetType.PLC_CONNECTOR, String.valueOf(entity.getId()), entity.getName(), controlName(successState));
 			return true;
 		} catch (ToolControlException e) {
 			log.warn("", e);
 			entity.setStatus2(failState.name());
 			plcConnectorRepository.save(entity);
+			changeRecorder.controlled(TargetType.PLC_CONNECTOR, String.valueOf(entity.getId()), entity.getName(), controlName(successState) + "-failed");
 			return false;
 		}
 	}

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.wow.be.framework.security.authz.AuthenticatedOnly;
 import com.wow.be.framework.sse.EventPusher;
 import com.wow.be.framework.sse.FilterableSseEmitter;
 import com.wow.be.framework.sse.PushEventPayload.PushEventKind;
@@ -26,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @RestController
 @Slf4j
+@AuthenticatedOnly
 public class ServerSentEventController {
 
 	/** 연결 타임아웃(ms) — 이 시간 동안 이벤트가 없으면 연결이 끊기고 브라우저가 다시 연결한다. */

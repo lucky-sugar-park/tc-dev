@@ -77,7 +77,14 @@ public abstract class PlcRequest {
 			Object strRealValue=realData.get(prop.getName());
 			checkDataProp(prop, strRealValue);
 						
-			byte[] bytes=prop.extractRealDataAsBytes(strRealValue, Endian.LITTLE);
+			byte[] bytes;
+			try {
+				bytes=prop.extractRealDataAsBytes(strRealValue, Endian.LITTLE);
+			} catch (IllegalArgumentException | ClassCastException e) {
+				// 값 형식·범위 오류는 요청이 잘못된 것이다(400) — NumberFormatException 도 여기로 온다
+				throw ToolControlException.of(ToolControlException.INVALID_REQUEST,
+					"요청 데이터 값이 잘못되었습니다: " + this.reqName + "." + prop.getName() + " — " + e.getMessage());
+			}
 			bb.put(bytes);
 		}
 		this.setData(bb.array());

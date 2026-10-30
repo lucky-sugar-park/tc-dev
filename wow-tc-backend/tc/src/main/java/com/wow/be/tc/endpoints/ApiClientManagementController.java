@@ -13,24 +13,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.apiclient.ApiClientInfo;
 import com.wow.be.tc.apiclient.ApiClientKeyInfo;
 import com.wow.be.tc.apiclient.ApiClientService;
 import com.wow.be.tc.apiclient.IssuedApiKey;
-import com.wow.be.tc.security.TcRoles;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
- * API 클라이언트·키 관리 API (설계 §6.6). 관리자 전용이다. 모든 변경은 재기동 없이 바로 반영된다.
+ * API 클라이언트·키 관리 API (설계 §6.6). 관리자 전용이다(자원 tc.apiclient 은 관리자만 — TcPermissionChecker).
+ * 모든 변경은 재기동 없이 바로 반영된다.
  */
 @Tag(name = "API Client", description = "타 시스템(API 클라이언트)과 API 키 관리 — 관리자 전용")
 @RestController
 @RequestMapping("/api/v1/api-clients")
 @RequiredArgsConstructor
+@Requires("tc.apiclient")
 public class ApiClientManagementController {
 
 	private final ApiClientService apiClientService;
@@ -40,16 +42,16 @@ public class ApiClientManagementController {
 	}
 
 	@Operation(summary = "클라이언트 목록", description = "활성 키 수, 가장 가까운 만료일, 마지막 사용 시각을 함께 준다.")
+	@Requires(action = 'R')
 	@GetMapping
 	public List<ApiClientInfo> search() throws ToolControlException {
-		TcRoles.requireAdmin();
 		return apiClientService.searchAll();
 	}
 
 	@Operation(summary = "클라이언트 한 건", description = "키 목록을 함께 준다. 키 값과 해시는 주지 않는다.")
+	@Requires(action = 'R')
 	@GetMapping("/{clientId}")
 	public ApiClientInfo find(@PathVariable("clientId") String clientId) throws ToolControlException {
-		TcRoles.requireAdmin();
 		return apiClientService.find(clientId);
 	}
 
@@ -57,7 +59,6 @@ public class ApiClientManagementController {
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	public ApiClientInfo register(@RequestBody ApiClientInfo info) throws ToolControlException {
-		TcRoles.requireAdmin();
 		return apiClientService.register(info);
 	}
 
@@ -65,7 +66,6 @@ public class ApiClientManagementController {
 	@PutMapping("/{clientId}")
 	public ApiClientInfo update(@PathVariable("clientId") String clientId, @RequestBody ApiClientInfo info)
 			throws ToolControlException {
-		TcRoles.requireAdmin();
 		info.setClientId(clientId);
 		return apiClientService.update(info);
 	}
@@ -73,14 +73,12 @@ public class ApiClientManagementController {
 	@Operation(summary = "클라이언트 사용 재개")
 	@PostMapping("/{clientId}/enable")
 	public ApiClientInfo enable(@PathVariable("clientId") String clientId) throws ToolControlException {
-		TcRoles.requireAdmin();
 		return apiClientService.setEnabled(clientId, true);
 	}
 
 	@Operation(summary = "클라이언트 사용 중지", description = "이 클라이언트의 모든 키가 바로 거부된다.")
 	@PostMapping("/{clientId}/disable")
 	public ApiClientInfo disable(@PathVariable("clientId") String clientId) throws ToolControlException {
-		TcRoles.requireAdmin();
 		return apiClientService.setEnabled(clientId, false);
 	}
 
@@ -88,7 +86,6 @@ public class ApiClientManagementController {
 	@DeleteMapping("/{clientId}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void delete(@PathVariable("clientId") String clientId) throws ToolControlException {
-		TcRoles.requireAdmin();
 		apiClientService.delete(clientId);
 	}
 
@@ -97,7 +94,6 @@ public class ApiClientManagementController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public IssuedApiKey issueKey(@PathVariable("clientId") String clientId,
 			@RequestBody(required = false) IssueKeyRequest body) throws ToolControlException {
-		TcRoles.requireAdmin();
 		return apiClientService.issueKey(clientId, body != null ? body.expiresInDays() : null);
 	}
 
@@ -105,7 +101,6 @@ public class ApiClientManagementController {
 	@PostMapping("/{clientId}/keys/{keyId}/revoke")
 	public ApiClientKeyInfo revokeKey(@PathVariable("clientId") String clientId, @PathVariable("keyId") String keyId)
 			throws ToolControlException {
-		TcRoles.requireAdmin();
 		return apiClientService.revokeKey(clientId, keyId);
 	}
 }

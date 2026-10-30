@@ -40,6 +40,7 @@ public abstract class ScheduleJob implements Job {
 		String schedulerName=null;
 
 		long startTime=System.currentTimeMillis();
+		String failure=null;
 		String jobDetailName=(context.getJobDetail()!=null) ? context.getJobDetail().getKey().getName() : "";
 		try {
 			jobKey = context.getJobDetail().getKey();
@@ -50,6 +51,7 @@ public abstract class ScheduleJob implements Job {
 		} catch (ToolControlException e) {
 			long endTime = System.currentTimeMillis();
 			log.error("failed: {}, elasped: {}, context: {}", jobDetailName, (endTime-startTime), context, e);
+			failure=e.getErrorCode() + ": " + e.getMessage();
 		} catch (SchedulerException e) {
 			log.warn("");
 		} finally {
@@ -63,7 +65,10 @@ public abstract class ScheduleJob implements Job {
 					context.getResult()!=null ? "SUCCESS" : "FAIL",
 					context.getFireTime(),
 					context.getNextFireTime(),
-					context.getResult() instanceof String ? (String) context.getResult() : context.getResult() != null ? context.getResult().toString() : ""
+					// 성공이면 결과, 실패면 오류 코드와 사유 — 실패 사유가 이력에 없어 원인을 로그에서만 찾아야 했다
+					failure != null ? failure
+						: context.getResult() instanceof String ? (String) context.getResult()
+						: context.getResult() != null ? context.getResult().toString() : ""
 			);
 		}
 	}

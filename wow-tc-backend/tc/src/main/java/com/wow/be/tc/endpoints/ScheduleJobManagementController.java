@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
 import com.wow.be.tc.schedule.JobDeletionInfo;
 import com.wow.be.tc.schedule.ScheduleJobDetailInfo;
@@ -25,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/api/v1/schedule-job/management")
 @Slf4j
+// 권한(설계 §4) — 상태를 바꾸는 GET·조회용 POST 는 메서드에 동작을 명시한다
+@Requires("tc.schedule")
 public class ScheduleJobManagementController {
 
 	@Autowired
@@ -42,6 +45,7 @@ public class ScheduleJobManagementController {
 		return scheduleJobService.findScheduleJobByName(jobAdditionInfo.getName());
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/{id}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -50,6 +54,7 @@ public class ScheduleJobManagementController {
 		scheduleJobService.deleteScheduleJobById(id);
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/byName/{name}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -58,6 +63,7 @@ public class ScheduleJobManagementController {
 		scheduleJobService.deleteScheduleJobByName(name);
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -67,6 +73,7 @@ public class ScheduleJobManagementController {
 		return scheduleJobService.searchScheduleJobs(jobDeletionInfo.getSearchCondition());
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/byBatch", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deleteScheduleJobByBatch(@RequestBody List<String> scheduleJobIds) {
@@ -74,6 +81,7 @@ public class ScheduleJobManagementController {
 		scheduleJobService.deleteScheduldJobsByBatch(scheduleJobIds);
 	}
 	
+	@Requires(action = 'U')
 	@RequestMapping(value="/update", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -83,6 +91,7 @@ public class ScheduleJobManagementController {
 		return scheduleJobService.findScheduleJobByName(jobUpdateInfo.getName());
 	}
 	
+	@Requires(action = 'R')
 	@RequestMapping(value="/search", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -115,6 +124,7 @@ public class ScheduleJobManagementController {
 		return scheduleJobService.searchScheduleJobDetailsByJobName(jobName);
 	}
 
+	@Requires(action = 'R')
 	@RequestMapping(value="/search/job-exec-histories", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody

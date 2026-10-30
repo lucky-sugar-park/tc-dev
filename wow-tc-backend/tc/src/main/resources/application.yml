@@ -95,6 +95,23 @@ tc:
     expiry-notice-days: [30, 7, 1]
     unused-days: 90
     expiry-check-cron: "0 0 8 * * *"
+  # 최초 관리자 — USER 표가 비어 있을 때만 쓴다(설계 §3.2). 해시는 BCrypt, 평문 금지
+  bootstrap:
+    admin-id: ${TC_BOOTSTRAP_ADMIN_ID:}
+    admin-password-hash: ${TC_BOOTSTRAP_ADMIN_PASSWORD_HASH:}
+  security:
+    # 선언(@Requires) 없는 쓰기 API 처리 — AUDIT(기록만) / ENFORCE(403). 운영 중 바꾸기는 PUT /api/v1/security/permission-mode
+    permission-mode: AUDIT
+    # 기존 JWT 호출자 전환 기간에는 로그인한 사용자 누구나 PLC 요청 가능(설계 §6.10). 전환이 끝나면 false
+    dispatch-any-user: true
+    login-throttle:
+      max-failures: 5        # 아이디별
+      max-ip-failures: 20    # IP별(NAT·프록시 뒤 사용자들이 나눠 쓰므로 크게)
+      window: 15m
+  # 설정 변경 이력(CONFIG_CHANGE_HIST) 보존 — docs/auth-and-audit-design.md §5.4
+  config-history:
+    retention-days: 365
+    purge-cron: "0 30 3 * * *"
   # Quartz 설정(ScheduleConfig 가 이 값을 그대로 Quartz 속성으로 넘긴다).
   # JobStore 의 DataSource 는 ScheduleConfig 가 앱 DataSource 를 넘기므로 Quartz 자체 DataSource 는 두지 않는다.
   quartz:

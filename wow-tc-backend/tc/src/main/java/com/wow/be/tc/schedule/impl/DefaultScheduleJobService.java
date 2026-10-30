@@ -34,6 +34,8 @@ import com.wow.be.framework.session.SessionContext;
 import com.wow.be.framework.utils.ListUtils;
 import com.wow.be.framework.utils.MapUtils;
 import com.wow.be.tc.LegacyClassNames;
+import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
+import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.schedule.ScheduleConstants;
 import com.wow.be.tc.schedule.ScheduleJobDetailInfo;
 import com.wow.be.tc.schedule.ScheduleJobDetailService;
@@ -52,6 +54,9 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 	
 	@Autowired
 	private ScheduleManager scheduleJobManager;
+
+	@Autowired
+	private ConfigChangeRecorder changeRecorder;
 	
 	@Autowired
 	private ScheduleJobRepository scheduleJobRepository;
@@ -115,6 +120,7 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 		log.info("Deleted all schedule jobs.");
 		
 		loadSchedules();
+		changeRecorder.controlled(TargetType.SCHEDULE_JOB, "*", "모든 스케줄 Job", "reload");
 	}
 	
 	@Override
@@ -298,6 +304,7 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 		if(trigger!=null) {
 			log.info("schedulerJob {} will be paused.", scheduleJob.getName());
 			result=this.scheduleJobManager.pauseTrigger(scheduleJob.getName(), scheduleJob.getGroupName());
+			changeRecorder.controlled(TargetType.SCHEDULE_JOB, scheduleJob.getId(), scheduleJob.getName(), result ? "pause" : "pause-failed");
 
 			// update state			
 			String state=this.scheduleJobManager.getTriggerState(scheduleJob.getName(), scheduleJob.getGroupName());
@@ -346,6 +353,7 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 		if(trigger!=null) {
 			log.info("schedulerJob {} will be resumed.", scheduleJob.getName());
 			result=this.scheduleJobManager.resumeTrigger(scheduleJob.getName(), scheduleJob.getGroupName());
+			changeRecorder.controlled(TargetType.SCHEDULE_JOB, scheduleJob.getId(), scheduleJob.getName(), result ? "resume" : "resume-failed");
 			// update state			
 			String state=this.scheduleJobManager.getTriggerState(scheduleJob.getName(), scheduleJob.getGroupName());
 			this.updateScheduleJobState(scheduleJob.getName(), state);
@@ -375,6 +383,7 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 
 		boolean result=this.scheduleJobManager.pauseAll();
 		this.updateScheduleJobsState();
+		changeRecorder.controlled(TargetType.SCHEDULE_JOB, "*", "모든 스케줄 Job", result ? "pause-all" : "pause-all-failed");
 
 		return result;
 	}
@@ -385,6 +394,7 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 
 		boolean result=this.scheduleJobManager.resumeAll();
 		this.updateScheduleJobsState();
+		changeRecorder.controlled(TargetType.SCHEDULE_JOB, "*", "모든 스케줄 Job", result ? "resume-all" : "resume-all-failed");
 
 		return result;
 	}
@@ -463,6 +473,7 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 			detailEntity.from(jobDetail);
 			this.createScheduleJobDetail(jobDetail);
 		});
+		changeRecorder.created(TargetType.SCHEDULE_JOB, scheduleJob.getId(), scheduleJob.getName(), scheduleJob);
 	}
 	
 	@Override
@@ -532,8 +543,11 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 	public void updateScheduleJob(ScheduleJobInfo scheduleJob) {
 		log.debug("");
 		ScheduleJobEntity jobEntity=scheduleJobRepository.findById(scheduleJob.getId()).get();
+		ScheduleJobInfo before=jobEntity.info();
+		before.setJobDetails(this.searchScheduleJobDetails(scheduleJob.getId()));
 		jobEntity.from(scheduleJob);
 		scheduleJobRepository.save(jobEntity);
+		changeRecorder.updated(TargetType.SCHEDULE_JOB, scheduleJob.getId(), scheduleJob.getName(), before, scheduleJob);
 		
 		scheduleJob.getJobDetails().forEach((jobDetail)->{
 			jobDetail.setScheduleJobId(scheduleJob.getId());
@@ -583,29 +597,45 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 	@Transactional
 	public void deleteScheduleJob(ScheduleJobInfo scheduleJob) {
 		 log.debug("");
-		 ScheduleJobEntity jobEntity=scheduleJobRepository.findById(scheduleJob.getId()).get();
-		 scheduleJobRepository.delete(jobEntity);
+		 scheduleJobRepository.findById(scheduleJob.getId()).ifPresent(this::removeJob);
 	}
 	
 	@Override
 	@Transactional
 	public void deleteScheduleJobById(String scheduleJobId) {
 		log.debug("");
-		scheduleJobRepository.deleteById(scheduleJobId);
+		scheduleJobRepository.findById(scheduleJobId).ifPresent(this::removeJob);
 	}
 
 	@Override
 	@Transactional
 	public void deleteScheduleJobByName(String scheduleJobName) {
 		log.debug("");
-		scheduleJobRepository.deleteByName(scheduleJobName);
+		ScheduleJobEntity entity=this.findScheduleJobEntityByName(scheduleJobName, null);
+		if(entity!=null) {
+			removeJob(entity);
+		}
 	}
 	
 	@Override
 	@Transactional
 	public void deleteScheduldJobsByBatch(List<String> scheduleJobIds) {
 		log.debug("");
-		scheduleJobRepository.deleteByBatch(scheduleJobIds);
+		scheduleJobRepository.findAllById(scheduleJobIds).forEach(this::removeJob);
+	}
+
+	/**
+	 * Job 하나를 지운다. Quartz 에서 먼저 내리고(JDBC 저장이라 DB 행만 지우면 계속 돌고 재기동해도 남는다),
+	 * 엔티티로 지워 상세(JobDataMap 항목)까지 함께 지운다(cascade). 예전의 JPQL 일괄 삭제는 cascade 를 타지 않아
+	 * 상세가 Job 을 FK 로 참조한다는 이유로 실패했다.
+	 */
+	private void removeJob(ScheduleJobEntity entity) {
+		String groupName=StringUtils.isNotEmpty(entity.getGroupName()) ? entity.getGroupName() : "UNDEFINED";
+		ScheduleJobInfo before=entity.info();
+		before.setJobDetails(this.searchScheduleJobDetails(entity.getId()));
+		scheduleJobManager.deleteJob(entity.getName(), groupName);
+		scheduleJobRepository.delete(entity);
+		changeRecorder.deleted(TargetType.SCHEDULE_JOB, entity.getId(), entity.getName(), before);
 	}
 	
 	@Override
@@ -720,7 +750,11 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 		JobDataMap jobData=new JobDataMap();
 		ScheduleJobEntity jobEntity=new ScheduleJobEntity();
 		jobEntity.from(scheduleJob);
-		List<ScheduleJobDetailInfo> scheduleJobDetails=this.searchScheduleJobDetails(scheduleJob.getName());
+		// 상세(JobDataMap 항목)는 Job ID 로 찾는다. 예전에는 이름을 ID 자리에 넘겨 항목을 하나도 못 찾았다
+		// — PlcGeneralScheduleJob 이 interfaceName 이 없다며 매번 FAIL 로 끝났다
+		List<ScheduleJobDetailInfo> scheduleJobDetails=StringUtils.isNotEmpty(scheduleJob.getId())
+			? this.searchScheduleJobDetails(scheduleJob.getId())
+			: this.searchScheduleJobDetailsByJobName(scheduleJob.getName());
 
 		for (Iterator<ScheduleJobDetailInfo> iterator=scheduleJobDetails.iterator(); iterator.hasNext();) {
 			ScheduleJobDetailInfo scheduleJobDetail=(ScheduleJobDetailInfo) iterator.next();

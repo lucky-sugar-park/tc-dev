@@ -20,6 +20,8 @@ import com.wow.be.tc.utils.SearchSpecs;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.framework.dispatch.RequestMessage;
+import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
+import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.webhook.WebHook;
 import com.wow.be.tc.webhook.WebHookInfo;
 import com.wow.be.tc.webhook.WebHookManagementService;
@@ -34,14 +36,18 @@ public class DefaultWebHookManagementService implements WebHookManagementService
 	@Autowired
 	private WebHookRepository webHookManagementRepository;
 
+	@Autowired
+	private ConfigChangeRecorder changeRecorder;
+
 	@Transactional
 	@Override
 	public void registerWebHook(WebHookInfo webHookInfo) {
 		log.debug("DefaultWebHookManagementService.registerWebHook(WebHookInfo webHookInfo)...");
 		WebHookEntity entity=new WebHookEntity();
 		entity.from(webHookInfo);
-		webHookManagementRepository.save(entity);
+		WebHookEntity saved=webHookManagementRepository.save(entity);
 		WebHookManager.getManager().addWebHook(webHookInfo);
+		changeRecorder.created(TargetType.WEBHOOK, String.valueOf(saved.getId()), saved.getName(), saved.info());
 	}
 	
 	@Override
@@ -74,15 +80,26 @@ public class DefaultWebHookManagementService implements WebHookManagementService
 	public void updateWebHook(WebHookInfo webHookInfo) {
 		log.debug("DefaultWebHookManagementService.updateWebHook(WebHookInfo webHookInfo)...");
 		WebHookEntity entity=webHookManagementRepository.findById(webHookInfo.getId()).get();
+		WebHookInfo before=entity.info();
 		entity.from(webHookInfo);
-		webHookManagementRepository.save(entity);
+		WebHookEntity saved=webHookManagementRepository.save(entity);
+		if(before.getName()!=null && !before.getName().equals(saved.getName())) {
+			// 이름을 바꾸면 옛 이름으로 메모리에 남아 계속 쓰이지 않게 뺀다
+			WebHookManager.getManager().removeWebHook(before.getName());
+		}
 		WebHookManager.getManager().addWebHook(webHookInfo);
+		changeRecorder.updated(TargetType.WEBHOOK, String.valueOf(saved.getId()), saved.getName(), before, saved.info());
 	}
 
 	@Transactional
 	@Override
 	public void deleteWebHook(long id) {
 		log.debug("DefaultWebHookManagementService.deleteWebHook(long id)...");
+		webHookManagementRepository.findById(id).ifPresent(e->{
+			changeRecorder.deleted(TargetType.WEBHOOK, String.valueOf(e.getId()), e.getName(), e.info());
+			// 메모리에서도 뺀다 — 예전에는 지워도 재기동 전까지 결과가 계속 그 주소로 갔다
+			WebHookManager.getManager().removeWebHook(e.getName());
+		});
 		webHookManagementRepository.deleteById(id);
 	}
 
@@ -90,7 +107,12 @@ public class DefaultWebHookManagementService implements WebHookManagementService
 	@Override
 	public void deleteWebHook(String name) {
 		log.debug("DefaultWebHookManagementService.deleteWebHook(String name)...");
-		webHookManagementRepository.deleteByName(name);	
+		WebHookInfo found=this.findWebHookByName(name);
+		if(found!=null) {
+			changeRecorder.deleted(TargetType.WEBHOOK, String.valueOf(found.getId()), found.getName(), found);
+		}
+		WebHookManager.getManager().removeWebHook(name);
+		webHookManagementRepository.deleteByName(name);
 	}
 
 	@Override

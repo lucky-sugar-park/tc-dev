@@ -503,7 +503,7 @@ UPDATE USER SET PASSWORD = '<bcrypt 해시>', ENABLED = 1, PASSWORD_MUST_CHANGE 
 
 ## 9. 구현 순서
 
-> 진행 상황(2026-10-30): **1·2단계 구현 완료**, 로컬 e2e 40개 항목 통과(§9.1). 3단계부터 남았다.
+> 진행 상황(2026-10-30): **1~6단계 구현 완료**(§9.1, §9.2). 남은 것은 7단계(전환 정리, 모든 호출자가 API 키로 옮긴 뒤)다.
 
 1. **보안 체인 정리**: `JwtFilter` 서블릿 자동 등록 끄기, `machineApiChain`(API 키와 JWT 둘 다 받음, 전환 기간에는 `ROLE_CLIENT` 허용), `ApiKeyAuthenticationFilter`. 기존 JWT 호출이 그대로 되는지 확인한다.
 2. **API 클라이언트·키**: 테이블, 서비스, 관리 API(단건 조회, 삭제 정책 포함), 캐시, `ClientOpcodeGuard`, 감사 `PRINCIPAL`, 사용량 제한(§6.8), 만료 알림 Job(§6.9), 화면(§6.11), 시험(§6.12).
@@ -535,6 +535,40 @@ UPDATE USER SET PASSWORD = '<bcrypt 해시>', ENABLED = 1, PASSWORD_MUST_CHANGE 
   - 여러 인스턴스에서의 캐시 지연
   - 관리자가 아닌 사용자의 403(관리자가 아닌 시험 계정이 없음)
 - **대입 차단 집계**: IP별 실패 수에는 폐기·만료·중지 키의 401도 들어간다. 키가 만료된 시스템이 계속 재시도하면 그 IP가 5분 막힐 수 있다. 새 키로 바꾼 뒤에도 차단이 남아 있으면 Redis에서 `tc:apikey-block:{ip}`를 지운다.
+
+### 9.2 3~6단계 구현 메모 (2026-10-30)
+
+**설정 변경 이력(3단계)**
+- `com.wow.be.tc.confighist`: 기록기(`ConfigChangeRecorder`), 조회(`POST /api/v1/config-history/search`, `GET /api/v1/config-history/{대상 종류}/{대상 ID}`), 보존 정리(`ConfigChangePurger`, 매일 03:30).
+- 연결한 곳: API 클라이언트·키, PLC 커넥터(등록·수정·삭제·게시·해제), 인터페이스(사용 여부 일괄 포함), WebHook, 전달 정의, 스케줄 Job(등록·수정·삭제·일시정지·재개·전체 재적재), 사용자, 권한 검사 모드.
+- 운영 상태 필드(게시·트리거 상태)와 수정 시각만 바뀐 UPDATE 는 남기지 않는다. 상태 변화는 CONTROL 로 따로 남는다.
+- `migration/004_config_change_hist.sql`.
+
+**권한(5단계)**
+- `TcPermissionChecker`(역할 표), `TcPermissionModeSource`(모드는 Redis `tc:option:permission-mode`, 없으면 설정값 AUDIT), `PUT /api/v1/security/permission-mode`(관리자, 이력에 남음).
+- 컨트롤러 선언: 클래스에 자원, 상태를 바꾸는 GET(삭제 D·사용 변경 U·제어 X)과 조회용 POST(R)는 메서드에 동작을 명시했다(52곳). `/api/**` 아래 모든 컨트롤러에 선언이 있어 ENFORCE 로 바꿔도 막히는 API 는 없다.
+- 레거시 역할 MANAGER·EMPLOYEE 는 각각 OPERATOR·VIEWER 로 본다.
+- **전환 기간**: `tc.security.dispatch-any-user=true` 동안은 로그인한 사용자 누구나 PLC 요청 가능(§6.10). 7단계에서 false.
+- 관리 API 의 임시 관리자 검사(`TcRoles`)는 `@Requires("tc.apiclient")` 로 바꾸고 지웠다.
+
+**사용자(4단계)**
+- 사용자 모듈을 새로 썼다: 가입 요청·승인 제거, `USER` 칼럼 정리, 사용자 관리 API(`/api/v1/users`, 관리자), 본인 API(`/api/v1/me`, `/api/v1/me/password`), 최초 관리자(`UserBootstrap`), 비밀번호 변경 강제(`PasswordChangeRequiredInterceptor`), 로그인 실패 제한(`LoginThrottle`).
+- 예전 코드의 결함도 함께 없어졌다: 사용자 `enabled` 를 검사하지 않음(중지해도 로그인됨), `from()` 이 역할을 저장하지 않음, 없는 아이디에 500.
+- **로그인 실패 제한을 바꿈**: 아이디별 5회, **IP별 20회**(설계는 같은 값이었다). 같은 사무실 NAT 뒤의 한 사람이 틀린 것 때문에 모두가 막히지 않게 하기 위해서다.
+- 사용 중지·삭제·비밀번호 초기화 때 그 사용자의 토큰을 모두 지운다 — framework `JwtFilter` 는 저장된 토큰만 통과시키므로 access 토큰도 바로 끊긴다(§7 의 "access 토큰 수명 동안 유효" 걱정은 해당하지 않는다).
+- `migration/005_user_cleanup.sql`(새 칼럼, `enabled` NULL → 1. 옛 칼럼 DROP 은 주석 — 백업 확인 뒤 실행).
+
+**로컬 e2e**(scratchpad 스크립트, 2026-10-30)
+
+| 묶음 | 결과 |
+|---|---|
+| PLC 어댑터(가짜 PLC) | 10/10 |
+| API 키 인증·권한·사용량 | 40/40 |
+| 미검증 경로(WRITE·콜백·스케줄·해제) | 17/17 |
+| 설정 변경 이력 | 11/11 |
+| 권한·사용자 | 54/54 |
+
+**확인하지 않은 것**: 최초 관리자 생성(빈 DB 가 필요), Redis 장애 시 fail-open, 여러 인스턴스, `ConfigChangePurger` 실제 삭제.
 
 ## 10. 결정할 것
 

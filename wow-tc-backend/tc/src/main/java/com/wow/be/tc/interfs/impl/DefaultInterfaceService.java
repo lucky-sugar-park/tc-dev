@@ -23,6 +23,9 @@ import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PersistentService;
+import com.wow.be.tc.confighist.ConfigChangeInfo.Action;
+import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
+import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.interfs.HeaderTemplateInfo;
 import com.wow.be.tc.interfs.InterfaceInfo;
 import com.wow.be.tc.interfs.InterfaceService;
@@ -43,6 +46,9 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	
 	@Autowired
 	private HeaderPropRepository headerPropRepository;
+
+	@Autowired
+	private ConfigChangeRecorder changeRecorder;
 
 	@Override
 	@Transactional
@@ -68,6 +74,7 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 			dataPropRepository.save(dentity);
 		});
 
+		changeRecorder.created(TargetType.INTERFACE, String.valueOf(entity.getId()), entity.getName(), info);
 		return entity.info();
 	}
 
@@ -75,9 +82,12 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	@Transactional
 	public InterfaceInfo updateInterface(InterfaceInfo info) {
 		log.debug("");
+		InterfaceInfo before=interfaceRepository.findById(info.getId()).map(InterfaceEntity::info).orElse(null);
 		InterfaceEntity entity=new InterfaceEntity();
 		entity.from(info);
 		interfaceRepository.save(entity);
+		// 헤더·데이터 항목의 변경(oper=N/U/D)도 이 한 건의 변경 후 값(요청 그대로)에 들어 있다
+		changeRecorder.updated(TargetType.INTERFACE, String.valueOf(info.getId()), info.getName(), before, info);
 		info.getHeaderProps().forEach(header->{
 			if("D".equals(header.getOper())) {
 				headerPropRepository.deleteById(new PropEntityId(info.getId(), header.getName()));
@@ -110,6 +120,7 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		InterfaceEntity entity=interfaceRepository.findById(id).get();
 		entity.setUse(use);
 		interfaceRepository.save(entity);
+		changeRecorder.record(TargetType.INTERFACE, String.valueOf(id), entity.getName(), use ? Action.ENABLE : Action.DISABLE, null, null, null);
 		return entity.info();
 	}
 	
@@ -118,6 +129,8 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	@Transactional
 	public void applyInterfaceUseByBatch(List<Long> ids, boolean use) {
 		log.debug("");
+		interfaceRepository.findAllById(ids).forEach(e->
+			changeRecorder.record(TargetType.INTERFACE, String.valueOf(e.getId()), e.getName(), use ? Action.ENABLE : Action.DISABLE, null, null, null));
 		interfaceRepository.updateApplyUseByBatch(ids, use);
 	}
 	
@@ -190,6 +203,7 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	@Transactional
 	public void deleteInterface(long id) {
 		log.debug("");
+		interfaceRepository.findById(id).ifPresent(this::recordDeleted);
 		interfaceRepository.deleteById(id);
 	}
 
@@ -197,6 +211,10 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	@Transactional
 	public void deleteInterfaceByName(String name) {
 		log.debug("");
+		InterfaceInfo found=this.findInterfaceByName(name);
+		if(found!=null) {
+			changeRecorder.deleted(TargetType.INTERFACE, String.valueOf(found.getId()), found.getName(), found);
+		}
 		interfaceRepository.deleteByName(name);
 	}
 	
@@ -204,7 +222,12 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	@Transactional
 	public void deleteInterfaceByBatch(List<Long> ids) {
 		log.debug("");
+		interfaceRepository.findAllById(ids).forEach(this::recordDeleted);
 		interfaceRepository.deleteByBatch(ids);
+	}
+
+	private void recordDeleted(InterfaceEntity e) {
+		changeRecorder.deleted(TargetType.INTERFACE, String.valueOf(e.getId()), e.getName(), e.info());
 	}
 	
 	@Override

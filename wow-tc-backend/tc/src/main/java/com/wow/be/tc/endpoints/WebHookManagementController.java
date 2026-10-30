@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
 import com.wow.be.tc.webhook.WebHookInfo;
 import com.wow.be.tc.webhook.WebHookManagementService;
@@ -23,6 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/api/v1/webhook")
 @Slf4j
+// 권한(설계 §4) — 상태를 바꾸는 GET·조회용 POST 는 메서드에 동작을 명시한다
+@Requires("tc.webhook")
 public class WebHookManagementController {
 
 	@Autowired
@@ -35,6 +38,7 @@ public class WebHookManagementController {
 		webHookManagementService.registerWebHook(webHookInfo);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/check-url", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public Map<String, String> checkWebHookUrl(@RequestBody Map<String, String> data) {
@@ -46,6 +50,7 @@ public class WebHookManagementController {
 		return result;
 	}
 	
+	@Requires(action = 'U')
 	@RequestMapping(value="/update", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void updateWebHook(@RequestBody WebHookInfo webHookInfo) {
@@ -53,6 +58,7 @@ public class WebHookManagementController {
 		webHookManagementService.updateWebHook(webHookInfo);
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/{id}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deleteWebHook(@PathVariable("id") long id) {
@@ -60,6 +66,7 @@ public class WebHookManagementController {
 		webHookManagementService.deleteWebHook(id);
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/byName/{name}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deleteWebHookByName(@PathVariable("name") String name) {
@@ -91,6 +98,7 @@ public class WebHookManagementController {
 		return webHookManagementService.searchAllWebHook();
 	}
 	
+	@Requires(action = 'R')
 	@RequestMapping(value="/search", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody

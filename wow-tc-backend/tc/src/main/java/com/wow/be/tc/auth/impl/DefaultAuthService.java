@@ -12,7 +12,6 @@ import com.wow.be.framework.security.JwTokenInfo;
 import com.wow.be.framework.security.JwTokenProvider;
 import com.wow.be.framework.security.JwtRefreshTokenEntity;
 import com.wow.be.framework.security.JwtRefreshTokenRepository;
-import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.auth.AuthService;
 import com.wow.be.tc.auth.ExpiredRefreshTokenException;
 import com.wow.be.tc.auth.InvalidTokenException;
@@ -62,14 +61,7 @@ public class DefaultAuthService implements AuthService {
 		SecurityUser suser = new SecurityUser(uInfo);
 		suser.setJwTokenInfo(tokenInfo);
 
-		uInfo.setLogined(true);
-		uInfo.setLoginedIp(loginRequest.getRemoteAddress());
-		try {
-			userService.updateUser(uInfo, "LOGIN");
-		} catch (ToolControlException e) {
-			log.warn("로그인 사용자 정보 갱신 실패: {}", uInfo.getId(), e);
-		}
-
+		userService.recordLoginSuccess(uInfo.getId(), loginRequest.getRemoteAddress());
 		return suser;
 	}
 
@@ -102,8 +94,16 @@ public class DefaultAuthService implements AuthService {
 			throw new ExpiredRefreshTokenException("갱신 토큰이 만료되었습니다. 다시 로그인하세요.");
 		}
 
+		// 삭제·사용 중지된 사용자는 재발급을 거부한다(identity DefaultAuthService.reissue 와 같은 규칙) — 남은 토큰도 지운다
+		UserInfo uInfo = userService.findUser(refreshTokenEntity.getUserId()).orElse(null);
+		if (uInfo == null || !uInfo.isEnabled()) {
+			this.deleteTokens(refreshTokenEntity);
+			userService.recordUserHistory(refreshTokenEntity.getUserId(), "REISSUE_DENIED", remoteAddress,
+				uInfo == null ? "삭제된 사용자" : "사용 중지된 사용자");
+			throw new InvalidTokenException("사용할 수 없는 계정입니다. 다시 로그인하세요.");
+		}
+
 		// create new token (access / refresh)
-		UserInfo uInfo = userService.findUserById(refreshTokenEntity.getUserId());
 		UsernamePasswordAuthenticationToken authenticationToken =
 				new UsernamePasswordAuthenticationToken(uInfo.getId(), uInfo.getPassword(), uInfo.getAuthorities());
 		JwTokenInfo tokenInfo=this.jwTokenProvider.createTokens(authenticationToken);
@@ -140,15 +140,8 @@ public class DefaultAuthService implements AuthService {
 			throw new InvalidTokenException("저장된 갱신 토큰과 일치하지 않습니다.");
 		}
 
-		// update user information
-		try {
-			UserInfo uInfo = userService.findUserById(userId);
-			uInfo.setLogined(false);
-			uInfo.setLoginedIp("");
-			userService.updateUser(uInfo, "LOGOUT");
-		} catch (ToolControlException e) {
-			log.warn("로그아웃 사용자 정보 갱신 실패: {}", userId, e);
-		}
+		// 이미 삭제된 사용자의 토큰으로 로그아웃해도 실패로 만들지 않는다 — 토큰 제거가 본질이다(identity 리뷰 I-2)
+		userService.recordUserHistory(userId, "LOGOUT", remoteAddress, null);
 	}
 
 	/** access token 키와 refresh token 키로 같은 토큰 정보를 저장한다(framework JwtFilter 는 access token 키로 찾는다). */

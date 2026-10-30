@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.MesGeneralException;
 import com.wow.be.framework.dispatch.MessageCallback;
 import com.wow.be.framework.dispatch.MessageDispatcher;
@@ -49,6 +50,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping(value = "/api/v1/ifsvc")
 @RequiredArgsConstructor
 @Slf4j
+// 권한(설계 §4) — PLC 요청은 업무 액션(X). API 클라이언트·관리자·운영자만
+@Requires("action.tc.dispatch")
 public class DispatcherController {
 
 	private final MessageDispatcher messageDispatcher;

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Date;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
@@ -13,12 +14,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.WebUtils;
 
+import com.wow.be.framework.security.authz.AuthenticatedOnly;
 import com.wow.be.framework.security.ClientAddressResolver;
 import com.wow.be.framework.security.authz.PublicApi;
+import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.auth.AuthService;
 import com.wow.be.tc.auth.LoginRequest;
 import com.wow.be.tc.auth.LoginResponse;
 import com.wow.be.tc.auth.SecurityUser;
+import com.wow.be.tc.security.LoginThrottle;
+import com.wow.be.tc.user.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,6 +46,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @RequestMapping(value="/api/auth")
 @Slf4j
+// 로그인·재발급은 인증 전이라 검사 대상이 아니고, 로그아웃은 로그인한 누구나
+@AuthenticatedOnly
 public class AuthController {
 
 	private static final String KEY_REFRESH_TOKEN = "refreshToken";
@@ -51,15 +58,41 @@ public class AuthController {
 
 	private final AuthService authService;
 
+	private final UserService userService;
+
+	private final LoginThrottle loginThrottle;
+
 	private final ClientAddressResolver clientAddressResolver;
 
 	@PostMapping("/login")
 	@PublicApi
-	public LoginResponse login(@RequestBody @Validated LoginRequest loginRequest, HttpServletRequest request,  HttpServletResponse response) {
+	public LoginResponse login(@RequestBody @Validated LoginRequest loginRequest, HttpServletRequest request,  HttpServletResponse response)
+			throws ToolControlException {
 		log.debug("");
 
-		loginRequest.setRemoteAddress(extractRemoteAddress(request));
-		SecurityUser suser = authService.login(loginRequest);
+		String ip = extractRemoteAddress(request);
+		loginRequest.setRemoteAddress(ip);
+		String id = loginRequest.getId();
+
+		// 로그인 실패 제한(설계 §3.4) — 계정은 잠그지 않고 잠시 받지 않는다. 문구는 계정 존재 여부와 관계없이 같다
+		if (loginThrottle.isBlocked(id, ip)) {
+			if (userService.findUser(id).isPresent()) {
+				userService.recordUserHistory(id, "LOGIN_THROTTLED", ip, null);
+			}
+			throw ToolControlException.of(ToolControlException.LOGIN_THROTTLED,
+				"로그인 실패가 많아 잠시 로그인을 받지 않습니다. 잠시 뒤 다시 시도하세요.");
+		}
+		SecurityUser suser;
+		try {
+			suser = authService.login(loginRequest);
+		} catch (BadCredentialsException e) {
+			loginThrottle.recordFailure(id, ip);
+			if (userService.findUser(id).isPresent()) {
+				userService.recordUserHistory(id, "LOGIN_FAIL", ip, null);
+			}
+			throw e;
+		}
+		loginThrottle.recordSuccess(id);
 		int maxAge=(int)suser.getJwTokenInfo().getRefreshTokenExpiredTime().getTime()/1000-(int)new Date().getTime()/1000;
 
 		Cookie cookie = new Cookie(KEY_REFRESH_TOKEN, suser.getJwTokenInfo().getRefreshToken());

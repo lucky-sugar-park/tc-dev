@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,7 +46,10 @@ public class ScheduleJobExecHistoryEntity extends PersistentEntity<ScheduleJobEx
 	@Column(name="NEXT_FIRE_TIME")
 	private Date nextFireTime;
 	
-	@Column(name="REMARK")
+	// 성공한 실행은 PLC 응답 전체가 들어간다. VARCHAR(255)였을 때는 "Data too long" 으로 성공 이력이 하나도 저장되지 않았다.
+	// 이미 만들어진 표는 migration/003_schedule_hist_remark_longtext.sql 로 넓힌다.
+	@Lob
+	@Column(name="REMARK", columnDefinition="LONGTEXT")
 	private String remark;
 	
 	public ScheduleJobExecHistoryEntity() {

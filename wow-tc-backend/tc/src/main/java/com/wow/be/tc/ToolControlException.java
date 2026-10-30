@@ -61,6 +61,15 @@ public class ToolControlException extends MesGeneralException {
 	/** API 클라이언트의 동시 처리 한도 초과 */
 	public static final String CONCURRENCY_LIMITED = "ERR_429_TC_CONCURRENCY";
 
+	/** 없는 자원 */
+	public static final String NOT_FOUND = "ERR_404";
+
+	/** 비밀번호를 바꿔야 다른 API 를 쓸 수 있음(관리자 초기화·최초 관리자) */
+	public static final String PASSWORD_CHANGE_REQUIRED = "ERR_403_TC_PASSWORD_CHANGE_REQUIRED";
+
+	/** 로그인 실패가 많아 잠시 로그인을 받지 않음(계정 잠금 아님) */
+	public static final String LOGIN_THROTTLED = "ERR_429_TC_LOGIN";
+
 	public ToolControlException() {
 		super(ERR_TC, "Tool Control 처리 중 오류가 발생했습니다.", null);
 	}

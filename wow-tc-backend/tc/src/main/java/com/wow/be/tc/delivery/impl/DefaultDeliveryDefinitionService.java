@@ -10,6 +10,8 @@ import org.springframework.util.StringUtils;
 
 import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.tc.ToolControlException;
+import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
+import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.delivery.DeliveryDefinitionInfo;
 import com.wow.be.tc.delivery.DeliveryDefinitionInfo.DeliverOn;
 import com.wow.be.tc.delivery.DeliveryDefinitionService;
@@ -33,6 +35,8 @@ public class DefaultDeliveryDefinitionService
 
 	private final WebHookManagementService webHookService;
 
+	private final ConfigChangeRecorder changeRecorder;
+
 	@Override
 	@Transactional
 	public DeliveryDefinitionInfo register(DeliveryDefinitionInfo info) throws ToolControlException {
@@ -55,7 +59,9 @@ public class DefaultDeliveryDefinitionService
 
 		DeliveryDefinitionEntity entity = new DeliveryDefinitionEntity();
 		entity.from(info);
-		return repository.save(entity).info();
+		DeliveryDefinitionInfo created = repository.save(entity).info();
+		changeRecorder.created(TargetType.DELIVERY, created.getId(), created.getInterfaceName(), created);
+		return created;
 	}
 
 	@Override
@@ -74,14 +80,19 @@ public class DefaultDeliveryDefinitionService
 				+ info.getInterfaceName() + " → " + info.getDeliveryType() + (target.isEmpty() ? "" : ":" + target));
 		}
 
+		DeliveryDefinitionInfo before = entity.info();
 		entity.from(info);
-		return repository.save(entity).info();
+		DeliveryDefinitionInfo after = repository.save(entity).info();
+		changeRecorder.updated(TargetType.DELIVERY, after.getId(), after.getInterfaceName(), before, after);
+		return after;
 	}
 
 	@Override
 	@Transactional
 	public void delete(String id) throws ToolControlException {
-		repository.delete(load(id));
+		DeliveryDefinitionEntity entity = load(id);
+		changeRecorder.deleted(TargetType.DELIVERY, entity.getId(), entity.getInterfaceName(), entity.info());
+		repository.delete(entity);
 	}
 
 	@Override

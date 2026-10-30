@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.delivery.DeliveryDefinitionInfo;
 import com.wow.be.tc.delivery.DeliveryDefinitionService;
@@ -32,6 +33,8 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/ifsvc/delivery")
 @RequiredArgsConstructor
+// 권한(설계 §4) — REST 메서드로 동작을 추론한다(POST C, PUT U, DELETE D)
+@Requires("tc.delivery")
 public class InterfaceDeliveryController {
 
 	private final DeliveryDefinitionService deliveryDefinitionService;

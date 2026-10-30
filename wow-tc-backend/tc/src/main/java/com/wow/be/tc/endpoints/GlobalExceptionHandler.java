@@ -9,6 +9,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -38,6 +39,13 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+	/** 사용 중지된 계정(비밀번호는 맞음) → 401. framework 는 이메일 인증 문구를 쓰므로 tc 문구로 바꾼다 */
+	@ExceptionHandler(DisabledException.class)
+	public ResponseEntity<Map<String, Object>> handleDisabled(DisabledException e, HttpServletRequest request) {
+		log.info("Disabled account login on {} {}", request.getMethod(), request.getRequestURI());
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorBody("ERR_401", "사용이 중지된 계정입니다.", request));
+	}
 
 	/** 인증 실패(로그인 실패·재발급 실패 등) → 401 */
 	@ExceptionHandler(AuthenticationException.class)

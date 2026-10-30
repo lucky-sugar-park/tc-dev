@@ -202,6 +202,21 @@ tc(:8087)와 vplc(:8088)를 띄우고 실제 MC 3E 바이너리로 주고받았�
 - 비동기 어댑터 큐
 - 커넥터 release 상태
 
+### 4.1.2 미검증 경로 점검 (2026-10-30)
+
+위 목록 가운데 비동기 어댑터 큐를 뺀 경로를 로컬 e2e(vplc, 콜백 수신기, 허용 목록 `http://127.0.0.1:18090/`)로 확인했다. 결과는 17개 항목 모두 통과다. 그 과정에서 **한 번도 동작한 적 없던 결함 다섯 가지**를 찾아 고쳤다.
+
+| 결함 | 원인 | 고친 곳 |
+|---|---|---|
+| WRITE 가 SHORT·LONG·DOUBLE 값이면 늘 500 | JSON 숫자(Integer)를 `(Short)` 처럼 강제 변환 | `PropInfo.extractRealDataAsBytes` — 숫자형을 변환하고 범위를 검사(넘으면 400) |
+| 모든 PLC 스케줄 Job 이 "interfaceName 이 없습니다"로 FAIL | Job 상세를 ID 자리에 **이름**을 넘겨 찾아 항목을 하나도 못 찾음 | `DefaultScheduleJobService.createJobDetail` |
+| 성공한 스케줄 실행 이력이 하나도 저장되지 않음 | `REMARK` 가 VARCHAR(255)인데 PLC 응답 전체를 넣어 "Data too long" | `ScheduleJobExecHistoryEntity` LONGTEXT, `migration/003_schedule_hist_remark_longtext.sql`. 실패 이력에는 사유도 남긴다 |
+| 스케줄 Job 삭제가 FK 오류로 실패 | JPQL 일괄 삭제가 상세(cascade)를 타지 않음 | 엔티티로 삭제(cascade) |
+| 지운 스케줄 Job 이 계속 실행되고 재기동해도 남음 | DB 행만 지우고 Quartz(JDBC 저장)에서 내리지 않음 | 삭제 전에 Quartz 에서 `deleteJob` |
+
+확인한 동작(결함이 아닌 것): 인터페이스에 전달 정의(예: WEBHOOK)가 있으면 요청의 callback 은 `CALLBACK_URL` 정의가 있을 때만 쓴다(§4.2의 규칙 그대로).
+덧붙여 WebHook 을 지워도 메모리(`WebHookManager`)에 남아 재기동 전까지 결과가 계속 그 주소로 가던 문제도 고쳤다.
+
 ### 4.2 결과 전달 정의 (`INTERFACE_DELIVERY`)
 
 인터페이스마다 결과를 어디로, 언제 보낼지 정의한다. 새 테이블이라 mes-dev 표준을 따른다. PK는 문자열이고, 인터페이스는 연관관계 대신 이름으로 참조한다.

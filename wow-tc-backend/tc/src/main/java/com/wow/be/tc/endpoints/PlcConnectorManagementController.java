@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PageResponse;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistInfo;
@@ -26,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/api/v1/plc-connector")
 @Slf4j
+// 권한(설계 §4) — 상태를 바꾸는 GET·조회용 POST 는 메서드에 동작을 명시한다
+@Requires("tc.plc")
 public class PlcConnectorManagementController {
 
 	@Autowired
@@ -41,6 +44,7 @@ public class PlcConnectorManagementController {
 		plcConnectorManagementService.registerPlcConnector(plcConnectorInfo);
 	}
 	
+	@Requires(action = 'U')
 	@RequestMapping(value="/update", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void updatePlcConnector(@RequestBody PlcConnectorInfo plcConnectorInfo) {
@@ -48,6 +52,7 @@ public class PlcConnectorManagementController {
 		plcConnectorManagementService.updatePlcConnector(plcConnectorInfo);
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/{plcConnectorId}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deletePlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) {
@@ -55,6 +60,7 @@ public class PlcConnectorManagementController {
 		plcConnectorManagementService.deletePlcConnectorById(plcConnectorId);
 	}
 	
+	@Requires(action = 'D')
 	@RequestMapping(value="/delete/byName/{plcConnectorName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	public void deletePlcConnector(@PathVariable("plcConnectorName") String plcConnectorName) {
@@ -86,6 +92,7 @@ public class PlcConnectorManagementController {
 		return plcConnectorManagementService.searchAllPlcConnectores();
 	}
 	
+	@Requires(action = 'R')
 	@RequestMapping(value="/search", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -94,6 +101,7 @@ public class PlcConnectorManagementController {
 		return plcConnectorManagementService.searchPlcConnectores(cond);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/control/publish/{plcConnectorId}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -103,6 +111,7 @@ public class PlcConnectorManagementController {
 		return Collections.singletonMap("success", result);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/control/publish/byName/{plcConnectorName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -112,6 +121,7 @@ public class PlcConnectorManagementController {
 		return Collections.singletonMap("success", result);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/control/release/{plcConnectorId}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -121,6 +131,7 @@ public class PlcConnectorManagementController {
 		return Collections.singletonMap("success", result);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/control/release/byName/{plcConnectorName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -130,6 +141,7 @@ public class PlcConnectorManagementController {
 		return Collections.singletonMap("success", result);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/control/pause/{plcConnectorId}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -139,6 +151,7 @@ public class PlcConnectorManagementController {
 		return Collections.singletonMap("success", result);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/control/pause/byName/{plcConnectorName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -148,6 +161,7 @@ public class PlcConnectorManagementController {
 		return Collections.singletonMap("success", result);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/control/resume/{plcConnectorId}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -157,6 +171,7 @@ public class PlcConnectorManagementController {
 		return Collections.singletonMap("success", result);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/control/resume/byName/{plcConnectorName}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
@@ -166,6 +181,7 @@ public class PlcConnectorManagementController {
 		return Collections.singletonMap("success", result);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/test-connection/{plcConnectorId}", method=RequestMethod.GET)
 	@ResponseStatus(value=HttpStatus.OK)
 	@ResponseBody
@@ -174,6 +190,7 @@ public class PlcConnectorManagementController {
 		return plcConnectorManagementService.testConnection(plcConnectorId);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/test-connection/byName/{plcConnectorName}", method=RequestMethod.GET)
 	@ResponseStatus(value=HttpStatus.OK)
 	@ResponseBody
@@ -182,6 +199,7 @@ public class PlcConnectorManagementController {
 		return plcConnectorManagementService.testConnectionByName(plcConnectorName);
 	}
 	
+	@Requires(action = 'X')
 	@RequestMapping(value="/test-connection/byIpAddress/{ip}/{port}", method=RequestMethod.GET)
 	@ResponseStatus(value=HttpStatus.OK)
 	@ResponseBody
@@ -190,6 +208,7 @@ public class PlcConnectorManagementController {
 		return plcConnectorManagementService.testConnectionByIpAddress(ip, port);
 	}
 	
+	@Requires(action = 'R')
 	@RequestMapping(value="/search/connection-history", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody

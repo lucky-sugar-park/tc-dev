@@ -110,42 +110,24 @@ public class PropInfo extends AbstractInfo {
 		}
 	}
 	
+	/**
+	 * 요청 값을 PLC 로 보낼 바이트로 바꾼다. 값은 JSON 에서 오므로 숫자는 Integer·Long·Double 중 무엇이든 올 수 있다 —
+	 * 형에 맞춰 바꾸고, 범위를 넘으면 {@link IllegalArgumentException} 을 던진다(호출하는 쪽이 400 으로 바꾼다).
+	 * 예전에는 {@code (Short) value} 처럼 강제 변환해 JSON 숫자로 SHORT·LONG·DOUBLE 을 쓰면 늘 ClassCastException(500)이었다.
+	 */
 	public byte[] extractRealDataAsBytes(Object realData, Endian endian) {
 		switch(type) {
 		case BOOLEAN:
-			boolean vb=(Boolean)realData;
+			boolean vb=realData instanceof String str ? Boolean.parseBoolean(str.trim()) : (Boolean)realData;
 			return vb?new byte[] { 0x01 }: new byte[] { 0x00 };
 		case INT:
-			int vi=-1;
-			if(realData instanceof String) {
-				vi=Integer.parseInt((String)realData);
-			} else {
-				vi=(Integer)realData;
-			}
-			return ByteUtil.intToBytes(vi, length, endian);
+			return ByteUtil.intToBytes((int) toLong(realData, Integer.MIN_VALUE, Integer.MAX_VALUE), length, endian);
 		case SHORT:
-			short vs=-1;
-			if(realData instanceof String) {
-				vs=Short.parseShort((String)realData);
-			} else {
-				vs=(Short)realData;
-			}
-			return ByteUtil.shortToBytes(vs, length, endian);
+			return ByteUtil.shortToBytes((short) toLong(realData, Short.MIN_VALUE, Short.MAX_VALUE), length, endian);
 		case LONG:
-			long vl=-1;
-			if(realData instanceof String) {
-				vl=Long.parseLong((String)realData);
-			} else {
-				vl=(Long)realData;
-			}
-			return ByteUtil.longToBytes(vl, length, endian);
+			return ByteUtil.longToBytes(toLong(realData, Long.MIN_VALUE, Long.MAX_VALUE), length, endian);
 		case DOUBLE:
-			double vd=-1;
-			if(realData instanceof String) {
-				vd=Double.parseDouble((String)realData);
-			} else {
-				vd=(Double)realData;
-			}
+			double vd=realData instanceof String str ? Double.parseDouble(str.trim()) : ((Number)realData).doubleValue();
 			return ByteUtil.doubleToBytes(vd, length, endian);
 		case BYTE:
 			return (byte[])realData;
@@ -153,6 +135,25 @@ public class PropInfo extends AbstractInfo {
 		default:
 			return ((String)realData).getBytes();
 		}
+	}
+
+	/** 정수 값. 문자열·정수형 숫자를 받고, 소수점이 있거나 범위를 넘으면 거부한다. */
+	private long toLong(Object realData, long min, long max) {
+		long v;
+		if(realData instanceof String str) {
+			v=Long.parseLong(str.trim());
+		} else if(realData instanceof Number num) {
+			if(num.doubleValue()!=Math.rint(num.doubleValue())) {
+				throw new IllegalArgumentException(name + " 은 정수여야 합니다: " + realData);
+			}
+			v=num.longValue();
+		} else {
+			throw new IllegalArgumentException(name + " 값의 형이 맞지 않습니다(" + type + "): " + realData);
+		}
+		if(v<min || v>max) {
+			throw new IllegalArgumentException(name + " 값이 " + type + " 범위(" + min + "~" + max + ")를 넘습니다: " + v);
+		}
+		return v;
 	}
 
 	@Override
