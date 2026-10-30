@@ -23,7 +23,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 로드밸런서 헬스 체크 (docs/plc-ha-design.md §7, §10 1단계). 인증 없이 부른다(TcSecurityConfig 의 healthChain).
+ * 로드밸런서 헬스 체크 (docs/plc-ha-design.md §7, §10 1단계). 인증 없이 부른다(공개 경로 설정 app.security.public-paths).
  *
  * <ul>
  *   <li>DB 에 닿지 않으면 503 — 이 인스턴스는 거의 아무 일도 할 수 없다.</li>

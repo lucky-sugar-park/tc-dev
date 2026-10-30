@@ -61,6 +61,18 @@ security:
   trusted-proxies: ${TC_TRUSTED_PROXIES:}
 
 app:
+  # 인증 없이 받는 경로(framework 0.8.46 PublicPathsProperties) — SecurityConfig 의 permitAll 과 JwtFilter 가 같은 목록을 쓴다.
+  # framework 기본값(MES 의 회원가입·이메일 인증·i18n·모바일 경로)은 tc 에 없는 기능이라 tc 목록으로 바꾼다.
+  # SPA·정적 자원(/api 밖의 GET)과 SSE 연결은 framework 가 따로 연다. docs/framework-core-0.8.46-changes.md §3
+  security:
+    public-paths:
+      - POST /api/auth/login
+      - POST /api/auth/reissue
+      - GET /api/health
+    # /v3/api-docs 경로용 — tc 의 springdoc 은 /api-docs·/swagger-ui 를 쓰고 이 둘은 /api 밖의 GET 이라 이 값과 관계없이 열린다
+    swagger-public: false
+    # tc 는 actuator 를 쓰지 않는다
+    actuator-public: []
   # framework CorsFilterConfig — 레거시 CorsFilterConfig 와 같은 허용 범위(프론트 개발 서버 localhost:3000, 쿠키 허용)
   cors:
     allowed-origin-patterns: ${TC_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000}

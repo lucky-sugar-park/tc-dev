@@ -10,7 +10,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import com.wow.be.tc.utils.SearchSpecs;
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
@@ -44,7 +43,7 @@ public class DefaultPlcConnectionEventHistoryService
 		log.debug("");
 		PlcConnectionEventHistSpec specs=new PlcConnectionEventHistSpec();
 		List<PlcConnectionEventHistEntity> plcConnectionEventHistEntityList=null;
-		Specification<PlcConnectionEventHistEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<PlcConnectionEventHistEntity> specification=specs.createSpecification(cond);
 		
 		long count=plcConnectionEventHistRepository.count(specification);
 		if(cond.getPageInfo()==null) {

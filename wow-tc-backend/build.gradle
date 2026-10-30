@@ -17,7 +17,7 @@ ext {
     springdocVersion  = '3.0.3'
 
     // 사내 프레임워크. wow-mes-backend 의 frameworkCoreVersion 과 맞춘다.
-    frameworkCoreVersion = '0.8.45'
+    frameworkCoreVersion = '0.8.46'
 
     // 사내 Nexus (localhost HTTP)
     nexusGroupUrl     = 'http://localhost:8081/repository/inzi-mes-platform-maven-group/'

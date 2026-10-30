@@ -18,7 +18,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.wow.be.tc.utils.SearchSpecs;
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
@@ -166,7 +165,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		log.debug("DefaultPlcConnectorManagementService.searchPlcConnectores(SearchCondition cond)...");
 		PlcConnectorSpec specs=new PlcConnectorSpec();
 		List<PlcConnectorEntity> plcConnectorEntityList=null;
-		Specification<PlcConnectorEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<PlcConnectorEntity> specification=specs.createSpecification(cond);
 
 		if(cond.getPageInfo()==null) {
 			 plcConnectorEntityList=plcConnectorRepository.findAll(specification);
@@ -439,7 +438,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		log.debug("");
 		PlcConnectionEventHistSpec specs=new PlcConnectionEventHistSpec();
 		List<PlcConnectionEventHistEntity> plcConnectionEventHistEntityList=null;
-		Specification<PlcConnectionEventHistEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<PlcConnectionEventHistEntity> specification=specs.createSpecification(cond);
 
 		if(cond.getPageInfo()==null) {
 			plcConnectionEventHistEntityList=plcConnectionEventHistRepository.findAll(specification);

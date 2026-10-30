@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.wow.be.tc.utils.SearchSpecs;
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
@@ -153,7 +152,7 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		log.debug("");
 		InterfaceSpec specs=new InterfaceSpec();
 		List<InterfaceEntity> interfaceEntityList=null;
-		Specification<InterfaceEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<InterfaceEntity> specification=specs.createSpecification(cond);
 
 		if(cond.getPageInfo()==null) {
 			interfaceEntityList=interfaceRepository.findAll(specification);

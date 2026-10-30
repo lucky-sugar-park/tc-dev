@@ -1,5 +1,6 @@
 # framework-core 0.8.46 수정 명세 — SearchSpec, JwtFilter, SecurityConfig
 
+> 상태: **반영 완료(2026-10-31)** — framework-core 0.8.46 배포, tc 반영(§5).
 > 작성: 2026-10-30. 대상: `mes-dev/wow-mes-backend/wow-mes-backend-framework-core`, 패키지 `com.wow.be.framework`.
 > framework-core 는 사용자가 직접 고쳐 Nexus 에 배포한다. 이번부터 버전을 올려 **0.8.46** 으로 낸다(같은 버전 재배포 금지).
 > 관련: [backend-todo.md](backend-todo.md) #8, 이전 명세 [framework-core-dispatch-changes.md](framework-core-dispatch-changes.md).
@@ -322,3 +323,35 @@ public SecurityFilterChain filterChain(HttpSecurity http, JwtFilter jwtFilter, P
 | 확인 | `./gradlew :tc:test`, e2e 전체(`wow-tc-backend/e2e/run_all.py --shutdown`). 특히 `test_api_key`(JwtFilter), `test_shutdown` 의 헬스 체크, 검색이 있는 시험 |
 
 Gradle 캐시: 버전을 올리므로 캐시 삭제는 필요 없다(같은 버전 재배포 때만 `~/.gradle/caches/modules-2/files-2.1/com.wow.be/wow-mes-backend-framework-core/<버전>` 을 지웠다).
+
+---
+
+## 5. 반영 결과 (2026-10-31)
+
+### framework-core(mes-dev)
+
+- 명세를 옮기는 과정에서 생긴 문제를 고쳐 빌드했다.
+  - 기존 테스트 `JwtFilterShouldNotFilterTest` 가 옛 생성자를 써서 `publicMatchers` 가 null → NPE(**명세에서 이 테스트 수정을 빠뜨렸다**). 새 생성자로 바꿨다.
+  - `JwtConfig` 에 옛 `jwtFilter` 빈이 남아 이름이 같은 오버로드 두 개 → 옛 것을 지움.
+  - `jwtFilterServletRegistration` 이 `JwtFilter`(설정 클래스 아님) 안에 있어 무시됨 → `JwtConfig` 로 옮김.
+  - 기본 공개 목록에 `HEAD /api/i18n/**` 누락 → 추가.
+  - `JwtFilter` 옛 생성자·`noJwtRequiredList` 비교 루프·죽은 분기·`resolveRefreshToken`, `AuthorizationConfig` 삭제.
+- 테스트 105개 통과, 백엔드 전체 모듈 컴파일 통과. 0.8.46 으로 Nexus 배포(배포 jar 의 클래스를 javap 로 확인).
+
+### tc
+
+| 항목 | 처리 |
+|---|---|
+| `build.gradle` | `frameworkCoreVersion = '0.8.46'` |
+| `utils/SearchSpecs` | 삭제. 서비스 7개 파일 10곳을 `specs.createSpecification(cond)` 직접 호출로 |
+| `GlobalExceptionHandler` | `IllegalArgumentException` → 400 |
+| `TcSecurityConfig` | `jwtFilterServletRegistration`·`healthChain` 삭제. framework 가 같은 이름의 빈을 등록하므로 **남겨 두면 기동 실패**(빈 이름 충돌) |
+| `application.yml` | `app.security.public-paths: [POST /api/auth/login, POST /api/auth/reissue, GET /api/health]`, `swagger-public: false`, `actuator-public: []` |
+| e2e | `test_framework_046.py` 추가(8개) — 헬스·로그인 공개, MES 전용 경로(`/api/auth/signup`, `/api/i18n/**`, `/api/auth/verify`)는 tc 에서 401, conjType 없는 검색 200, 없는 검색 항목 400 |
+
+검증: 단위 테스트, e2e 7개 묶음 151개 항목(정상 종료 포함) 통과.
+
+### 남은 메모
+
+- tc 의 Swagger 는 `/api-docs`·`/swagger-ui` 경로라 `/api` 밖의 GET 으로 열린다(공개 경로 설정과 무관). 운영에서 감추려면 `springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`.
+- framework 의 새 `createSpecification` 은 conjType `NONE` 을 OR 로 다룬다(`AND` 가 아니면 OR). 예전 코드는 `NONE` 인 조건을 아예 빼고 검색했다. 화면이 `NONE` 을 보내는지 확인할 필요가 있다.

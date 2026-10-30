@@ -11,7 +11,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import com.wow.be.tc.utils.SearchSpecs;
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.RangeInfo;
 import com.wow.be.framework.Condition.SortDirection;
@@ -114,7 +113,7 @@ public class DefaultExchangedMessageAuditService implements ExchangedMessageAudi
 		log.debug("");
 		ExchangedMessageAuditSpec specs=new ExchangedMessageAuditSpec();
 		List<ExchangedMessageAuditEntity> exchangedMessageAuditEntityList=null;
-		Specification<ExchangedMessageAuditEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<ExchangedMessageAuditEntity> specification=specs.createSpecification(cond);
 
 		if(cond.getPageInfo()==null) {
 			exchangedMessageAuditEntityList=exchangedMessageAuditRepository.findAll(specification);
@@ -167,7 +166,7 @@ public class DefaultExchangedMessageAuditService implements ExchangedMessageAudi
 		log.debug("");
 		ExchangedMessageAuditSpec specs=new ExchangedMessageAuditSpec();
 		List<ExchangedMessageAuditEntity> exchangedMessageAuditEntityList=null;
-		Specification<ExchangedMessageAuditEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<ExchangedMessageAuditEntity> specification=specs.createSpecification(cond);
 
 		PageResponse<ExchangedMessageAuditInfo> pageResp=new PageResponse<>();
 		if(cond.getPageInfo()==null) {
@@ -198,7 +197,7 @@ public class DefaultExchangedMessageAuditService implements ExchangedMessageAudi
 		log.debug("");
 		ExchangedMessageAuditSpec specs=new ExchangedMessageAuditSpec();
 		List<ExchangedMessageAuditEntity> exchangedMessageAuditEntityList=null;
-		Specification<ExchangedMessageAuditEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<ExchangedMessageAuditEntity> specification=specs.createSpecification(cond);
 		
 		RangeResponse<ExchangedMessageAuditInfo> rangeResp=new RangeResponse<>();
 		if(cond.getRangeInfo()==null) {

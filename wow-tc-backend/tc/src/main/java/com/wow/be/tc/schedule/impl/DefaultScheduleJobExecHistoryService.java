@@ -9,7 +9,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import com.wow.be.tc.utils.SearchSpecs;
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
@@ -71,7 +70,7 @@ public class DefaultScheduleJobExecHistoryService
 		log.debug("");
 		ScheduleJobExecHistorySpec specs=new ScheduleJobExecHistorySpec();
 		List<ScheduleJobExecHistoryEntity> jobExecHistEntityList=null;
-		Specification<ScheduleJobExecHistoryEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<ScheduleJobExecHistoryEntity> specification=specs.createSpecification(cond);
 
 		if(cond.getPageInfo()==null) {
 			jobExecHistEntityList=scheduleJobExecHistoryRepository.findAll(specification);

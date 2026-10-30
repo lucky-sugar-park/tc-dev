@@ -16,7 +16,6 @@ import org.springframework.web.client.RestClientException;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.wow.be.tc.utils.SearchSpecs;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.framework.dispatch.RequestMessage;
@@ -157,7 +156,7 @@ public class DefaultWebHookManagementService implements WebHookManagementService
 	public List<WebHookInfo> searchWebHook(Condition cond) {
 		log.debug("DefaultWebHookManagementService.searchWebHook(SearchCondition cond)...");
 		WebHookSpec specs=new WebHookSpec();
-		List<WebHookEntity> webHookList = webHookManagementRepository.findAll(SearchSpecs.create(specs, cond));
+		List<WebHookEntity> webHookList = webHookManagementRepository.findAll(specs.createSpecification(cond));
 		return infos(webHookList);
 	}
 }

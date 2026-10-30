@@ -1,6 +1,5 @@
 package com.wow.be.tc.security;
 
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -15,7 +14,6 @@ import org.springframework.security.web.util.matcher.OrRequestMatcher;
 
 import com.wow.be.framework.security.ClientAddressResolver;
 import com.wow.be.framework.security.JwTokenProvider;
-import com.wow.be.framework.security.JwtFilter;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.apiclient.ApiClientService;
 
@@ -27,6 +25,9 @@ import jakarta.servlet.http.HttpServletResponse;
  * <p>PLC 요청 두 경로만 따로 체인을 둔다. 이 체인은 API 키와 사용자 JWT 를 둘 다 받는다. 그 밖의 경로는 framework
  * {@code SecurityConfig} 의 체인(JWT)이 그대로 맡는다. 이 체인이 {@code @Order(1)} 이라 먼저 평가된다.
  *
+ * <p>인증 없이 받는 경로(로그인·재발급·헬스 체크)는 framework 의 공개 경로 설정({@code app.security.public-paths})으로 연다.
+ * JwtFilter 의 서블릿 자동 등록은 framework 0.8.46 부터 framework 가 끈다(docs/framework-core-0.8.46-changes.md §2·§3).
+ *
  * <p>이 체인은 인증만 확인한다(authenticated). 누가 PLC 요청을 할 수 있는지는 {@code @Requires("action.tc.dispatch")} 와
  * {@link TcPermissionChecker} 가 정한다 — API 키 클라이언트와 ADMIN·OPERATOR 사용자. 전환 스위치
  * ({@link DispatchTransitionOption})를 켜면 로그인한 사용자 누구나 허용한다(설계 §6.10, §9 7단계).
@@ -37,37 +38,6 @@ public class TcSecurityConfig {
 	static final String REQUEST_PATH = "/api/v1/ifsvc/request";
 
 	static final String REQUEST_AND_REPLY_PATH = "/api/v1/ifsvc/request-and-reply";
-
-	/**
-	 * framework JwtFilter 의 서블릿 자동 등록을 끈다.
-	 *
-	 * <p>JwtFilter 는 framework 에서 {@code @Bean} 이라 Spring Boot 가 서블릿 필터로도 등록한다. framework 체인에서는
-	 * 보안 체인 안의 실행이 먼저라 두 번째는 건너뛰지만, {@link #machineApiChain} 에는 JwtFilter 가 없으므로 서블릿 단계의
-	 * JwtFilter 가 돌아 Bearer 헤더 없는 API 키 요청에 401(EXPIRED_TOKEN)을 낸다. framework 체인 안의 JwtFilter 는 그대로다.
-	 */
-	@Bean
-	public FilterRegistrationBean<JwtFilter> jwtFilterServletRegistration(JwtFilter jwtFilter) {
-		FilterRegistrationBean<JwtFilter> registration = new FilterRegistrationBean<>(jwtFilter);
-		registration.setEnabled(false);
-		return registration;
-	}
-
-	/**
-	 * 로드밸런서 헬스 체크({@code GET /api/health})는 인증 없이 받는다. framework 체인은 {@code /api/**} 에 JWT 를 요구하므로
-	 * 따로 둔다(docs/plc-ha-design.md §7).
-	 */
-	@Bean
-	@Order(0)
-	public SecurityFilterChain healthChain(HttpSecurity http) throws Exception {
-		http
-			.securityMatcher(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/health"))
-			.csrf(AbstractHttpConfigurer::disable)
-			.formLogin(AbstractHttpConfigurer::disable)
-			.httpBasic(AbstractHttpConfigurer::disable)
-			.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-			.authorizeHttpRequests(a -> a.anyRequest().permitAll());
-		return http.build();
-	}
 
 	@Bean
 	@Order(1)

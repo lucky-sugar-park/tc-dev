@@ -25,7 +25,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.wow.be.tc.utils.SearchSpecs;
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
@@ -481,7 +480,7 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 		log.debug("");
 		ScheduleJobSpec specs=new ScheduleJobSpec();
 		List<ScheduleJobEntity> scheduleJobEntityList=null;
-		Specification<ScheduleJobEntity> specification=SearchSpecs.create(specs, cond);
+		Specification<ScheduleJobEntity> specification=specs.createSpecification(cond);
 
 		if(cond.getPageInfo()==null) {
 			scheduleJobEntityList=scheduleJobRepository.findAll(specification);

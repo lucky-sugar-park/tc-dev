@@ -81,6 +81,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return ResponseEntity.status(status).body(errorBody("ERR_" + status.value(), message, request));
 	}
 
+	/**
+	 * 잘못된 요청 값 → 400. framework SearchSpec(0.8.46~)은 없는 검색 항목·잘못된 조건 값을 예외로 알린다 — 예전처럼 조건을
+	 * 빼고 검색해 걸러지지 않은 전체 행을 돌려주지 않는다(docs/framework-core-0.8.46-changes.md §1).
+	 */
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException e, HttpServletRequest request) {
+		log.info("Bad request on {} {}: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody("ERR_400", e, request));
+	}
+
 	/** 그 밖의 모든 예외 → 500 */
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Map<String, Object>> handleUnexpected(Exception e, HttpServletRequest request) {
