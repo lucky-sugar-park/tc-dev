@@ -26,7 +26,7 @@ ext {
 allprojects {
     group = 'com.wow.be'
     // 모듈 버전은 회차 브랜치 버전에서 v 를 뺀 값 (브랜치 v0.1.0 → 0.1.0). 브랜치를 새로 딸 때 함께 올린다.
-    version = '0.2.0'
+    version = '0.3.0'
 
     repositories {
         // 1순위: 사내 Nexus group — 사내 jar + 외부 라이브러리 모두 여기서 설치
