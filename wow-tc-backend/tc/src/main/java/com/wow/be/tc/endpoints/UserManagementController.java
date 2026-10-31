@@ -1,8 +1,12 @@
 package com.wow.be.tc.endpoints;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,16 +14,21 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.wow.be.framework.security.ClientAddressResolver;
 import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.tc.ToolControlException;
+import com.wow.be.tc.security.LoginThrottle;
+import com.wow.be.tc.user.UserHistoryInfo;
 import com.wow.be.tc.user.UserInfo;
 import com.wow.be.tc.user.UserRole;
 import com.wow.be.tc.user.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -34,6 +43,10 @@ import lombok.RequiredArgsConstructor;
 public class UserManagementController {
 
 	private final UserService userService;
+
+	private final LoginThrottle loginThrottle;
+
+	private final ClientAddressResolver clientAddressResolver;
 
 	/** 생성 요청. 초기 비밀번호는 첫 로그인에서 바꾸게 한다 */
 	public record CreateUserRequest(String id, String name, String email, List<UserRole> userRoles, String initialPassword) {
@@ -51,6 +64,31 @@ public class UserManagementController {
 	@GetMapping
 	public List<UserInfo> search() {
 		return userService.searchUsers();
+	}
+
+	@Operation(summary = "로그인을 받지 않는 아이디들", description = "실패가 많아 잠시 막힌 아이디(계정 잠금이 아니다 — 시간이 지나면 풀린다).")
+	@Requires(action = 'R')
+	@GetMapping("/login-blocked")
+	public Set<String> loginBlocked() {
+		return loginThrottle.blockedUsers();
+	}
+
+	@Operation(summary = "사용 이력", description = "로그인·실패·막힘·로그아웃·비밀번호 변경 … 최신순(size 1~500, 기본 100).")
+	@Requires(action = 'R')
+	@GetMapping("/{id}/history")
+	public List<UserHistoryInfo> history(@PathVariable("id") String id,
+			@RequestParam(value = "size", required = false) Integer size) throws ToolControlException {
+		userService.findUserById(id);
+		return userService.searchUserHistory(id, size == null ? 100 : size);
+	}
+
+	@Operation(summary = "로그인 제한 풀기", description = "실패가 많아 막힌 아이디를 바로 풀고 실패 수를 지운다. IP 로 막힌 것은 풀지 않는다.")
+	@PostMapping("/{id}/login-unblock")
+	public Map<String, Boolean> unblock(@PathVariable("id") String id, HttpServletRequest request) throws ToolControlException {
+		userService.findUserById(id);
+		boolean was = loginThrottle.release(id);
+		userService.recordUserHistory(id, "LOGIN_UNBLOCK", clientAddressResolver.resolve(request), "by " + currentUserId());
+		return Map.of("released", was);
 	}
 
 	@Operation(summary = "사용자 한 명", description = "비밀번호 해시는 주지 않는다.")
@@ -96,6 +134,11 @@ public class UserManagementController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void delete(@PathVariable("id") String id) throws ToolControlException {
 		userService.deleteUser(id);
+	}
+
+	private static String currentUserId() {
+		Authentication a = SecurityContextHolder.getContext().getAuthentication();
+		return a == null ? "?" : a.getName();
 	}
 
 	private static UserInfo toInfo(String id, String name, String email, List<UserRole> roles) {

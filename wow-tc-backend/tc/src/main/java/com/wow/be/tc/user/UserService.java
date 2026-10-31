@@ -16,6 +16,9 @@ public interface UserService {
 	/** 사용 이력(USER_HIST) 한 줄 — LOGIN, LOGIN_FAIL, LOGIN_THROTTLED, LOGOUT, REISSUE_DENIED, PASSWORD_CHANGE 등 */
 	void recordUserHistory(String userId, String oper, String ipAddress, String remark);
 
+	/** 사용 이력 최신순 — size 는 1~500 */
+	List<UserHistoryInfo> searchUserHistory(String userId, int size);
+
 	Optional<UserInfo> findUser(String id);
 
 	/** 없으면 ERR_404 */

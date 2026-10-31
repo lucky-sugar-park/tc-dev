@@ -1,6 +1,8 @@
 package com.wow.be.tc.security;
 
 import java.time.Duration;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -51,6 +53,24 @@ public class LoginThrottle {
 			log.warn("로그인 제한 여부를 확인하지 못했습니다(통과시킴): {}", e.toString());
 			return false;
 		}
+	}
+
+	/** 지금 로그인을 받지 않는 아이디들(아이디 한도로 막힌 것만 — IP 로 막힌 것은 빠진다) */
+	public Set<String> blockedUsers() {
+		try {
+			Set<String> keys = redis.keys(BLOCK + "user:*");
+			return keys == null ? Set.of() : keys.stream().map(k -> k.substring((BLOCK + "user:").length())).collect(Collectors.toSet());
+		} catch (RuntimeException e) {
+			log.warn("로그인 제한 목록을 읽지 못했습니다: {}", e.toString());
+			return Set.of();
+		}
+	}
+
+	/** 관리자가 아이디의 로그인 제한을 푼다 — 실패 수도 지운다. 막혀 있었으면 true */
+	public boolean release(String userId) {
+		Boolean blocked = redis.delete(BLOCK + "user:" + userId);
+		redis.delete(FAIL + "user:" + userId);
+		return Boolean.TRUE.equals(blocked);
 	}
 
 	public void recordFailure(String userId, String ip) {

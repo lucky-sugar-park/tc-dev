@@ -211,6 +211,23 @@ try:
     s, q, _ = call("POST", "/api/v1/ifsvc/audit/search/query", {"from": "2026-12-31T00:00:00Z", "to": "2026-01-01T00:00:00Z"}, ADMIN)
     check("기록 검색: 시작이 끝보다 늦으면 400", s == 400, (s, q))
 
+    # 7b. 사용자 관리(5-6) — 사용 이력·로그인 제한. 실제로 막히게 하지는 않는다(IP 실패 수가 남아 다른 시험의 로그인을 막을 수 있어서)
+    vu = users[0]
+    s, hist, _ = call("GET", f"/api/v1/users/{vu}/history?size=5", token=ADMIN)
+    check("사용 이력: 최신순, 로그인·비밀번호 변경이 남음, size 지킴",
+          s == 200 and 0 < len(hist) <= 5 and {"LOGIN", "PASSWORD_CHANGE"} <= {h["oper"] for h in hist}
+          and [h["seqNo"] for h in hist] == sorted((h["seqNo"] for h in hist), reverse=True), (s, hist))
+    s1, bl, _ = call("GET", "/api/v1/users/login-blocked", token=ADMIN)
+    s2, rel, _ = call("POST", f"/api/v1/users/{vu}/login-unblock", token=ADMIN)
+    s3, hist2, _ = call("GET", f"/api/v1/users/{vu}/history?size=1", token=ADMIN)
+    check("로그인 제한: 목록 200(막히지 않은 사용자는 없음), 풀기 → released=false 이고 이력 LOGIN_UNBLOCK",
+          s1 == 200 and isinstance(bl, list) and vu not in bl and s2 == 200 and rel == {"released": False}
+          and s3 == 200 and hist2[0]["oper"] == "LOGIN_UNBLOCK", (s1, bl, s2, rel, s3, hist2))
+    s1, _, _ = call("GET", f"/api/v1/users/{vu}/history", token=tok["ROLE_OPERATOR"])
+    s2, _, _ = call("POST", f"/api/v1/users/{vu}/login-unblock", token=tok["ROLE_OPERATOR"])
+    s3, _, _ = call("GET", f"/api/v1/users/no-such-{RUN}/history", token=ADMIN)
+    check("사용 이력·제한 풀기: 운영자 403, 없는 사용자 404", s1 == 403 and s2 == 403 and s3 == 404, (s1, s2, s3))
+
     # 8. 홈 요약·시험 읽기·프로토콜
     s, b, _ = call("GET", "/api/v1/dashboard/summary", token=tok["ROLE_VIEWER"])
     check("홈 요약: 커넥터 건수·오늘 요청 건수·최근 오류", s == 200 and b["connectors"]["total"] >= 1 and b["connectors"]["published"] >= 1

@@ -4,7 +4,6 @@ i18n.common.clearSearch	검색어 지우기	Clear search	検索語をクリア	�
 i18n.common.delete	삭제	Delete	削除	删除
 i18n.common.edit	수정	Edit	編集	编辑
 i18n.common.save	저장	Save	保存	保存
-i18n.common.saved	저장했습니다	Saved	保存しました	已保存
 i18n.grid.footer.totalRows	총 {n}건	Total {n}	全{n}件	共{n}条
 i18n.tc.common.all	전체	All	すべて	全部
 i18n.tc.common.description	설명	Description	説明	说明

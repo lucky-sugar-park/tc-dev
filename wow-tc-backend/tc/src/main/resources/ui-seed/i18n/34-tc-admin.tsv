@@ -1,0 +1,101 @@
+# tc 관리 화면 문구(5-6: 사용자·API 클라이언트·운영 옵션·다국어·공통 코드) — 코드<TAB>ko<TAB>en<TAB>ja<TAB>zh
+i18n.tc.user.add	사용자 등록	Add user	ユーザー登録	添加用户
+i18n.tc.user.edit	사용자 수정	Edit user	ユーザー編集	编辑用户
+i18n.tc.user.name	이름	Name	名前	名称
+i18n.tc.user.email	이메일	Email	メール	邮箱
+i18n.tc.user.roles	역할	Roles	ロール	角色
+i18n.tc.user.role.admin	관리자	Administrator	管理者	管理员
+i18n.tc.user.role.operator	운영자	Operator	運用者	操作员
+i18n.tc.user.role.viewer	조회자	Viewer	閲覧者	查看者
+i18n.tc.user.roleRequired	역할을 하나 이상 고르세요	Select at least one role	ロールを1つ以上選んでください	请至少选择一个角色
+i18n.tc.user.legacyRoles	예전 역할이 남아 있습니다 — 저장하면 그대로 둡니다. 빼려면 지우세요.	Legacy roles remain — they are kept when saving. Remove them to drop.	旧ロールが残っています — 保存してもそのままです。外すには削除してください。	仍保留旧角色 — 保存时保持不变。如需移除请删除。
+i18n.tc.user.idRule	영숫자·_ . @ - 2~100자	Letters, digits, _ . @ - (2–100 chars)	英数字・_ . @ - 2〜100文字	字母、数字、_ . @ -(2~100 个字符)
+i18n.tc.user.emailRule	이메일 형식이 아닙니다	Not a valid email	メール形式ではありません	邮箱格式不正确
+i18n.tc.user.initialPassword	초기 비밀번호	Initial password	初期パスワード	初始密码
+i18n.tc.user.initialHelp	첫 로그인에서 바꾸게 한다 — 10자 이상	Must be changed at first sign-in — at least 10 characters	初回ログインで変更させます — 10文字以上	首次登录时需修改 — 至少 10 个字符
+i18n.tc.user.passwordRule	10자 이상, 아이디와 달라야 합니다	At least 10 characters and different from the ID	10文字以上、IDと異なる必要があります	至少 10 个字符,且不能与账号相同
+i18n.tc.user.newPassword	새 비밀번호	New password	新しいパスワード	新密码
+i18n.tc.user.resetPassword	비밀번호 초기화	Reset password	パスワード初期化	重置密码
+i18n.tc.user.resetHelp	이 사용자의 로그인을 모두 끊고, 다음 로그인에서 비밀번호를 바꾸게 합니다.	Signs this user out everywhere and requires a password change at next sign-in.	このユーザーのログインをすべて切断し、次回ログインでパスワードを変更させます。	将断开该用户的所有登录,并要求下次登录时修改密码。
+i18n.tc.user.resetDone	비밀번호를 초기화했습니다 — 다음 로그인에서 바꿉니다	Password reset — it must be changed at next sign-in	パスワードを初期化しました — 次回ログインで変更します	密码已重置 — 下次登录时需修改
+i18n.tc.user.disable	사용 중지	Disable	使用停止	停用
+i18n.tc.user.disabled	사용 중지	Disabled	使用停止	已停用
+i18n.tc.user.enable	사용 재개	Enable	使用再開	启用
+i18n.tc.user.confirmDisable	{id} 의 사용을 멈출까요? 로그인이 바로 끊깁니다.	Disable {id}? Their sessions end immediately.	{id} の使用を停止しますか?ログインはすぐに切断されます。	停用 {id}?其登录会立即断开。
+i18n.tc.user.confirmDelete	{id} 을(를) 지울까요? 운영에서는 사용 중지를 권합니다.	Delete {id}? In production, disabling is recommended.	{id} を削除しますか?運用では使用停止をお勧めします。	删除 {id}?生产环境建议停用。
+i18n.tc.user.blocked	로그인 막힘	Sign-in blocked	ログイン制限中	登录受限
+i18n.tc.user.unblock	로그인 제한 풀기	Release sign-in block	ログイン制限解除	解除登录限制
+i18n.tc.user.unblocked	로그인 제한을 풀었습니다	Sign-in block released	ログイン制限を解除しました	已解除登录限制
+i18n.tc.user.mustChange	비밀번호 바꿀 차례	Password change required	パスワード変更が必要	需修改密码
+i18n.tc.user.lastLogin	마지막 로그인	Last sign-in	最終ログイン	最近登录
+i18n.tc.user.passwordChanged	비밀번호 바꾼 때	Password changed	パスワード変更日時	密码修改时间
+i18n.tc.user.history	사용 이력	Activity history	利用履歴	使用历史
+i18n.tc.user.oper	일	Event	イベント	事件
+i18n.tc.user.search	아이디·이름·이메일	ID · name · email	ID・名前・メール	账号・名称・邮箱
+i18n.tc.apiclient.add	API 클라이언트 등록	Add API client	APIクライアント登録	添加 API 客户端
+i18n.tc.apiclient.edit	API 클라이언트 수정	Edit API client	APIクライアント編集	编辑 API 客户端
+i18n.tc.apiclient.clientId	클라이언트 ID	Client ID	クライアントID	客户端 ID
+i18n.tc.apiclient.idRule	영문 소문자·숫자와 하이픈(-), 100자까지	Lowercase letters, digits and hyphens (-), up to 100 chars	英小文字・数字とハイフン(-)、100文字まで	小写字母、数字和连字符(-),最多 100 个字符
+i18n.tc.apiclient.idHelp	예: mes-line1 — 지운 ID 는 다시 못 쓴다	e.g. mes-line1 — a deleted ID cannot be reused	例: mes-line1 — 削除したIDは再利用できません	例: mes-line1 — 已删除的 ID 不可再用
+i18n.tc.apiclient.opcodes	허용 opcode	Allowed opcodes	許可opcode	允许的 opcode
+i18n.tc.apiclient.opcodesHelp	이 클라이언트가 부를 수 있는 인터페이스 — 비우면 아무것도 못 부른다	Interfaces this client may call — empty means none	このクライアントが呼べるインターフェース — 空なら何も呼べません	该客户端可调用的接口 — 为空则不可调用
+i18n.tc.apiclient.ips	허용 IP	Allowed IPs	許可IP	允许的 IP
+i18n.tc.apiclient.ipsHelp	IP 또는 CIDR(10.0.0.0/24) — 비우면 어디서나	IP or CIDR (10.0.0.0/24) — empty means anywhere	IPまたはCIDR(10.0.0.0/24) — 空ならどこからでも	IP 或 CIDR(10.0.0.0/24) — 为空则不限
+i18n.tc.apiclient.urls	결과 보낼 URL 접두어	Result URL prefixes	結果送信URLプレフィックス	结果发送 URL 前缀
+i18n.tc.apiclient.urlsHelp	콜백 URL 이 이 접두어로 시작해야 보낸다	Results are sent only to callback URLs starting with these	コールバックURLがこのプレフィックスで始まる場合のみ送信	仅向以这些前缀开头的回调 URL 发送
+i18n.tc.apiclient.rate	초당 요청 한도	Requests per second limit	秒間リクエスト上限	每秒请求上限
+i18n.tc.apiclient.concurrent	동시 요청 한도	Concurrent request limit	同時リクエスト上限	并发请求上限
+i18n.tc.apiclient.defaultHelp	비우면 설정값	Empty uses the configured default	空なら設定値	为空则使用配置值
+i18n.tc.apiclient.positive	1 이상	At least 1	1以上	至少 1
+i18n.tc.apiclient.activeKeys	활성 키	Active keys	有効キー	有效密钥
+i18n.tc.apiclient.nearestExpiry	가까운 만료	Next expiry	直近の期限	最近到期
+i18n.tc.apiclient.lastUsed	마지막 사용	Last used	最終使用	最近使用
+i18n.tc.apiclient.search	ID·이름·opcode	ID · name · opcode	ID・名前・opcode	ID・名称・opcode
+i18n.tc.apiclient.confirmDisable	{id} 의 사용을 멈출까요? 이 클라이언트의 호출은 바로 거절됩니다.	Disable {id}? Its calls are rejected immediately.	{id} の使用を停止しますか?このクライアントの呼び出しはすぐに拒否されます。	停用 {id}?其调用会立即被拒绝。
+i18n.tc.apiclient.confirmDelete	{id} 을(를) 지울까요? 키도 모두 폐기되고, 이 ID 는 다시 쓸 수 없습니다.	Delete {id}? All keys are revoked and the ID cannot be reused.	{id} を削除しますか?キーもすべて失効し、このIDは再利用できません。	删除 {id}?所有密钥将被吊销,且该 ID 不可再用。
+i18n.tc.apiclient.keys	API 키	API keys	APIキー	API 密钥
+i18n.tc.apiclient.keyId	키 ID	Key ID	キーID	密钥 ID
+i18n.tc.apiclient.active	활성	Active	有効	有效
+i18n.tc.apiclient.expired	만료	Expired	期限切れ	已过期
+i18n.tc.apiclient.revoked	폐기	Revoked	失効	已吊销
+i18n.tc.apiclient.issuedAt	발급	Issued	発行	签发
+i18n.tc.apiclient.expiresAt	만료	Expires	期限	到期
+i18n.tc.apiclient.revokedAt	폐기한 때	Revoked at	失効日時	吊销时间
+i18n.tc.apiclient.revoke	폐기	Revoke	失効	吊销
+i18n.tc.apiclient.confirmRevoke	키 {key} 를 폐기할까요? 이 키로 부르는 호출은 바로 거절됩니다.	Revoke key {key}? Calls using it are rejected immediately.	キー {key} を失効させますか?このキーでの呼び出しはすぐに拒否されます。	吊销密钥 {key}?使用该密钥的调用会立即被拒绝。
+i18n.tc.apiclient.days	수명(일)	Lifetime (days)	有効期間(日)	有效期(天)
+i18n.tc.apiclient.issue	새 키 발급	Issue new key	新規キー発行	签发新密钥
+i18n.tc.apiclient.rotateHelp	활성 키는 둘까지 — 바꿀 때는 새 키 발급 → 호출하는 쪽 교체 → 옛 키 폐기	Up to two active keys — to rotate: issue a new key → update the caller → revoke the old key	有効キーは2つまで — 交換は新キー発行 → 呼出側の差し替え → 旧キー失効	最多两个有效密钥 — 轮换: 签发新密钥 → 更新调用方 → 吊销旧密钥
+i18n.tc.apiclient.onceOnly	이 키는 지금 한 번만 보입니다 — 복사해서 호출하는 시스템에 넣으세요. 닫으면 다시 볼 수 없습니다.	This key is shown only once — copy it into the calling system. It cannot be shown again after closing.	このキーは今回だけ表示されます — コピーして呼出側システムに設定してください。閉じると再表示できません。	此密钥仅显示一次 — 请复制到调用系统中。关闭后无法再次查看。
+i18n.tc.apiclient.newKey	새 키	New key	新しいキー	新密钥
+i18n.tc.apiclient.copy	복사	Copy	コピー	复制
+i18n.tc.apiclient.copied	복사했습니다	Copied	コピーしました	已复制
+i18n.tc.option.help	재기동 없이 바로 바뀝니다. 다중화면 바꾼 인스턴스에만 적용되고, 재기동하면 설정값(application.yml)으로 돌아갑니다.	Takes effect immediately without restart. With HA it applies only to the instance you changed, and reverts to the configured value (application.yml) on restart.	再起動なしですぐに反映されます。冗長構成では変更したインスタンスのみに適用され、再起動すると設定値(application.yml)に戻ります。	无需重启即可生效。多实例时仅对修改的实例生效,重启后恢复为配置值(application.yml)。
+i18n.tc.option.permissionMode	권한 검사 모드	Permission check mode	権限チェックモード	权限检查模式
+i18n.tc.option.permissionModeHelp	AUDIT — 권한이 없어도 막지 않고 기록만 남긴다(도입 초기). ENFORCE — 권한이 없으면 403 으로 막는다.	AUDIT — does not block, only logs missing permissions (rollout). ENFORCE — blocks with 403 when permission is missing.	AUDIT — 権限がなくても止めず記録のみ(導入初期)。ENFORCE — 権限がなければ403で拒否。	AUDIT — 无权限时不拦截,仅记录(引入初期)。ENFORCE — 无权限时以 403 拒绝。
+i18n.tc.option.dispatchAnyUser	기존 JWT 호출자 전환 스위치	Legacy JWT caller transition switch	既存JWT呼出元の移行スイッチ	旧 JWT 调用方过渡开关
+i18n.tc.option.dispatchAnyUserHelp	켜면 로그인한 사용자 누구나 PLC 요청을 할 수 있다 — API 키로 옮기지 못한 시스템이 드러났을 때 잠시 켠다. 전환이 끝나면 끈다.	When on, any signed-in user can make PLC requests — turn on briefly if a system not yet moved to API keys shows up. Turn off when the transition ends.	オンにするとログインしたユーザー誰でもPLC要求ができます — APIキーへ移行できていないシステムが見つかったとき一時的にオンにします。移行が終わればオフにします。	开启后任何已登录用户都可发起 PLC 请求 — 发现尚未迁移到 API 密钥的系统时临时开启。过渡结束后关闭。
+i18n.tc.option.on	켜기	On	オン	开启
+i18n.tc.option.reset	설정값으로	Reset to configured	設定値に戻す	恢复配置值
+i18n.tc.option.confirmAudit	AUDIT 로 바꾸면 권한이 없는 요청도 통과합니다. 바꿀까요?	In AUDIT mode, requests without permission also pass. Change?	AUDITにすると権限のない要求も通過します。変更しますか?	切换为 AUDIT 后,无权限的请求也会通过。确定切换?
+i18n.tc.option.confirmAnyUser	켜면 로그인한 사용자 누구나 PLC 요청을 할 수 있습니다. 켤까요?	When on, any signed-in user can make PLC requests. Turn on?	オンにするとログインしたユーザー誰でもPLC要求ができます。オンにしますか?	开启后任何已登录用户都可发起 PLC 请求。确定开启?
+i18n.tc.i18n.add	다국어 등록	Add translation	多言語登録	添加多语言
+i18n.tc.i18n.edit	다국어 수정	Edit translation	多言語編集	编辑多语言
+i18n.tc.i18n.code	코드	Code	コード	代码
+i18n.tc.i18n.codeRule	영숫자·_ . - 255자까지	Letters, digits, _ . - (up to 255 chars)	英数字・_ . - 255文字まで	字母、数字、_ . -(最多 255 个字符)
+i18n.tc.i18n.codeHelp	예: i18n.tc.connector.add	e.g. i18n.tc.connector.add	例: i18n.tc.connector.add	例: i18n.tc.connector.add
+i18n.tc.i18n.emptyHelp	비우면 그 언어는 지운다(한국어로 보인다)	Empty removes this language (Korean is shown)	空ならその言語を削除します(韓国語で表示)	为空则删除该语言(显示韩语)
+i18n.tc.i18n.confirmDelete	{code} 을(를) 네 언어 모두 지울까요?	Delete {code} in all four languages?	{code} を4言語すべて削除しますか?	删除 {code} 的全部四种语言?
+i18n.tc.i18n.missing	빠진 언어	Missing language	未翻訳言語	缺失语言
+i18n.tc.i18n.missingOnly	빠진 것만	Missing only	未翻訳のみ	仅缺失
+i18n.tc.i18n.search	코드·값	Code · value	コード・値	代码・值
+i18n.tc.code.add	코드 등록	Add code	コード登録	添加代码
+i18n.tc.code.addGroup	그룹 등록	Add group	グループ登録	添加分组
+i18n.tc.code.edit	코드 수정	Edit code	コード編集	编辑代码
+i18n.tc.code.group	그룹	Group	グループ	分组
+i18n.tc.code.i18nCode	다국어 코드	Translation code	多言語コード	多语言代码
+i18n.tc.code.i18nHelp	비우면 코드 자체	Empty uses the code itself	空ならコード自体	为空则使用代码本身
+i18n.tc.code.nameHelp	언어별 이름은 다국어 화면에서 — 다국어 코드를 쓴다	Per-language names are edited on the Translations screen, using the translation code	言語別の名前は多言語画面で — 多言語コードを使います	各语言名称在多语言画面中编辑 — 使用多语言代码
+i18n.tc.code.pickGroup	왼쪽에서 그룹을 고르세요	Select a group on the left	左でグループを選んでください	请在左侧选择分组
+i18n.tc.code.search	그룹 코드·이름	Group code · name	グループコード・名前	分组代码・名称
+i18n.tc.code.confirmDelete	{code} 을(를) 지울까요?	Delete {code}?	{code} を削除しますか?	删除 {code}?

@@ -21,6 +21,11 @@ const PAGES: Record<string, Loader> = {
   'tc.ops.monitor': () => import('./ops/pages/MessageMonitorPage'),
   'tc.ops.schedule': () => import('./ops/pages/ScheduleJobPage'),
   'tc.ops.confighist': () => import('./ops/pages/ConfigHistoryPage'),
+  'tc.admin.user': () => import('./admin/pages/UserPage'),
+  'tc.admin.apiclient': () => import('./admin/pages/ApiClientPage'),
+  'tc.admin.option': () => import('./admin/pages/OptionPage'),
+  'tc.admin.i18n': () => import('./admin/pages/I18nPage'),
+  'tc.admin.code': () => import('./admin/pages/CommonCodePage'),
 };
 
 const comingSoon = (m: ScreenMeta): Loader => () =>

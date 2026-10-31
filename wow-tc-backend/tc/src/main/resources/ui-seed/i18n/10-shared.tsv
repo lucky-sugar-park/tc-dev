@@ -247,5 +247,4 @@ i18n.auth.id	아이디	ID	ID	账号
 i18n.auth.login	로그인	Sign in	ログイン	登录
 i18n.auth.loginNeeded	로그인이 필요합니다	Sign-in required	ログインが必要です	需要登录
 i18n.auth.password	비밀번호	Password	パスワード	密码
-i18n.common.saved	저장했습니다	Saved	保存しました	已保存
 i18n.route.undefined	정의되지 않은 화면입니다. 홈 화면으로 이동합니다.	This screen is not defined. Going to the home screen.	定義されていない画面です。ホーム画面へ移動します。	未定义的画面。将跳转到首页。

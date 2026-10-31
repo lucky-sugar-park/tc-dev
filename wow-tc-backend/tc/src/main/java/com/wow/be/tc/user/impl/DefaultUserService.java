@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -90,6 +91,13 @@ public class DefaultUserService implements UserService, UserDetailsService {
 		} catch (RuntimeException e) {
 			log.warn("사용 이력을 남기지 못했습니다: user={}, oper={}", userId, oper, e);
 		}
+	}
+
+	@Override
+	public List<UserHistoryInfo> searchUserHistory(String userId, int size) {
+		int n = Math.max(1, Math.min(size, 500));
+		return userHistoryRepository.findByUserIdOrderBySeqNoDesc(userId, PageRequest.of(0, n)).stream()
+			.map(UserHistoryEntity::info).toList();
 	}
 
 	// ── 조회 ──
