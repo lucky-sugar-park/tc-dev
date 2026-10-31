@@ -273,13 +273,13 @@ sequenceDiagram
 
 1. `PlcGeneralScheduleJob` 에 `@DisallowConcurrentExecution` — 같은 Job(JobKey)은 클러스터 전체에서 한 번에 하나만 돈다. 앞 실행이 끝나지 않았으면 다음 실행은 끝날 때까지 기다리고, 60초를 넘기면 놓친 실행 규칙을 따른다. 정리 Job(`DataTableFlashJob`)도 같이 붙인다.
 2. `requestRecovery` 는 **켜지 않는다(기본).** 주기 수집은 다음 실행이 곧 오고, 죽은 실행을 다시 돌리면 이미 PLC 에 간 WRITE 가 한 번 더 갈 수 있다 — WRITE 는 재시도하지 않는다는 §4.2 와 같은 원칙. 한 번만 도는 WRITE Job 이 생기면 그때 Job 별로 정한다.
-3. 인스턴스별 점검은 Quartz 가 아니라 각 인스턴스의 스케줄러(소유권 관리자 등)로 한다. `PlcConnectorSpyScheduleJob` 은 쓰는 곳이 없으면 지운다.
+3. 인스턴스별 점검은 Quartz 가 아니라 각 인스턴스의 스케줄러(소유권 관리자 등)로 한다. `PlcConnectorSpyScheduleJob` 은 빈 껍데기지만 **지우지 않는다** — 운영 DB 에 옛 이름으로 등록돼 있으면 클래스가 없어 그 Job 을 올리지 못한다. 운영 DB 의 `SCHEDULE_JOB` 을 확인한 뒤 함께 정리한다.
 4. 운영 문서에 "모든 tc 서버 NTP 동기화"를 적는다.
 
 ## 10. 구현 순서
 
 1. **기반**: `/api/health`, `server.shutdown=graceful`, 종료 순서(`SmartLifecycle`). 단일 인스턴스에서도 이득이다. — **완료(2026-10-30)**: `HealthController`, `PlcShutdownLifecycle`, 단계별 상한 25초. 진행 중 요청이 끝난 뒤 PLC 연결이 닫히는 것을 확인했다(e2e `test_shutdown.py`).
-   - **1-1 다중화 전 정리**: H7(WebHook 캐시), H10(스케줄 Job 겹침 방지). 단일 인스턴스에도 이득이다.
+   - **1-1 다중화 전 정리**: H7(WebHook 캐시), H10(스케줄 Job 겹침 방지). 단일 인스턴스에도 이득이다. — **완료(2026-10-31)**: `WebHookManager` 를 10초 만료·스레드 안전 캐시로(없는 이름도 기억), `PlcGeneralScheduleJob`·`DataTableFlashJob` 에 `@DisallowConcurrentExecution`. e2e `test_webhook_cache.py`, 단위 `ScheduleJobConcurrencyTest`.
 2. **상태 분리**: 어댑터 이벤트가 DB `STATUS1`을 바꾸지 않게 하고, Redis 연결 상태를 남긴다. 화면 표시를 바꾼다.
 3. **소유권 관리자**: 단일 인스턴스에서 임대를 잡고 지금처럼 동작하는지 확인한다.
 4. **원격 어댑터와 내부 전달**(HMAC 체인)

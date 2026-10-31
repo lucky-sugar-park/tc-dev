@@ -26,7 +26,7 @@
 
 | # | 일 | 상태 | 메모 |
 |---|---|---|---|
-| 4 | PLC 다중화 구현 | 🔄 | [plc-ha-design.md](plc-ha-design.md) §10. **1단계 완료**(아래). 결정 확정(2026-10-31, H6 현장 확인 대기). 다음은 1-1(H7 WebHook 캐시·H10 스케줄 Job 겹침) → 2단계 |
+| 4 | PLC 다중화 구현 | 🔄 | [plc-ha-design.md](plc-ha-design.md) §10. **1단계 완료**(아래). 결정 확정(2026-10-31, H6 현장 확인 대기). 1-1(H7 WebHook 캐시·H10 스케줄 Job 겹침) 완료. 다음은 2단계(상태 분리) |
 | 5 | 저장소에 남는 테스트 | ✅ | 단위 테스트 26개(`./gradlew :tc:test`, 인프라 불필요), e2e 묶음 `wow-tc-backend/e2e/`(143개 항목 — 7번에서 6개 추가, README 에 준비·실행 방법) |
 | 6 | 운영 문서 | ✅ | [operations.md](operations.md) — 설정·재기동 필요 항목, migration 순서, 최초 관리자, 재기동 절차, PLC 설정, API 키 운영·전환, 비상 복구, 점검. 해시 도구 `wow-tc-backend/tools/BcryptHash.java` |
 
@@ -72,3 +72,4 @@
 - 2026-10-31: vplc 의 상태를 바꾸는 GET 14개를 DELETE·POST 로(경로는 그대로, 예전 GET 은 405), 없는 가상 PLC 는 500 대신 404. e2e `test_vplc_http_methods.py`(31개 항목).
 - 2026-10-31: 11번 보완 — 비동기 요청의 callback 주소를 REQUEST 감사 `DESCRIPTION`(`pushUrl: 주소`)에 남기고, 응답 기록으로 callback 에 다시 보낼 수 있게(redelivery-design.md §2.2, R12). 동기 요청은 `pushResult` 를 무시.
 - 2026-10-31: 4번 다중화 결정 확정 — H1~H5·H7~H10 은 plc-ha-design.md §9.1·§9.2 검토안대로, H6(PLC 생존 확인 설정값)은 현장 확인 대기. 스케줄 Job 겹침·복구(H10) 추가.
+- 2026-10-31: 4번 1-1 단계 완료 — WebHook 캐시 10초 만료·스레드 안전(H7), 스케줄 Job 겹침 방지(H10). 단위 49개, 정상 종료 포함 e2e 338개 항목 통과.

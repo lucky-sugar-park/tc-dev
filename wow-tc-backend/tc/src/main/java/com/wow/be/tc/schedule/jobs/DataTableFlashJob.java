@@ -2,6 +2,7 @@ package com.wow.be.tc.schedule.jobs;
 
 import java.util.Date;
 
+import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 
 import com.wow.be.framework.persist.PersistentService;
@@ -10,7 +11,9 @@ import com.wow.be.tc.schedule.ScheduleJob;
 
 import lombok.extern.slf4j.Slf4j;
 
+/** 오래된 행을 지우는 정리 Job. 같은 표를 두 실행이 함께 지우지 않게 클러스터 전체에서 한 번에 하나만 돈다. */
 @Slf4j
+@DisallowConcurrentExecution
 public class DataTableFlashJob extends ScheduleJob {
 	
 	public enum FlushByType {

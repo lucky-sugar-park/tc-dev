@@ -13,6 +13,8 @@
 | Redis | 6379 | 사용자 토큰, PLC 응답 변경 감지, 요청 제한 집계, 권한 검사 모드. 키 접두어 `tc:` |
 | PLC | 커넥터마다 | MELSEC MC 3E 바이너리. 포트당 연결 1개 |
 
+**tc 를 두 대 이상 띄울 때**: 모든 tc 서버의 시계를 NTP 로 맞춘다 — Quartz 클러스터가 시각으로 실행을 나누고 죽은 인스턴스를 판단한다. 스케줄 Job 은 클러스터 전체에서 한 번에 한 실행이고, PLC 수집·정리 Job 은 앞 실행이 끝나기 전에 다음 실행이 겹치지 않는다(docs/plc-ha-design.md §9.2).
+
 **Redis 가 없을 때**: API 키로 오는 PLC 요청은 계속 처리된다(제한 기능은 통과시키고 경고를 남김). 사용자 로그인·토큰 재발급은 되지 않는다. `/api/health` 는 `DEGRADED`(200)를 돌려준다.
 
 ## 2. 설정
@@ -37,7 +39,7 @@
 | 재기동 없이(관리 API·화면) | 재기동 필요(설정 파일·환경 변수) |
 |---|---|
 | 사용자, API 클라이언트·키, 허용 범위·사용량 한도 | `TC_JWT_SECRET`(바꾸면 모든 사용자 토큰 무효. API 키 호출은 영향 없음) |
-| PLC 커넥터·인터페이스·WebHook·전달 정의·스케줄 Job | access·refresh 토큰 수명(`jwt.*`) |
+| PLC 커넥터·인터페이스·WebHook·전달 정의·스케줄 Job. WebHook 은 다른 인스턴스에서 바꿔도 10초 안에 따라온다 | access·refresh 토큰 수명(`jwt.*`) |
 | 결과 기록용 DB 연결(`/api/v1/db-connections`) | `TC_SECRET_KEY`, `tc.db-connection.*` |
 | 커넥터 게시·해제 | DB·Redis 접속 정보 |
 | 권한 검사 모드(`PUT /api/v1/security/permission-mode`) | `tc.api-client.*` 기본값, `tc.security.login-throttle.*`, `tc.delivery.*`, `plc.*` |
