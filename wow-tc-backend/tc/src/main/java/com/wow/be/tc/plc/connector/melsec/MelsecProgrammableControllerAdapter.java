@@ -311,12 +311,21 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 
 	@Override
 	public void request(PlcRequest req, PlcResponse res) throws ToolControlException {
+		completeResponse(res, exchangeFrame(req.getReqId(), req.convertRequest()));
+	}
+
+	@Override
+	public byte[] exchangeFrame(String reqId, byte[] frame) throws ToolControlException {
 		if (operStatus == PlcConnectorOperStatus.PAUSED || operStatus == PlcConnectorOperStatus.UNKNOWN
 				|| operStatus == PlcConnectorOperStatus.STOPPED) {
 			throw ToolControlException.of(ToolControlException.PLC_UNAVAILABLE, "요청할 수 없는 운영 상태입니다: " + operStatus);
 		}
-		byte[] response = exchange(req.getReqId(), req.convertRequest());
-		res.splitHeaderAndReplyData(response);
+		return exchange(reqId, frame);
+	}
+
+	@Override
+	public void completeResponse(PlcResponse res, byte[] frame) throws ToolControlException {
+		res.splitHeaderAndReplyData(frame);
 		int resultCode = ByteUtil.bytesToInt((byte[]) res.getReplyHeaders().get("resultCode"), Endian.LITTLE);
 		res.setResultCode(resultCode);
 		res.setResultDescription(resultCode == 0 ? "SUCCESS" : "ERROR");

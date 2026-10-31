@@ -30,6 +30,8 @@ import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.Types.PlcConnectorInfoStatus;
 import com.wow.be.tc.plc.connector.PlcAdapterManager;
 import com.wow.be.tc.plc.connector.ProgrammableControllerAdapter;
+import com.wow.be.tc.plc.remote.InternalSignature;
+import com.wow.be.tc.plc.remote.RemotePlcAdapter;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,7 +47,8 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>Redis 에 닿지 않으면 가진 연결을 그대로 둔다(fail-static) — 이 인스턴스만 끊긴 것인지 Redis 전체 장애인지 안에서는 가릴 수
  *       없다(§5.3 보완). 그 사이 다른 인스턴스가 임대를 가져가도 PLC 가 포트당 연결 하나만 받으면 두 번째 연결은 거부되고, 이
  *       인스턴스가 Redis 에 다시 닿으면 남의 임대를 보고 강등한다.</li>
- *   <li>다른 인스턴스가 주인인 PLC 는 이 단계에서는 이 인스턴스에서 요청할 수 없다(503) — 원격 어댑터는 4단계다.</li>
+ *   <li>다른 인스턴스가 주인인 PLC 는 원격 어댑터({@link RemotePlcAdapter})로 그 인스턴스에 PLC 교환을 넘긴다(4단계). 주인이 없는
+ *       사이(임대 만료 전후)에는 503 이다.</li>
  * </ul>
  * 갱신과 검사는 각자의 스레드에서 돈다 — 검사가 PLC 연결을 기다리는 동안에도 임대 갱신이 밀리지 않게.
  */
@@ -80,6 +83,8 @@ public class PlcOwnershipManager {
 
 	private final PlcConnectionStateStore stateStore;
 
+	private final InternalSignature signature;
+
 	/** 이 인스턴스가 임대를 가진 커넥터 */
 	private final Set<String> owned = ConcurrentHashMap.newKeySet();
 
@@ -99,7 +104,7 @@ public class PlcOwnershipManager {
 
 	public PlcOwnershipManager(PlcOwnershipProperties properties, RedisConnectionFactory connectionFactory, InstanceIdentity identity,
 			InstanceRegistry registry, ObjectProvider<PlcConnectorManagementService> connectorService, PlcConfig plcConfig,
-			PlcConnectionStateStore stateStore) {
+			PlcConnectionStateStore stateStore, InternalSignature signature) {
 		this.properties = properties;
 		this.redis = new StringRedisTemplate(connectionFactory);
 		this.identity = identity;
@@ -107,6 +112,7 @@ public class PlcOwnershipManager {
 		this.connectorService = connectorService;
 		this.plcConfig = plcConfig;
 		this.stateStore = stateStore;
+		this.signature = signature;
 	}
 
 	public boolean isEnabled() {
@@ -121,6 +127,12 @@ public class PlcOwnershipManager {
 		}
 		log.info("PLC 소유권 관리를 시작합니다: instance={}, 임대 {}·갱신 {}·검사 {}", identity.id(),
 			properties.getLeaseTtl(), properties.getRenewInterval(), properties.getScanInterval());
+		if (!signature.isConfigured()) {
+			log.warn("TC_INTERNAL_SECRET 이 없어 다른 인스턴스와 PLC 교환을 주고받지 못합니다 — 다른 인스턴스가 연결한 PLC 요청은 실패합니다.");
+		}
+		if (!registry.hasInternalUrl()) {
+			log.warn("tc.instance.internal-url 이 없어 다른 인스턴스가 이 인스턴스로 PLC 교환을 넘기지 못합니다.");
+		}
 		renewer = Executors.newSingleThreadScheduledExecutor(r -> daemon(r, "plc-ownership-renew"));
 		scanner = Executors.newSingleThreadScheduledExecutor(r -> daemon(r, "plc-ownership-scan"));
 		long renew = properties.getRenewInterval().toMillis();
@@ -178,10 +190,12 @@ public class PlcOwnershipManager {
 				"PLC 소유권(Redis)을 확인하지 못해 게시하지 못했습니다: " + name + " — " + e.getMessage());
 		}
 		if (!identity.id().equals(owner)) {
-			log.info("PLC {} 는 다른 인스턴스({})가 연결하고 있습니다 — 게시 상태만 남깁니다.", name, owner);
+			log.info("PLC {} 는 다른 인스턴스({})가 연결하고 있습니다 — 게시 상태만 남기고 요청은 그쪽으로 넘깁니다.", name, owner);
+			pointToOwner(info);
 			return false;
 		}
 		try {
+			PlcAdapterManager.getPlcManager().removeRemote(name);
 			PlcAdapterManager.getPlcManager().loadProgrammableControllerAdapter(props);
 		} catch (ToolControlException e) {
 			releaseLease(name);
@@ -274,14 +288,16 @@ public class PlcOwnershipManager {
 			}
 		}
 
-		// 게시가 풀렸거나 지워진 커넥터 — 연결을 닫고 임대를 반납한다
-		Set<String> local = new HashSet<>(owned);
-		PlcAdapterManager.getPlcManager().adapters().forEach(a -> local.add(a.getName()));
-		for (String name : local) {
+		// 게시가 풀렸거나 지워진 커넥터 — 연결을 닫고 임대를 반납한다. 원격 어댑터는 뺀다
+		Set<String> present = new HashSet<>(owned);
+		PlcAdapterManager.getPlcManager().adapters().forEach(a -> present.add(a.getName()));
+		for (String name : present) {
 			if (!published.containsKey(name) && !controlling.contains(name)) {
-				log.info("PLC {} 는 게시 상태가 아니라 연결을 닫고 임대를 반납합니다.", name);
-				owned.remove(name);
+				if (owned.remove(name) || isLocal(name)) {
+					log.info("PLC {} 는 게시 상태가 아니라 연결을 닫고 임대를 반납합니다.", name);
+				}
 				closeLocal(name);
+				PlcAdapterManager.getPlcManager().removeRemote(name);
 				releaseLease(name);
 			}
 		}
@@ -293,24 +309,66 @@ public class PlcOwnershipManager {
 				continue;
 			}
 			if (owned.contains(name)) {
-				if (PlcAdapterManager.getPlcManager().get(name) == null) {
-					connect(info);  // 임대는 있는데 어댑터가 없음(로드 실패 뒤 등)
+				if (!isLocal(name)) {
+					connect(info);  // 임대는 있는데 로컬 어댑터가 없음(로드 실패 뒤, 강등 뒤 다시 잡음 등)
 				}
 				continue;
 			}
-			if (owned.size() >= limit || stopping) {
-				continue;
-			}
-			if (Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(KEY + name, identity.id(), properties.getLeaseTtl()))) {
+			if (owned.size() < limit && !stopping
+					&& Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(KEY + name, identity.id(), properties.getLeaseTtl()))) {
 				owned.add(name);
 				log.info("PLC {} 의 임대를 얻었습니다 — 연결합니다(이 인스턴스 {}개 / 한도 {}).", name, owned.size(), limit);
 				connect(info);
-			} else if (PlcAdapterManager.getPlcManager().get(name) != null) {
-				// 남의 임대인데 이 인스턴스에 어댑터가 있다(임대 없이 올라간 경우) — 같은 PLC 에 두 곳이 연결하지 않게 닫는다
-				closeLocal(name);
+				continue;
 			}
+			pointToOwner(info);
 		}
 		redisRecovered();
+	}
+
+	/**
+	 * 이 인스턴스가 주인이 아닌 PLC — 주인 인스턴스로 넘기는 원격 어댑터를 둔다(4단계). 주인이 없거나 주인의 내부 주소를 모르면
+	 * 원격 어댑터를 빼 요청이 503 이 되게 한다. 남의 임대인데 로컬 어댑터가 있으면(임대 없이 올라간 경우) 닫는다.
+	 */
+	private void pointToOwner(PlcConnectorInfo info) {
+		String name = info.getName();
+		String owner = redis.opsForValue().get(KEY + name);
+		if (isLocal(name)) {
+			closeLocal(name);
+		}
+		String url = owner == null || owner.equals(identity.id()) ? null : registry.urlOf(owner);
+		if (url == null) {
+			PlcAdapterManager.getPlcManager().removeRemote(name);
+			return;
+		}
+		if (PlcAdapterManager.getPlcManager().get(name) instanceof RemotePlcAdapter current
+				&& owner.equals(current.ownerInstance()) && url.equals(current.ownerUrl())) {
+			return;
+		}
+		try {
+			ProgrammableControllerAdapter prototype = PlcAdapterManager.getPlcManager().newUnconnectedAdapter(info.getAdapterClassName());
+			PlcAdapterManager.getPlcManager().putRemote(name, new RemotePlcAdapter(info.getId(), name, owner, url, prototype,
+				signature, identity.id(), plcConfig.getRequestTimeoutMs(), this::ownerUrlOf));
+			log.info("PLC {} 는 인스턴스 {}({}) 가 연결합니다 — 요청을 그쪽으로 넘깁니다.", name, owner, url);
+		} catch (ToolControlException e) {
+			log.warn("PLC {} 의 원격 어댑터를 만들지 못했습니다: {}", name, e.getMessage());
+			PlcAdapterManager.getPlcManager().removeRemote(name);
+		}
+	}
+
+	/** 지금 주인의 내부 주소 — 원격 어댑터가 409(주인 아님) 뒤에 다시 찾을 때. 주인이 없거나 이 인스턴스면 null */
+	private String ownerUrlOf(String name) {
+		try {
+			String owner = redis.opsForValue().get(KEY + name);
+			return owner == null || owner.equals(identity.id()) ? null : registry.urlOf(owner);
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	private static boolean isLocal(String name) {
+		ProgrammableControllerAdapter adapter = PlcAdapterManager.getPlcManager().get(name);
+		return adapter != null && adapter.isLocal();
 	}
 
 	/** 균형 규칙 — 한 인스턴스가 가질 PLC 수의 상한 {@code ceil(게시 수 / 살아 있는 인스턴스 수)} */
@@ -320,6 +378,7 @@ public class PlcOwnershipManager {
 	}
 
 	private void connect(PlcConnectorInfo info) {
+		PlcAdapterManager.getPlcManager().removeRemote(info.getName());
 		Properties props = PlcAdapterProps.of(info, plcConfig,
 			new PlcConnectionEventDbHandler(connectorService.getObject(), stateStore), true);
 		props.put("fastRetryUntil", System.currentTimeMillis() + properties.getTakeoverFastRetry().toMillis());
@@ -335,8 +394,7 @@ public class PlcOwnershipManager {
 	}
 
 	private void closeLocal(String name) {
-		ProgrammableControllerAdapter adapter = PlcAdapterManager.getPlcManager().get(name);
-		if (adapter == null) {
+		if (!isLocal(name)) {
 			return;
 		}
 		try {

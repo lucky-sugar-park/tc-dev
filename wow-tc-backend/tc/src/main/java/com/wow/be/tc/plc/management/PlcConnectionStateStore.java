@@ -89,6 +89,9 @@ public class PlcConnectionStateStore {
 	@Scheduled(fixedDelayString = "${tc.plc.state.refresh-interval-ms:5000}", initialDelayString = "${tc.plc.state.refresh-interval-ms:5000}")
 	public void refresh() {
 		for (ProgrammableControllerAdapter adapter : PlcAdapterManager.getPlcManager().adapters()) {
+			if (!adapter.isLocal()) {
+				continue;  // 원격 어댑터 — 상태는 연결한 인스턴스가 쓴다
+			}
 			AdapterStatus status = adapter.status();
 			Map<String, String> fields = new LinkedHashMap<>();
 			fields.put("operStatus", status.operStatus().name());

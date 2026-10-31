@@ -39,6 +39,23 @@ public class TcSecurityConfig {
 
 	static final String REQUEST_AND_REPLY_PATH = "/api/v1/ifsvc/request-and-reply";
 
+	/**
+	 * 인스턴스 사이 PLC 교환({@code /internal/**}, docs/plc-ha-design.md §4.1) — 사용자 JWT·API 키를 받지 않는다. 요청 서명은
+	 * 컨트롤러가 본문과 함께 확인한다(서명이 본문 해시를 덮으므로 본문을 읽는 곳에서).
+	 */
+	@Bean
+	@Order(0)
+	public SecurityFilterChain internalChain(HttpSecurity http) throws Exception {
+		http
+			.securityMatcher(PathPatternRequestMatcher.withDefaults().matcher("/internal/**"))
+			.csrf(AbstractHttpConfigurer::disable)
+			.formLogin(AbstractHttpConfigurer::disable)
+			.httpBasic(AbstractHttpConfigurer::disable)
+			.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.authorizeHttpRequests(a -> a.anyRequest().permitAll());
+		return http.build();
+	}
+
 	@Bean
 	@Order(1)
 	public SecurityFilterChain machineApiChain(HttpSecurity http, ApiClientService apiClientService, ApiRequestLimiter limiter,

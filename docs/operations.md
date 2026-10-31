@@ -30,6 +30,9 @@
 | `TC_TRUSTED_PROXIES` | | 리버스 프록시 주소(쉼표). 이 주소에서 온 요청만 `X-Forwarded-For` 를 믿는다 |
 | `TC_CORS_ALLOWED_ORIGIN_PATTERNS` | | 화면 출처 |
 | `TC_BOOTSTRAP_ADMIN_ID`, `TC_BOOTSTRAP_ADMIN_PASSWORD_HASH` | 처음만 | 최초 관리자(§3) |
+| `TC_PLC_OWNERSHIP_ENABLED` | 다중화 때 | `true` 면 PLC 마다 연결할 인스턴스를 Redis 임대로 정한다(기본 false — 한 대 운영). [plc-ha-design.md](plc-ha-design.md) §10 |
+| `TC_INTERNAL_SECRET` | 다중화 때 | 인스턴스 사이 PLC 교환 서명 키 — 모든 인스턴스가 같은 값. 바꿀 때는 옛 값을 `TC_INTERNAL_SECRET_PREVIOUS` 로 함께 주고 차례로 재기동한 뒤 옛 값을 뺀다 |
+| `TC_INSTANCE_INTERNALURL`, `TC_INSTANCE_INTERNALPORT` | 다중화 때 | 이 인스턴스의 내부 주소(예: `http://10.0.1.11:8187`)와 포트. 방화벽은 tc 인스턴스끼리만 그 포트를 연다. 포트를 따로 두지 않으면(0) LB 에서 `/internal/**` 를 막는다 |
 | `TC_SECRET_KEY` | DB_TABLE 전달을 쓰면 | 외부 DB 연결 비밀번호 암호화 키(Base64 32바이트). **바꾸거나 잃으면 저장된 비밀번호를 다시 입력해야 한다** — DB 백업과 따로 보관. [db-table-delivery.md](db-table-delivery.md) §3.1 |
 
 비밀값은 저장소에 두지 않는다. 로컬 개발은 `application-local.yml`(gitignored, 실행 jar 에서 빠짐)을 쓴다.

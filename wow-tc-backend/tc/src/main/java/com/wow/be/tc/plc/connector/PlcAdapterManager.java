@@ -45,6 +45,28 @@ public class PlcAdapterManager {
 		return adapterMap.get(name);
 	}
 	
+	/**
+	 * 원격 어댑터(다른 인스턴스로 넘김)를 넣거나 바꾼다. 이 이름의 로컬 어댑터가 있으면 바꾸지 않는다 — 로컬 연결은 먼저 닫아야 한다.
+	 *
+	 * @return 넣었으면 true
+	 */
+	public synchronized boolean putRemote(String name, ProgrammableControllerAdapter remote) {
+		ProgrammableControllerAdapter current=adapterMap.get(name);
+		if(current!=null && current.isLocal()) {
+			return false;
+		}
+		adapterMap.put(name, remote);
+		return true;
+	}
+
+	/** 원격 어댑터면 뺀다(로컬 어댑터는 그대로) */
+	public synchronized void removeRemote(String name) {
+		ProgrammableControllerAdapter current=adapterMap.get(name);
+		if(current!=null && !current.isLocal()) {
+			adapterMap.remove(name);
+		}
+	}
+
 	public void remove(String name) {
 		log.info("");
 		adapterMap.remove(name);
@@ -110,6 +132,11 @@ public class PlcAdapterManager {
 		this.get(name).resume();
 	}
 	
+	/** 연결하지 않은 어댑터 — 원격 어댑터가 요청·응답 객체를 만들고 응답 프레임을 해석하는 데 쓴다 */
+	public ProgrammableControllerAdapter newUnconnectedAdapter(String className) throws ToolControlException {
+		return createPlcAdapterInstance(className);
+	}
+
 	private ProgrammableControllerAdapter createPlcAdapterInstance(String className) throws ToolControlException {
 		log.debug("PlcAdapterManager.createPlcAdapterInstance(String className)...");
 		try {

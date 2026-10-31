@@ -34,6 +34,22 @@ public interface ProgrammableControllerAdapter {
 	 * PLC READ/WRITE 동기식으로 요청 
 	 */
 	public abstract void request(PlcRequest req, PlcResponse res) throws ToolControlException;
+
+	/**
+	 * 요청 프레임 하나를 PLC 와 주고받는다 — 다른 인스턴스가 넘긴 교환(내부 전달)을 소유 인스턴스가 처리하는 길
+	 * (docs/plc-ha-design.md §3.1). 요청·응답 객체를 만들고 해석하는 일은 요청을 받은 인스턴스가 한다.
+	 *
+	 * @return 응답 프레임
+	 */
+	public abstract byte[] exchangeFrame(String reqId, byte[] frame) throws ToolControlException;
+
+	/** 응답 프레임을 응답 객체에 채운다(헤더·데이터 나누기, 종료 코드) */
+	public abstract void completeResponse(PlcResponse res, byte[] frame) throws ToolControlException;
+
+	/** 이 인스턴스가 PLC 와 직접 연결한 어댑터인가. 원격 어댑터(다른 인스턴스로 넘김)는 false */
+	public default boolean isLocal() {
+		return true;
+	}
 	
 	public abstract boolean testConnection() throws ToolControlException;
 	

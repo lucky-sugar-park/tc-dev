@@ -37,6 +37,16 @@ public class InstanceRegistry {
 		redis.opsForValue().set(KEY + identity.id(), internalUrl.isBlank() ? "-" : internalUrl, ttl);
 	}
 
+	public boolean hasInternalUrl() {
+		return !internalUrl.isBlank();
+	}
+
+	/** 그 인스턴스의 내부 주소. 목록에 없거나(죽음) 주소를 두지 않았으면 null */
+	public String urlOf(String instanceId) {
+		String url = redis.opsForValue().get(KEY + instanceId);
+		return url == null || url.isBlank() || "-".equals(url) ? null : url;
+	}
+
 	/** 살아 있는 인스턴스 수(자신 포함, 최소 1) */
 	public int liveCount() {
 		int count = 0;
