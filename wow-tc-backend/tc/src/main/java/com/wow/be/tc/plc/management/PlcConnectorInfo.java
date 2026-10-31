@@ -64,6 +64,12 @@ public class PlcConnectorInfo extends AbstractInfo {
 		memTypes=new ArrayList<>();
 	}
 
+	/**
+	 * 지금 연결 상태(Redis) — 조회 API 가 응답할 때만 채운다. 아무 인스턴스도 연결하지 않았으면 null.
+	 * {@code status1} 은 운영자 의도(게시·해제), 이것은 실제 연결이다(docs/plc-ha-design.md §3.4). 저장하지 않는다.
+	 */
+	private PlcConnectionState connection;
+
 	public void addPort(int port) {
 		ports.add(port);
 	}

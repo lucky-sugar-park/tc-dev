@@ -10,7 +10,7 @@
 | tc | 8087 (`TC_SERVER_PORT`) | PLC 게이트웨이. 관리 화면(SPA)과 API |
 | vplc | 8088 | 시험용 가상 PLC. 운영에는 쓰지 않는다 |
 | MariaDB | 3306 | DB `tc`. 설정·이력·Quartz(JDBC 저장, 클러스터) |
-| Redis | 6379 | 사용자 토큰, PLC 응답 변경 감지, 요청 제한 집계, 권한 검사 모드. 키 접두어 `tc:` |
+| Redis | 6379 | 사용자 토큰, PLC 응답 변경 감지, 요청 제한 집계, 권한 검사 모드, PLC 연결 상태(`tc:plc-state:*`, 만료 15초). 키 접두어 `tc:` |
 | PLC | 커넥터마다 | MELSEC MC 3E 바이너리. 포트당 연결 1개 |
 
 **tc 를 두 대 이상 띄울 때**: 모든 tc 서버의 시계를 NTP 로 맞춘다 — Quartz 클러스터가 시각으로 실행을 나누고 죽은 인스턴스를 판단한다. 스케줄 Job 은 클러스터 전체에서 한 번에 한 실행이고, PLC 수집·정리 Job 은 앞 실행이 끝나기 전에 다음 실행이 겹치지 않는다(docs/plc-ha-design.md §9.2).
@@ -176,6 +176,8 @@ redis-cli DEL tc:apikey-block:<ip> tc:apikey-fail:<ip>
 ### 8.2 커넥터 상태가 꼬였을 때
 
 증상: 게시 상태인데 요청이 503 이거나 연결·끊김이 반복된다.
+
+먼저 커넥터 조회의 `connection` 을 본다 — `status1` 은 운영자 의도(게시·해제)이고, 실제 연결은 `connection`(살아 있는 채널 수 `activeChannels`, 마지막 오류 `lastError`, 연결한 인스턴스)이다. `connection` 이 없으면 어느 인스턴스도 그 PLC 어댑터를 올리지 않은 것이다.
 
 1. 커넥터를 해제한다(`POST /api/v1/plc-connector/control/release/byName/{name}`).
 2. PLC 쪽에 옛 연결이 남았는지 확인하고(남았으면 끊거나 생존 확인 시간을 기다린다) 다시 게시한다.

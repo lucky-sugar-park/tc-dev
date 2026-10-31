@@ -85,7 +85,7 @@ flowchart TD
 ### 3.4 상태 저장
 
 - 커넥터의 `STATUS1`(PUBLISHED, RELEASED)과 `STATUS2`(RUNNING, STOPPED 등)는 `PLC_CONNECTOR` 표 한 행에 있다.
-- `START` 이벤트는 이 행을 PUBLISHED·RUNNING으로, `STOP`·`SHUTDOWN` 이벤트는 RELEASED·STOPPED로 바꾼다.
+- `START` 이벤트는 이 행을 PUBLISHED·RUNNING으로, `STOP`·`SHUTDOWN` 이벤트는 RELEASED·STOPPED로 바꾼다. → 2026-10-31 없앴다: 이벤트는 이력과 Redis 연결 상태만 남긴다(plc-ha-design.md §3.4.1).
 - 기동할 때 `PlcConnectorLoader`는 **STATUS1이 PUBLISHED인 커넥터만** 다시 올린다.
 
 ### 3.5 다중화 설정

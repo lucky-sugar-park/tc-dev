@@ -32,6 +32,7 @@ import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.plc.management.PlcConfig;
 import com.wow.be.tc.plc.management.PlcConnectionEventDbHandler;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistInfo;
+import com.wow.be.tc.plc.management.PlcConnectionStateStore;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.plc.management.PlcConnectorManagementService;
 
@@ -66,6 +67,9 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 
 	@Autowired
 	private ConfigChangeRecorder changeRecorder;
+
+	@Autowired
+	private PlcConnectionStateStore stateStore;
 
 	@Transactional
 	@Override
@@ -236,7 +240,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 				props.put("plcRetryIntervalIncrement", plcConfig.getRetryIntervalIncrement());
 				props.put("plcRequestTimeoutMs", plcConfig.getRequestTimeoutMs());
 				
-				PlcConnectionEventListener connEventListener=new PlcConnectionEventDbHandler(this);
+				PlcConnectionEventListener connEventListener=new PlcConnectionEventDbHandler(this, stateStore);
 				props.put("connectionListener", connEventListener);
 				
 				PlcAdapterManager.getPlcManager().loadProgrammableControllerAdapter(props);

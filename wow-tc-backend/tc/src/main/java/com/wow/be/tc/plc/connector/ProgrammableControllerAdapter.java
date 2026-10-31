@@ -37,6 +37,9 @@ public interface ProgrammableControllerAdapter {
 	
 	public abstract boolean testConnection() throws ToolControlException;
 	
+	/** 지금 운영 상태·살아 있는 채널 수·마지막 연결 오류 */
+	public abstract AdapterStatus status();
+	
 	public abstract PlcRequest newPlcRequestInstance();
 	
 	public abstract PlcResponse newPlcResponseInstance();	

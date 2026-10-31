@@ -5,7 +5,7 @@
 | 파일 | 내용 | 항목 |
 |---|---|---|
 | `setup_e2e.py` | vplc 를 바라보는 커넥터 `plc-e2e` 와 읽기 인터페이스를 만들고 게시(여러 번 돌려도 됨) | — |
-| `test_plc_adapter.py` | 가짜 PLC 로 늦은 응답·연결 끊김·동시 요청·재게시 (docs/plc-connection-design.md §5) | 10 |
+| `test_plc_adapter.py` | 가짜 PLC 로 늦은 응답·연결 끊김·동시 요청·재게시, 끊김 뒤 연결 상태의 마지막 오류 (docs/plc-connection-design.md §5) | 11 |
 | `test_api_key.py` | API 키 인증·권한·사용량 제한·회전·만료·삭제 (docs/auth-and-audit-design.md §6) | 40 |
 | `test_paths.py` | WRITE·콜백과 허용 목록·스케줄 Job·커넥터 해제 (docs/dispatch-redesign.md §4.1.2) | 17 |
 | `test_config_history.py` | 설정 변경 이력 (§5) | 11 |
@@ -16,6 +16,7 @@
 | `test_redelivery.py` | 관리자 결과 재전송(#11) — 전달 기록 재전송(꺼진 연결 거절·켠 뒤 성공·중복 클릭·유니크 키 "이미 있음"·본문 없는 옛 기록), 응답·오류 기록을 고른 대상으로(전달 조건 무시, 재전송 헤더), 잘못된 요청, 지워진 WebHook, 응답 기록 → callback(원래 요청의 `pushUrl`, 동기 요청은 주소 없음). **`TC_SECRET_KEY`·18090 허용 필요** | 45 |
 | `test_vplc_http_methods.py` | vplc 의 상태를 바꾸는 API 메서드 — 예전 GET 은 405, 삭제는 DELETE·게시·해제·제어는 POST, 없는 가상 PLC 는 404(`ERR_404`). vplc 주소는 `TC_E2E_VPLC_URL` | 31 |
 | `test_webhook_cache.py` | WebHook 캐시(H7) — 다른 인스턴스가 바꾼 주소·지운 WebHook 을 DB 를 직접 고쳐 흉내 내고, 만료(10초) 뒤 따라오는지. 약 25초 걸린다. **18090 허용 필요** | 6 |
+| `test_plc_state.py` | PLC 연결 상태 분리(다중화 2단계) — 조회 응답의 `connection`(Redis), 상태 키 만료·5초 갱신, 해제·게시 때 의도(DB)와 연결 상태(Redis), 이벤트가 DB 상태를 고치지 않음 | 7 |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |
 | `ShutdownViaJmx.java` | JMX 로 Spring Boot 정상 종료 요청(Windows 에서 SIGTERM 대신) | |

@@ -88,6 +88,9 @@ if PHASE == "main":
     check("끊긴 뒤 자동 재연결 → 요청 #6 200, 값 6", s == 200 and b["data"].get("d100") == 6, (s, b))
     s, b = call("GET", "/api/v1/plc-connector/find/byName/plc-fake")
     check("재연결 동안 커넥터는 PUBLISHED 유지", b.get("status1") == "PUBLISHED", (b.get("status1"), b.get("status2")))
+    conn = b.get("connection") or {}
+    check("연결 상태(Redis): 채널 1, 마지막 오류에 끊김이 남음", conn.get("activeChannels") == 1
+          and (conn.get("lastError") or "").startswith("연결 끊김"), conn)
     # 5. 동시 요청 — 채널 1개에서 직렬화되어 값이 섞이지 않는다
     out = []
     def fire():

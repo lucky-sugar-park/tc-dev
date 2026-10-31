@@ -20,6 +20,8 @@ import com.wow.be.framework.persist.PageResponse;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistInfo;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistoryService;
+import com.wow.be.tc.plc.management.PlcConnectionState;
+import com.wow.be.tc.plc.management.PlcConnectionStateStore;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.plc.management.PlcConnectorManagementService;
 
@@ -37,6 +39,9 @@ public class PlcConnectorManagementController {
 	
 	@Autowired
 	private PlcConnectionEventHistoryService plcConnectionEventHistoryService;
+
+	@Autowired
+	private PlcConnectionStateStore connectionStateStore;
 	
 	@RequestMapping(value="/register", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
@@ -74,7 +79,7 @@ public class PlcConnectorManagementController {
 	@ResponseBody
 	public PlcConnectorInfo findPlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) {
 		log.debug("PlcConnectorManagementController.findPlc(long plcConnectorId)...");
-		return plcConnectorManagementService.findPlcConnectorById(plcConnectorId);
+		return withConnection(plcConnectorManagementService.findPlcConnectorById(plcConnectorId));
 	}
 	
 	@RequestMapping(value="/find/byName/{plcConnectorName}", method=RequestMethod.GET)
@@ -82,7 +87,7 @@ public class PlcConnectorManagementController {
 	@ResponseBody
 	public PlcConnectorInfo findPlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) {
 		log.debug("PlcConnectorManagementController.findPlcConnectorByName(String plcConnectorName)...");
-		return plcConnectorManagementService.findPlcConnectorByName(plcConnectorName);
+		return withConnection(plcConnectorManagementService.findPlcConnectorByName(plcConnectorName));
 	}
 	
 	@RequestMapping(value="/search/all", method=RequestMethod.GET)
@@ -90,7 +95,16 @@ public class PlcConnectorManagementController {
 	@ResponseBody
 	public List<PlcConnectorInfo> searchAllPlcConnectores() {
 		log.debug("PlcConnectorManagementController.searchAllPlcConnectores()...");
-		return plcConnectorManagementService.searchAllPlcConnectores();
+		return withConnection(plcConnectorManagementService.searchAllPlcConnectores());
+	}
+
+	/** 커넥터마다 지금 연결 상태(Redis). 아무 인스턴스도 연결하지 않은 커넥터는 빠진다 — 화면이 주기적으로 읽는다 */
+	@RequestMapping(value="/connection-states", method=RequestMethod.GET)
+	@ResponseStatus(value = HttpStatus.OK)
+	@ResponseBody
+	public List<PlcConnectionState> connectionStates() {
+		List<String> names=plcConnectorManagementService.searchAllPlcConnectores().stream().map(PlcConnectorInfo::getName).toList();
+		return List.copyOf(connectionStateStore.find(names).values());
 	}
 	
 	@Requires(action = 'R')
@@ -99,7 +113,7 @@ public class PlcConnectorManagementController {
 	@ResponseBody
 	public List<PlcConnectorInfo> search(@RequestBody Condition cond) {
 		log.debug("PlcConnectorManagementController.search(SearchCondition cond)...");
-		return plcConnectorManagementService.searchPlcConnectores(cond);
+		return withConnection(plcConnectorManagementService.searchPlcConnectores(cond));
 	}
 	
 	@Requires(action = 'X')
@@ -216,5 +230,18 @@ public class PlcConnectorManagementController {
 	public PageResponse<PlcConnectionEventHistInfo> searchPlcConnectionEventHistories(@RequestBody Condition cond) {
 		log.debug("");
 		return plcConnectionEventHistoryService.searchPlcConnectionEventHist(cond);
+	}
+
+	private PlcConnectorInfo withConnection(PlcConnectorInfo info) {
+		if(info!=null) {
+			withConnection(List.of(info));
+		}
+		return info;
+	}
+
+	private List<PlcConnectorInfo> withConnection(List<PlcConnectorInfo> infos) {
+		Map<String, PlcConnectionState> states=connectionStateStore.find(infos.stream().map(PlcConnectorInfo::getName).toList());
+		infos.forEach(info->info.setConnection(states.get(info.getName())));
+		return infos;
 	}
 }

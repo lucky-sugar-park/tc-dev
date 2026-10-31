@@ -20,6 +20,7 @@ import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.PlcRequest;
 import com.wow.be.tc.plc.PlcResponse;
+import com.wow.be.tc.plc.connector.AdapterStatus;
 import com.wow.be.tc.plc.connector.Payload;
 import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
 import com.wow.be.tc.plc.connector.PlcConnectorEvent;
@@ -86,6 +87,12 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 	private boolean startEvenIfDisconnected;
 
 	private volatile PlcConnectorOperStatus operStatus = PlcConnectorOperStatus.UNKNOWN;
+
+	/** 마지막 연결 실패·끊김 — 연결 상태 화면용. 실패마다 이벤트(DB 이력)를 내면 재연결 중에 이력이 쌓이므로 값만 둔다 */
+	private volatile LastError lastError;
+
+	private record LastError(String message, Date at) {
+	}
 
 	/** 멈추는 중이면 false — 닫힌 연결을 다시 잇지 않는다 */
 	private volatile boolean running;
@@ -212,7 +219,9 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			ChannelFuture cf = b.connect(new InetSocketAddress(hostIp, ch.port()),
 				new InetSocketAddress(ch.localVip(), ASSIGN_DYNAMIC_PORT));
 			if (!cf.awaitUninterruptibly(CONNECT_TIMEOUT_MS + 1000L) || !cf.isSuccess()) {
-				log.warn("PLC 연결 실패: {} — {}", ch, cf.cause() != null ? cf.cause().toString() : "시간 초과");
+				String cause = cf.cause() != null ? cf.cause().toString() : "시간 초과";
+				log.warn("PLC 연결 실패: {} — {}", ch, cause);
+				lastError = new LastError("연결 실패 " + ch + ": " + cause, new Date());
 				cf.channel().close();
 				return false;
 			}
@@ -225,6 +234,7 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			return true;
 		} catch (RuntimeException e) {
 			log.warn("PLC 연결 실패: {} — {}", ch, e.toString());
+			lastError = new LastError("연결 실패 " + ch + ": " + e, new Date());
 			return false;
 		}
 	}
@@ -240,6 +250,7 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			return;
 		}
 		log.warn("PLC 연결 끊김: {} — 다시 연결합니다", ch);
+		lastError = new LastError("연결 끊김 " + ch, new Date());
 		submit(() -> {
 			emit(EventType.DISCONNECT, nc, "DISCONNECTED", activeCount() + " EA connections are available.");
 			scheduleReconnect(ch);
@@ -272,6 +283,12 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 		} catch (RejectedExecutionException e) {
 			// 멈추는 중
 		}
+	}
+
+	@Override
+	public AdapterStatus status() {
+		LastError e = lastError;
+		return new AdapterStatus(operStatus, activeCount(), e != null ? e.message() : null, e != null ? e.at() : null);
 	}
 
 	private int activeCount() {

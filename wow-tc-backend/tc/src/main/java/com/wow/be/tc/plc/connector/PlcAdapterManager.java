@@ -1,6 +1,8 @@
 package com.wow.be.tc.plc.connector;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Properties;
@@ -32,6 +34,11 @@ public class PlcAdapterManager {
 	/** 올라와 있는 어댑터 수(헬스 체크용) */
 	public int size() {
 		return adapterMap.size();
+	}
+
+	/** 이 인스턴스에 올라와 있는 어댑터들 */
+	public Collection<ProgrammableControllerAdapter> adapters() {
+		return List.copyOf(adapterMap.values());
 	}
 
 	public ProgrammableControllerAdapter get(String name) {

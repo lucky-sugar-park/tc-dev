@@ -1,6 +1,6 @@
 # PLC 연결 다중화(Active-Active) 설계
 
-> 상태: 설계 확정안 (2026-10-30). 1단계 완료. 결정 H1~H5·H7~H10 확정(2026-10-31, §9.1·§9.2 검토안대로), H6 은 현장 확인 대기.
+> 상태: 설계 확정안 (2026-10-30). 1·2단계 완료. 결정 H1~H5·H7~H10 확정(2026-10-31, §9.1·§9.2 검토안대로), H6 은 현장 확인 대기.
 > 선행 문서: [plc-connection-design.md](plc-connection-design.md) §6(방향), §5(어댑터 결함 수정 — 이 설계의 기반)
 > 대상: `wow-tc-backend/tc`
 
@@ -92,6 +92,19 @@ flowchart TB
 
 - **어댑터 이벤트는 더 이상 DB의 `STATUS1`을 바꾸지 않는다.** 한 인스턴스의 실패가 다른 인스턴스로 번지던 문제가 이것으로 없어진다(plc-connection-design.md §6.1).
 - 화면의 커넥터 목록은 DB의 의도와 Redis의 소유자·연결 상태를 합쳐 보여 준다.
+
+#### 3.4.1 2단계 구현 (2026-10-31)
+
+| 항목 | 내용 |
+|---|---|
+| 의도 | DB `STATUS_1`(PUBLISHED·RELEASED·REGISTERED). 게시·해제 API 만 쓴다. `STATUS_2` 는 **마지막 제어(게시·해제 등) 결과**로 남기고 실제 연결 상태로 쓰지 않는다 |
+| 기동 | `PlcConnectorLoader` 는 `STATUS_1=PUBLISHED` 만 본다(예전에는 `STATUS_2=RUNNING` 도 요구해, 마지막 제어가 실패로 남은 게시 커넥터를 올리지 않았다) |
+| 이벤트 | `PlcConnectionEventDbHandler` 는 이력(`PLC_CONNECTION_HIST`)과 Redis 만 쓴다. 예전의 `START_UPDATE`·`SHUTDOWN_UPDATE` 이력과 DB 상태 갱신은 없앴다 |
+| Redis | 해시 `tc:plc-state:{이름}` — `instance`, `operStatus`, `activeChannels`, `lastEvent`·`lastEventAt`, `lastConnectedAt`, `lastError`·`lastErrorAt`, `updatedAt`. 만료 15초(`tc.plc.state.ttl-ms`), 올라와 있는 어댑터를 5초마다 다시 씀(`tc.plc.state.refresh-interval-ms`). 해제하면 지운다. 정상 종료(이벤트 없음)·사망이면 만료로 사라진다 |
+| 마지막 오류 | 연결 실패는 재시도마다 이벤트(DB 이력)를 내지 않고 어댑터가 값만 들고 있다가(`AdapterStatus`) 5초 갱신 때 남긴다. 끊김은 이벤트로 바로 |
+| 인스턴스 ID | `InstanceIdentity` — `호스트명-기동시각(ms)`. 3단계 임대 값으로 그대로 쓴다 |
+| 조회 API | 커넥터 조회(`find/{id}`, `find/byName`, `search/all`, `search`)에 `connection`(없으면 null) — `status1` 은 의도, `connection` 은 실제. 화면 갱신용 `GET /api/v1/plc-connector/connection-states` |
+| Redis 장애 | 쓰지 못하고 넘어간다(PLC 처리 계속), 조회의 `connection` 은 null. 경고는 실패가 시작·회복될 때만 |
 
 ## 4. 인스턴스 간 전달
 
@@ -280,7 +293,7 @@ sequenceDiagram
 
 1. **기반**: `/api/health`, `server.shutdown=graceful`, 종료 순서(`SmartLifecycle`). 단일 인스턴스에서도 이득이다. — **완료(2026-10-30)**: `HealthController`, `PlcShutdownLifecycle`, 단계별 상한 25초. 진행 중 요청이 끝난 뒤 PLC 연결이 닫히는 것을 확인했다(e2e `test_shutdown.py`).
    - **1-1 다중화 전 정리**: H7(WebHook 캐시), H10(스케줄 Job 겹침 방지). 단일 인스턴스에도 이득이다. — **완료(2026-10-31)**: `WebHookManager` 를 10초 만료·스레드 안전 캐시로(없는 이름도 기억), `PlcGeneralScheduleJob`·`DataTableFlashJob` 에 `@DisallowConcurrentExecution`. e2e `test_webhook_cache.py`, 단위 `ScheduleJobConcurrencyTest`.
-2. **상태 분리**: 어댑터 이벤트가 DB `STATUS1`을 바꾸지 않게 하고, Redis 연결 상태를 남긴다. 화면 표시를 바꾼다.
+2. **상태 분리**: 어댑터 이벤트가 DB `STATUS1`을 바꾸지 않게 하고, Redis 연결 상태를 남긴다. 화면 표시를 바꾼다. — **완료(2026-10-31)**: §3.4.1. 화면은 새 프론트에서 `connection` 을 쓴다. e2e `test_plc_state.py`.
 3. **소유권 관리자**: 단일 인스턴스에서 임대를 잡고 지금처럼 동작하는지 확인한다.
 4. **원격 어댑터와 내부 전달**(HMAC 체인)
 5. **두 인스턴스 시험**(§8), 그 뒤 운영 문서(재기동 절차, PLC 설정)

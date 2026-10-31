@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import com.wow.be.framework.Condition;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.Types.PlcConnectorInfoStatus;
+import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.connector.PlcAdapterManager;
 import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
 
@@ -24,6 +25,9 @@ public class PlcConnectorLoader {
 	
 	@Autowired
 	private PlcConfig plcConfig;
+
+	@Autowired
+	private PlcConnectionStateStore stateStore;
 	
 	@PostConstruct
 	public void init() {
@@ -45,7 +49,8 @@ public class PlcConnectorLoader {
 				props.put("headerReqTemplate", plcInfo.getCommProtocolHeadersReqTemplate());
 				props.put("headerResTemplate", plcInfo.getCommProtocolHeadersResTemplate());
 				props.put("infoStatus", plcInfo.getStatus1().name());
-				props.put("operStatus", plcInfo.getStatus2().name());
+				// 운영자 의도(STATUS1=PUBLISHED)만 본다 — STATUS2 는 마지막 제어 결과일 뿐 실제 연결 상태가 아니다(Redis, docs/plc-ha-design.md §3.4)
+				props.put("operStatus", PlcConnectorOperStatus.RUNNING.name());
 				props.put("plcRetryCount", plcConfig.getRetryCount());
 				props.put("plcRetryIntervalRate", plcConfig.getRetryIntervalRate());
 				props.put("plcRetryIntervalIncrement", plcConfig.getRetryIntervalIncrement());
@@ -53,7 +58,7 @@ public class PlcConnectorLoader {
 				// 기동 때는 PLC 가 아직 안 떠 있어도 어댑터를 올리고 뒤에서 연결한다 — 예전에는 재시도를 다 쓰면 아래에서 앱이 종료됐다
 				props.put("startEvenIfDisconnected", Boolean.TRUE);
 				
-				PlcConnectionEventListener connEventListener=new PlcConnectionEventDbHandler(plcManagementService);
+				PlcConnectionEventListener connEventListener=new PlcConnectionEventDbHandler(plcManagementService, stateStore);
 				props.put("connectionListener", connEventListener);
 				
 				connectorManager.loadProgrammableControllerAdapter(props);
