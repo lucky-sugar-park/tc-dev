@@ -117,3 +117,5 @@ Write-Host "  index → $got" -ForegroundColor Green
 Step '완료'
 Write-Host '재기동 없이 반영됩니다 — 브라우저 새로 고침으로 확인하세요.' -ForegroundColor Green
 if ($UiDir -eq (Join-Path $repo 'run\ui')) { Write-Host 'tc 가 떠 있지 않다면: ./scripts/run-backend.ps1' -ForegroundColor Green }
+# robocopy 의 성공 코드(1~7)가 이 스크립트의 종료 코드로 새지 않게
+exit 0
