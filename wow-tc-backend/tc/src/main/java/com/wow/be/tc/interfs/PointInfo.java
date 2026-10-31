@@ -33,5 +33,19 @@ public class PointInfo {
 
 	private ByteOrder wordOrder;
 
+	/** 배율 — 공학 값 = 원시 값 × scale + offset (숫자형만, docs/interface-detail-design.md §9.2). 비면 1 */
+	private Double scale;
+
+	/** 오프셋 — 비면 0 */
+	private Double offset;
+
+	/** 단위(표시용, 예 ℃) — 응답에는 싣지 않는다 */
+	private String unit;
+
+	/** 쓰기 값 범위(공학 값) — 벗어나면 400 */
+	private Double min;
+
+	private Double max;
+
 	private String description;
 }

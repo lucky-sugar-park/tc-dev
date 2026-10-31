@@ -26,11 +26,14 @@
 | 필드 | 내용 | 예 |
 |---|---|---|
 | `name` | 요청·응답 `data` 의 키 | `temp` |
-| `address` | 프로토콜별 주소 — MELSEC `D100`·`M10`·`X1F`(16진)·`ZR20000`, Modbus `HR1`·`40001`·`IR10`·`CO1`·`DI5`. 워드 안 비트 `D100.3`·`HR1.15` 는 C단계 예정(읽기 전용, [word-bit-points.md](word-bit-points.md)) | `D5004` |
+| `address` | 프로토콜별 주소 — MELSEC `D100`·`M10`·`X1F`(16진)·`ZR20000`, Modbus `HR1`·`40001`·`IR10`·`CO1`·`DI5`. 워드 안 비트 `D100.3`·`HR1.15`(BOOL, 읽기 전용 — [word-bit-points.md](word-bit-points.md)) | `D5004` |
 | `type` | `BOOL`·`INT16`·`UINT16`·`INT32`·`UINT32`·`INT64`·`FLOAT32`·`FLOAT64`·`STRING`·`BYTES` | `FLOAT32` |
 | `count` | 배열 길이(기본 1) — 값이 JSON 배열 | `5` |
 | `length` | `STRING`·`BYTES` 의 바이트 수 | `16` |
 | `byteOrder`·`wordOrder` | 이 점만 커넥터 기본 순서를 바꿀 때 | `LITTLE` |
+| `scale`·`offset` | 공학 값 = 원시 × scale + offset(숫자형만). 읽으면 공학 값, 쓰면 거꾸로 풀어 정수형은 반올림 | `0.1` |
+| `unit` | 표시용 단위(응답에는 없음) | `℃` |
+| `min`·`max` | 쓰기 값 범위(공학 값) — 벗어나면 400 | `0`·`100` |
 
 - **READ**: 점들을 읽어 `data{이름: 값}` 으로 돌려준다.
 - **WRITE**: 요청 `data` 에서 점 이름의 값을 꺼내 쓴다(빠지면 400).
@@ -45,7 +48,7 @@
 |---|---|---|
 | MELSEC MC | 커넥터 `frame` — `3E_BINARY`(기본)·`3E_ASCII`·`4E_BINARY`·`4E_ASCII` | Q·L·iQ-R 이더넷 모듈. 다른 국·네트워크 PLC 로 중계는 인터페이스 settings `networkNo`·`stationNo`. **1E 프레임(A 호환)만 받는 오래된 장비는 아직 안 된다** — 필요하면 드라이버에 1E 를 더한다 |
 | Modbus TCP | FC 1·2·3·4(읽기), 5·6·15·16(쓰기) | 게이트웨이 뒤 장치는 인터페이스 settings `unitId`, 쓰기 함수 고정은 `writeFunction` |
-| OPC UA | (계획 D단계) | 주소 = NodeId |
+| OPC UA | 서비스(Read·Write·Subscription) — 세션은 Milo 가 유지, SecurityPolicy None·익명(D1) | 주소 = NodeId(`ns=2;s=Line1.Temp`). 인터페이스 settings `accessMode=SUBSCRIBE` 면 값이 바뀔 때 전달 정의로 보낸다. 점 편집기 **노드 찾아보기**. 설계 [opcua-design.md](opcua-design.md) |
 
 ## 4. 예제 (로컬 tc, 커넥터 `plc-e2e` — 가상 PLC `vplc-e2e` 의 D 메모리)
 

@@ -1,0 +1,17 @@
+// vplc-opcua — 가상 OPC UA 서버 (실행형, REST :8092, OPC UA 기본 :4840)
+//
+// tc 의 OPC UA 드라이버 개발·e2e 시험 상대(Eclipse Milo 서버). 태그(변수 노드)를 설정으로 만들고, 값을 흉내(ramp·sine·toggle·random)로 바꿀 수 있다.
+// DB·사내 프레임워크를 쓰지 않는다 — 설정은 application.yml, 값 보기·바꾸기는 REST(docs/virtual-devices.md).
+
+apply plugin: 'org.springframework.boot'
+
+// 루트가 모든 서브프로젝트에 넣는 사내 프레임워크(보안·JPA 등)를 쓰지 않는다 — 혼자 뜨는 시험 장비
+configurations.configureEach {
+    exclude group: 'com.wow.be', module: 'wow-mes-backend-framework-core'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.eclipse.milo:milo-sdk-server:1.1.8'
+    testImplementation 'org.eclipse.milo:milo-sdk-client:1.1.8'
+}

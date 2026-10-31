@@ -233,6 +233,19 @@ public class PlcConnectorManagementController {
 	 * 본문 {@code { "points": [ { "name", "address", "type", "count", "length" } ] }} → {@code { "values", "plcStatus", "elapsedMs" }}.
 	 * PLC 가 오류로 답하면 200 + plcStatus(code ≠ 0).
 	 */
+	/** 본문 {@code { "nodeId": "ns=2;s=Line1" }}(비우면 Objects 폴더) → 자식 노드 — OPC UA 커넥터만(docs/opcua-design.md O10) */
+	public record BrowseRequest(String nodeId) {
+	}
+
+	@Requires(action = 'R')
+	@RequestMapping(value="/browse/byName/{plcConnectorName}", method=RequestMethod.POST)
+	@ResponseStatus(value=HttpStatus.OK)
+	@ResponseBody
+	public List<com.wow.be.tc.plc.connector.opcua.OpcUaTools.BrowseNode> browse(@PathVariable("plcConnectorName") String plcConnectorName,
+			@RequestBody(required=false) BrowseRequest request) throws ToolControlException {
+		return plcConnectorManagementService.browse(plcConnectorName, request!=null ? request.nodeId() : null);
+	}
+
 	@Requires(action = 'X')
 	@RequestMapping(value="/test-read/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value=HttpStatus.OK)

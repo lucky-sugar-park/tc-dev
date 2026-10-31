@@ -242,8 +242,9 @@ try:
                     tok["ROLE_VIEWER"])
     check("시험 읽기: 틀린 주소 400, 없는 커넥터 404, 조회자 403", s == 400 and s2 == 404 and s3 == 403, (s, b, s2, b2, s3))
     s, b, _ = call("GET", "/api/v1/plc-connector/protocols", token=tok["ROLE_VIEWER"])
-    check("프로토콜 설명: MELSEC 먼저, Modbus, 설정 항목·영역",
-          s == 200 and [p["protocol"] for p in b] == ["MELSEC_MC", "MODBUS_TCP"] and "rawSupported" not in b[0]
+    check("프로토콜 설명: MELSEC·Modbus·OPC UA 차례, 설정 항목·영역",
+          s == 200 and [p["protocol"] for p in b] == ["MELSEC_MC", "MODBUS_TCP", "OPC_UA"] and "rawSupported" not in b[0]
+          and b[2]["areas"] == [] and any(x["key"] == "accessMode" for x in b[2]["interfaceSettings"])
           and any(x["key"] == "frame" and "4E_BINARY" in x["options"] for x in b[0]["settings"])
           and any(a["prefix"] == "IR" and a["readOnly"] for a in b[1]["areas"]), (s, b))
 

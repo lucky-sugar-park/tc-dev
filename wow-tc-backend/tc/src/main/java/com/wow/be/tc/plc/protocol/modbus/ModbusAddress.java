@@ -12,9 +12,20 @@ import java.util.regex.Pattern;
  *       따른다: 1 이면 {@code HR1} 이 프로토콜 주소 0, 0 이면 {@code HR0} 이 0.</li>
  *   <li>Modicon 표기 {@code 40001}(HR)·{@code 30001}(IR)·{@code 00001}(CO)·{@code 10001}(DI) — 5자리(…9999) 또는
  *       6자리(…65536). 늘 1부터 센다.</li>
+ *   <li>레지스터 뒤 {@code .비트}(10진 0~15) — 레지스터 안의 비트 하나({@code HR1.15}, {@code 40001.3}, docs/word-bit-points.md).
+ *       비트가 없으면 {@code bit} 는 -1.</li>
  * </ul>
  */
-public record ModbusAddress(Table table, int offset) {
+public record ModbusAddress(Table table, int offset, int bit) {
+
+	public ModbusAddress(Table table, int offset) {
+		this(table, offset, -1);
+	}
+
+	/** 레지스터 안의 비트인지 */
+	public boolean isWordBit() {
+		return bit >= 0;
+	}
 
 	/** 영역 — 레지스터(16비트) 둘, 비트 둘. 입력 영역은 읽기만 된다 */
 	public enum Table {
@@ -55,6 +66,19 @@ public record ModbusAddress(Table table, int offset) {
 			throw new IllegalArgumentException("Modbus 주소가 없습니다");
 		}
 		String t = text.trim().toUpperCase(Locale.ROOT);
+		int dot = t.indexOf('.');
+		if (dot >= 0) {
+			ModbusAddress word = parse(t.substring(0, dot), addressBase);
+			String b = t.substring(dot + 1);
+			if (word.table().isBit()) {
+				throw new IllegalArgumentException("코일·이산 입력(" + word.table() + ")에는 .비트를 붙이지 않습니다 — " + text + " (레지스터만: HR1.15)");
+			}
+			int bit = b.matches("[0-9]{1,2}") ? Integer.parseInt(b) : -1;
+			if (bit < 0 || bit > 15) {
+				throw new IllegalArgumentException("Modbus 비트 번호는 10진 0~15 입니다: " + text);
+			}
+			return new ModbusAddress(word.table(), word.offset(), bit);
+		}
 		Matcher m = PREFIXED.matcher(t);
 		if (m.matches()) {
 			Table table = switch (m.group(1)) {
@@ -75,7 +99,7 @@ public record ModbusAddress(Table table, int offset) {
 			};
 			return of(table, Integer.parseInt(m.group(2)) - 1, text);
 		}
-		throw new IllegalArgumentException("Modbus 주소는 HR100·IR5·CO0·DI3(영역+번호) 또는 40001·30001·00001·10001(Modicon) 입니다: " + text);
+		throw new IllegalArgumentException("Modbus 주소는 HR100·IR5·CO0·DI3(영역+번호) 또는 40001·30001·00001·10001(Modicon), 레지스터 안 비트는 HR1.15 입니다: " + text);
 	}
 
 	private static ModbusAddress of(Table table, int offset, String text) {

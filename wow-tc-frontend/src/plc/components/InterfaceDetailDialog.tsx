@@ -93,6 +93,10 @@ export function InterfaceDetailDialog({ name, connectors, onClose }: {
                       <TableCell>{t('i18n.tc.point.length', '길이')}</TableCell>
                       <TableCell>{t('i18n.tc.point.byteOrder', '바이트 순서')}</TableCell>
                       <TableCell>{t('i18n.tc.point.wordOrder', '워드 순서')}</TableCell>
+                      <TableCell>{t('i18n.tc.point.scale', '배율')}</TableCell>
+                      <TableCell>{t('i18n.tc.point.offset', '오프셋')}</TableCell>
+                      <TableCell>{t('i18n.tc.point.unit', '단위')}</TableCell>
+                      <TableCell>{t('i18n.tc.point.range', '쓰기 범위')}</TableCell>
                       <TableCell>{t('i18n.tc.common.description', '설명')}</TableCell>
                     </TableRow>
                   </TableHead>
@@ -106,6 +110,10 @@ export function InterfaceDetailDialog({ name, connectors, onClose }: {
                         <TableCell>{p.length || ''}</TableCell>
                         <TableCell>{p.byteOrder ?? ''}</TableCell>
                         <TableCell>{p.wordOrder ?? ''}</TableCell>
+                        <TableCell>{p.scale ?? ''}</TableCell>
+                        <TableCell>{p.offset ?? ''}</TableCell>
+                        <TableCell>{p.unit ?? ''}</TableCell>
+                        <TableCell>{p.min != null || p.max != null ? `${p.min ?? ''}~${p.max ?? ''}` : ''}</TableCell>
                         <TableCell>{p.description ?? ''}</TableCell>
                       </TableRow>
                     ))}

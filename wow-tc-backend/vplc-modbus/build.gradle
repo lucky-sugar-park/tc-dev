@@ -1,0 +1,15 @@
+// vplc-modbus — 가상 Modbus TCP 장치 (실행형, REST :8091, Modbus 기본 :15020)
+//
+// tc 의 Modbus 드라이버 개발·e2e 시험 상대. 장치(단위 ID)마다 코일·이산 입력·입력 레지스터·보유 레지스터를 메모리에 둔다.
+// DB·사내 프레임워크를 쓰지 않는다 — 설정은 application.yml, 값 보기·바꾸기는 REST(docs/virtual-devices.md).
+
+apply plugin: 'org.springframework.boot'
+
+// 루트가 모든 서브프로젝트에 넣는 사내 프레임워크(보안·JPA 등)를 쓰지 않는다 — 혼자 뜨는 시험 장비
+configurations.configureEach {
+    exclude group: 'com.wow.be', module: 'wow-mes-backend-framework-core'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+}

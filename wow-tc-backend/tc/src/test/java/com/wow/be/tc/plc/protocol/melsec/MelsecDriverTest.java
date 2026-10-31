@@ -258,4 +258,42 @@ class MelsecDriverTest {
 		assertThat(split).extracting(PlannedRequest::target).containsExactly("D0", "D3");
 		assertThat(split.get(1).points()).containsExactly("b", "c");
 	}
+
+	@Test
+	void 워드_안_비트_주소() {
+		assertThat(MelsecAddress.parse("D100.3")).isEqualTo(new MelsecAddress(MelsecDevice.D, 100, 3));
+		assertThat(MelsecAddress.parse("d100.a")).isEqualTo(new MelsecAddress(MelsecDevice.D, 100, 10));
+		assertThat(MelsecAddress.parse("W1A.F").toString()).isEqualTo("W1A.F");
+		assertThatThrownBy(() -> MelsecAddress.parse("D100.10")).hasMessageContaining("16진 한 자리");
+		assertThatThrownBy(() -> MelsecAddress.parse("D100.G")).hasMessageContaining("16진 한 자리");
+		assertThatThrownBy(() -> MelsecAddress.parse("M10.3")).hasMessageContaining("비트 디바이스");
+		assertThatThrownBy(() -> driver.validatePoint(point("a", "D100.3", PointType.INT16), InterfaceType.READ)).hasMessageContaining("BOOL");
+		assertThatThrownBy(() -> driver.validatePoint(point("a", "D100.3", PointType.BOOL, 2, 0), InterfaceType.READ)).hasMessageContaining("개수 1");
+		assertThatThrownBy(() -> driver.validatePoint(point("a", "D100.3", PointType.BOOL), InterfaceType.WRITE)).hasMessageContaining("읽기만");
+		driver.validatePoint(point("a", "D100.3", PointType.BOOL), InterfaceType.READ);
+	}
+
+	@Test
+	void 워드_안_비트는_그_워드와_묶어_한_번_읽는다() throws ToolControlException {
+		// D100 = 0x000A(비트 1·3 켜짐), D101 = 7 → D100 부터 2워드 한 번
+		Fake fake = new Fake(ok("0A00 0700"));
+		PlcResult r = driver.execute(new PlcOperation(MelsecDriver.PROTOCOL, binary, PlcOperation.Kind.READ,
+			List.of(point("alarm", "D100.0", PointType.BOOL), point("door", "D100.1", PointType.BOOL),
+				point("run", "D100.3", PointType.BOOL), point("count", "D101", PointType.INT16)), Map.of(), "t"), fake::exchange);
+		assertThat(fake.sent).hasSize(1);
+		assertThat(fake.sent.get(0)).endsWith("640000A80200");
+		assertThat(r.values()).containsEntry("alarm", false).containsEntry("door", true).containsEntry("run", true).containsEntry("count", 7);
+		List<PlannedRequest> plan = driver.plan(new PlcOperation(MelsecDriver.PROTOCOL, binary, PlcOperation.Kind.READ,
+			List.of(point("hi", "D100.F", PointType.BOOL)), Map.of(), "p"));
+		assertThat(plan).hasSize(1);
+		assertThat(plan.get(0).target()).isEqualTo("D100");
+		assertThat(plan.get(0).points()).containsExactly("hi");
+	}
+
+	@Test
+	void 워드_안_비트_쓰기는_실행에서도_거절() {
+		assertThatThrownBy(() -> driver.execute(new PlcOperation(MelsecDriver.PROTOCOL, binary, PlcOperation.Kind.WRITE,
+			List.of(point("run", "D100.3", PointType.BOOL)), Map.of("run", true), "t"), new Fake()::exchange))
+			.isInstanceOf(ToolControlException.class).hasMessageContaining("읽기만");
+	}
 }

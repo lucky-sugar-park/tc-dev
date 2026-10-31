@@ -1,0 +1,27 @@
+# vplc-modbus — 가상 Modbus TCP 장치 (docs/virtual-devices.md)
+#
+# DB 를 쓰지 않는다 — 장치·값은 메모리. 다시 띄우면 값은 0 으로 돌아간다.
+# 장치는 아래 목록으로 만들고, 실행 중에는 REST(/api/v1/modbus/devices)로 더하고 지운다.
+
+server:
+  port: ${VPLC_MODBUS_HTTP_PORT:8091}
+  shutdown: graceful
+
+spring:
+  application:
+    name: wow-tc-vplc-modbus
+
+vplc-modbus:
+  # 로컬 시험 장비 — 바깥에서 붙지 않게 기본은 127.0.0.1
+  bind-address: ${VPLC_MODBUS_BIND:127.0.0.1}
+  devices:
+    # tc e2e 기본 장치 — 커넥터 plc-modbus-vplc(127.0.0.1:15020, unitId 1)
+    - name: mb-e2e
+      port: 15020
+      unit-id: 1
+      size: 10000
+    # 같은 포트의 게이트웨이 뒤 두 번째 장치(인터페이스 settings unitId 2 시험)
+    - name: mb-e2e-2
+      port: 15020
+      unit-id: 2
+      size: 1000

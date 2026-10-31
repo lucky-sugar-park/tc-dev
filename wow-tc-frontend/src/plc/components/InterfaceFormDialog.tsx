@@ -3,6 +3,7 @@ import {
   Alert, Box, Button, Checkbox, Dialog, DialogContent, FormControlLabel, MenuItem, Stack, Tab, Tabs, TextField, Typography,
 } from '@mui/material';
 import { DialogFooter, DialogTitleClose, DraggablePaper, useI18n } from 'wow-mes-frontend-shared';
+import { OpcUaBrowseDialog } from './OpcUaBrowseDialog';
 import { PointsEditor, emptyPoint } from './PointsEditor';
 import { RequestPlanView } from './RequestPlanView';
 import { SettingsFields, settingText, settingsFromText } from './SettingsFields';
@@ -30,6 +31,7 @@ export function InterfaceFormDialog({ open, initial, connectors, protocols, onCl
   const [settingValues, setSettingValues] = useState<Record<string, string>>({});
   const [nameError, setNameError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>('basic');
+  const [browseOpen, setBrowseOpen] = useState(false);
 
   const connector = connectors.find((x) => x.name === v?.plcName);
   const protocol = useMemo(
@@ -136,7 +138,17 @@ export function InterfaceFormDialog({ open, initial, connectors, protocols, onCl
                 {t('i18n.tc.interface.points', '점')} — {protocol?.label ?? ''}
                 {v.interfaceType === 'WRITE' ? ` · ${t('i18n.tc.interface.writeHelp', '요청 data 의 점 이름 값을 쓴다')}` : ` · ${t('i18n.tc.interface.readHelp', '읽은 값을 data 의 점 이름으로 돌려준다')}`}
               </Typography>
+              {protocol?.protocol === 'OPC_UA' && (
+                <Box>
+                  <Button size="small" variant="outlined" onClick={() => setBrowseOpen(true)} disabled={!v.plcName}>
+                    {t('i18n.tc.opcua.browse', '노드 찾아보기')}
+                  </Button>
+                </Box>
+              )}
               <PointsEditor points={v.points ?? []} onChange={(pts) => set({ points: pts })} protocol={protocol} writeInterface={v.interfaceType === 'WRITE'} />
+              <OpcUaBrowseDialog open={browseOpen} connector={v.plcName} existing={(v.points ?? []).map((p) => p.address)}
+                onClose={() => setBrowseOpen(false)}
+                onAdd={(pts) => set({ points: [...(v.points ?? []).filter((p) => p.name || p.address), ...pts] })} />
             </>
           )}
           {/* 저장 전 정의(설정·점 포함)로 — 버튼을 눌러야 부른다 */}

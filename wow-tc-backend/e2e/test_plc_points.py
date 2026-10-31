@@ -163,8 +163,8 @@ try:
     con.update({"name": f"e2e-proto-{RUN}", "ports": [15999], "published": False, "status1": "REGISTERED", "status2": "STOPPED"})
     s, b = call("POST", "/api/v1/plc-connector/register", dict(con, protocol="MELSEC_MC", settings={"frame": "1E_BINARY"}))
     check("커넥터 설정 거절 400 — 없는 프레임", s == 400 and "frame" in str(b), (s, b))
-    s, b = call("POST", "/api/v1/plc-connector/register", dict(con, protocol="OPC_UA", settings={}))
-    check("커넥터 거절 400 — 아직 없는 프로토콜", s == 400 and "프로토콜" in str(b), (s, b))
+    s, b = call("POST", "/api/v1/plc-connector/register", dict(con, protocol="S7", settings={}))
+    check("커넥터 거절 400 — 지원하지 않는 프로토콜(S7)", s == 400 and "프로토콜" in str(b), (s, b))
     s, b = call("POST", "/api/v1/plc-connector/register", dict(con, protocol="MELSEC_MC", settings={"ioNo": "0x03E0"}))
     got = call("GET", f"/api/v1/plc-connector/find/byName/{con['name']}")[1]
     check("커넥터 등록 → 설정 기본값 채움(frame·pcNo), 16진 입력", s == 200 and got.get("protocol") == "MELSEC_MC"
@@ -201,13 +201,56 @@ try:
     s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, settings={"frame": "4E_BINARY"})})
     check("settings 에 덮어쓸 수 없는 키(frame) 400", s == 400 and "없는 항목" in str(b), (s, b))
     name = f"e2e.pts.settings.{RUN}"
-    s, b = call("POST", "/api/v1/ifsvc/management/register", dict(draft, name=name, points=pts[:1], use=True, sync=True, reply=True,
+    s, b = call("POST", "/api/v1/ifsvc/management/register", dict(draft, name=name, points=pts[:1], use=True,
                                                               settings={"monitoringTimer": 32}))
     created.append(name)
     got = find(name)
     check("settings 등록·조회 — monitoringTimer 32", s == 200 and isinstance(got, dict) and got.get("settings") == {"monitoringTimer": 32}, (s, got))
     s, r = plc(name)
     check("settings 인터페이스 읽기 200(감시 타이머만 바뀜)", s == 200 and r.get("success") is True, (s, r))
+
+    # 10. C단계 — 워드 안 비트(D3100.3)·배율·오프셋·단위·쓰기 범위(docs/interface-detail-design.md §9)
+    raw = f"e2e.pts.raw.{RUN}"
+    s, b = register(raw, "WRITE", [{"name": "flags", "address": "D3100", "type": "UINT16"},
+                                   {"name": "t1", "address": "D3101", "type": "INT16"}])
+    created.append(raw)
+    s, w = plc(raw, {"flags": 10, "t1": 253})          # 10 = 비트 1·3 켜짐
+    check("C: 원시 값 쓰기 200", s == 200 and w.get("success") is True, (s, w))
+    sc = f"e2e.pts.scaled.{RUN}"
+    s, b = register(sc, "READ", [{"name": "b0", "address": "D3100.0", "type": "BOOL"},
+                                 {"name": "b1", "address": "D3100.1", "type": "BOOL"},
+                                 {"name": "b3", "address": "d3100.3", "type": "BOOL"},
+                                 {"name": "temp", "address": "D3101", "type": "INT16", "scale": 0.1, "unit": "℃"}])
+    check("C: 비트·배율 READ 등록 200", s == 200, (s, b))
+    created.append(sc)
+    got = find(sc)
+    check("C: 조회에 scale·unit", isinstance(got, dict) and got["points"][3].get("scale") == 0.1 and got["points"][3].get("unit") == "℃", got)
+    s, r = plc(sc)
+    check("C: 비트 b0=false b1=true b3=true, temp=25.3(253×0.1)", s == 200 and r.get("data") == {"b0": False, "b1": True, "b3": True, "temp": 25.3},
+          (s, r.get("data") if isinstance(r, dict) else r))
+    s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": find(sc)})
+    reqs = b.get("requests", []) if isinstance(b, dict) else []
+    check("C: 미리보기 — D3100 부터 2워드 한 번(비트 점 셋 + temp)", s == 200 and len(reqs) == 1 and reqs[0].get("target") == "D3100"
+          and reqs[0].get("count") == 2, (s, b))
+    ws = f"e2e.pts.wscaled.{RUN}"
+    s, b = register(ws, "WRITE", [{"name": "set", "address": "D3102", "type": "INT16", "scale": 0.1, "offset": 0, "min": 0, "max": 100, "unit": "℃"}],
+                    read_back=True)
+    created.append(ws)
+    s, w = plc(ws, {"set": 36.6})
+    check("C: 배율 쓰기 36.6 → readBack 36.6", s == 200 and w.get("data") == {"set": 36.6}, (s, w))
+    chk = f"e2e.pts.chk.{RUN}"
+    register(chk, "READ", [{"name": "set", "address": "D3102", "type": "INT16"}])
+    created.append(chk)
+    s, r = plc(chk)
+    check("C: PLC 에는 원시 366", r.get("data") == {"set": 366}, r)
+    s, w = plc(ws, {"set": 100.1})
+    check("C: 범위 밖(100.1 > 100) 400", s == 400 and "범위" in str(w), (s, w))
+    s, b = register(f"e2e.pts.wbit.{RUN}", "WRITE", [{"name": "b", "address": "D3100.3", "type": "BOOL"}])
+    check("C: 워드 안 비트 WRITE 등록 400(읽기만)", s == 400 and "읽기만" in str(b), (s, b))
+    s, b = register(f"e2e.pts.badscale.{RUN}", "READ", [{"name": "b", "address": "M0", "type": "BOOL", "scale": 2}])
+    check("C: BOOL 에 배율 400", s == 400 and "숫자형" in str(b), (s, b))
+    s, b = register(f"e2e.pts.badbit.{RUN}", "READ", [{"name": "b", "address": "D3100.10", "type": "BOOL"}])
+    check("C: MELSEC 비트 번호 10진(.10) 400", s == 400 and "16진" in str(b), (s, b))
 
 finally:
     for name in created:

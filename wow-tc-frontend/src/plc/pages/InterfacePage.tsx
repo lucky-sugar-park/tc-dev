@@ -121,7 +121,7 @@ export default function InterfacePage(): ReactElement {
     { field: 'plcName', headerName: t('i18n.tc.interface.plc', 'PLC 커넥터'), width: 140 },
     {
       field: 'points', headerName: t('i18n.tc.interface.points', '점'), width: 240, sortable: false,
-      valueGetter: (_v, r) => (r.points ?? []).map((p) => `${p.name}=${p.address}`).join(', '),
+      valueGetter: (_v, r) => (r.points ?? []).map((p) => `${p.name}=${p.address}${p.unit ? `(${p.unit})` : ''}`).join(', '),
     },
     {
       field: 'use', headerName: t('i18n.tc.interface.use', '사용'), width: 80,

@@ -21,6 +21,7 @@ import com.wow.be.tc.plc.protocol.ProtocolDescriptor;
 import com.wow.be.tc.plc.protocol.PointType;
 import com.wow.be.tc.plc.protocol.ValueCodec;
 import com.wow.be.tc.plc.protocol.WireProtocol;
+import com.wow.be.tc.plc.protocol.WordBits;
 
 /**
  * MELSEC MC 프로토콜 3E·4E 드라이버 (docs/plc-protocol-design.md §6.1). 프레임 조립·해석은 {@link McFrames}.
@@ -31,6 +32,8 @@ import com.wow.be.tc.plc.protocol.WireProtocol;
  *   <li>쓰기: 워드 디바이스는 같은 디바이스의 바로 이어진 점끼리 워드 일괄 쓰기(1401/0000), 비트 디바이스는 비트 단위 쓰기(1401/0001).
  *       여러 프레임이면 차례로 보내고 PLC 가 오류로 답하면 멈춘다 — 프레임 사이에는 원자적이지 않다.</li>
  *   <li>값은 리틀엔디안(워드 안·워드 순서 모두). 점의 순서 재정의가 있으면 그것을 쓴다.</li>
+ *   <li>워드 안 비트({@code D100.A}) — 그 워드 1칸을 읽어 비트를 꺼낸다. 쓰기는 막는다(읽고-바꾸고-쓰기 사이에 PLC 가 바꾼
+ *       다른 비트를 덮어쓴다 — docs/word-bit-points.md §7).</li>
  *   <li>응답 검증: 서브헤더, 응답 데이터 길이 칸과 실제 길이, 종료 코드, 읽은 데이터 길이.</li>
  * </ul>
  */
@@ -137,6 +140,10 @@ public class MelsecDriver implements PlcDriver {
 		if (p.getCount() < 1) {
 			throw new IllegalArgumentException(p.getName() + ": count 는 1 이상입니다");
 		}
+		if (a.isWordBit()) {
+			WordBits.validate(p, a, interfaceType);
+			return;
+		}
 		if (a.device().isBit()) {
 			if (p.getType() != PointType.BOOL) {
 				throw new IllegalArgumentException(p.getName() + ": 비트 디바이스(" + a.device() + ")는 BOOL 로만 읽고 씁니다");
@@ -147,7 +154,7 @@ public class MelsecDriver implements PlcDriver {
 			return;
 		}
 		if (p.getType() == PointType.BOOL) {
-			throw new IllegalArgumentException(p.getName() + ": 워드 디바이스(" + a.device() + ")에는 BOOL 을 쓸 수 없습니다 — 비트 디바이스(M, X, B …)를 쓰세요");
+			throw new IllegalArgumentException(p.getName() + ": 워드 디바이스(" + a.device() + ")에는 BOOL 을 쓸 수 없습니다 — 비트 디바이스(M, X, B …)나 워드 안 비트(D100.3)를 쓰세요");
 		}
 		if (p.getType().hasLength() && p.getLength() < 1) {
 			throw new IllegalArgumentException(p.getName() + ": " + p.getType() + " 는 length(바이트 수)가 필요합니다");
@@ -194,9 +201,10 @@ public class MelsecDriver implements PlcDriver {
 	}
 
 	private List<Item> items(PlcOperation op) {
+		InterfaceType type = op.kind() == PlcOperation.Kind.WRITE ? InterfaceType.WRITE : InterfaceType.READ;
 		List<Item> items = new ArrayList<>();
 		for (PointInfo p : op.points()) {
-			validatePoint(p, null);
+			validatePoint(p, type);
 			items.add(new Item(p, MelsecAddress.parse(p.getAddress())));
 		}
 		return items;
@@ -307,7 +315,7 @@ public class MelsecDriver implements PlcDriver {
 				new ProtocolDescriptor.Setting("maxWordsPerRequest", "NUMBER", null, 1, MAX_WORDS, null, false, "요청 한 번의 최대 워드 수"),
 				new ProtocolDescriptor.Setting("mergeGap", "NUMBER", MERGE_GAP, 0, 64, null, false,
 					"읽기를 묶을 때 끼어도 되는 빈 워드 수 — 0 이면 바로 이어진 점만 묶는다(빈 칸을 읽으면 안 되는 장비)")),
-			areas, List.of("D100", "M10", "X1F", "W1A", "ZR20000"));
+			areas, List.of("D100", "M10", "X1F", "W1A", "ZR20000", "D100.3"));
 	}
 
 	@Override
@@ -332,6 +340,9 @@ public class MelsecDriver implements PlcDriver {
 			return p.getCount() == 1 ? bits.get(0) : bits;
 		}
 		int offset = (item.address.number() - block.firstWord) * 2;
+		if (item.address.isWordBit()) {
+			return ValueCodec.bitOf(data, offset, item.address.bit(), ByteOrder.LITTLE);
+		}
 		return ValueCodec.decode(p.getType(), p.getCount(), p.getLength(), data, offset, order(p.getByteOrder()), order(p.getWordOrder()));
 	}
 
@@ -351,6 +362,9 @@ public class MelsecDriver implements PlcDriver {
 		int lastWord() {
 			if (address.device().isBit()) {
 				return (address.number() + point.getCount() - 1) / 16;
+			}
+			if (address.isWordBit()) {
+				return address.number();
 			}
 			return address.number() + ValueCodec.byteSpan(point.getType(), point.getCount(), point.getLength()) / 2 - 1;
 		}

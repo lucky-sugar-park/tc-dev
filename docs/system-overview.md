@@ -96,6 +96,7 @@ vplc는 가상 PLC(virtual PLC)다(:8088). 실제 PLC를 구할 수 없어서, t
 
 - **tc와 vplc는 실제 PLC와 똑같이 TCP 위의 MELSEC MC 3E 프로토콜로 통신한다.** 두 앱 모두 상대방 REST API를 호출하는 코드가 없다. (처음에는 REST로 통신한다고 설명했으나, 코드 확인 후 TCP/IP로 정정했다 — 2026-10-30)
 - vplc의 REST API는 사람이나 테스트 도구가 가상 PLC를 관리하고 메모리 값을 넣고 확인하는 관리용이다.
+- **2026-11-01 갱신**: Modbus TCP·OPC UA 시험 상대로 가상 장비 `vplc-modbus`(:8091, Modbus :15020)·`vplc-opcua`(:8092, OPC UA :4840)를 더했다 — DB 없이 메모리, REST 로 값 보기·바꾸기. [virtual-devices.md](virtual-devices.md). tc 의 OPC UA 커넥터는 [opcua-design.md](opcua-design.md).
 
 ```
 tc :8080 ──TCP, MC 3E 바이너리──→ vplc 가상 PLC (기본 포트 12345~)

@@ -22,6 +22,7 @@ import com.wow.be.tc.plc.protocol.PointType;
 import com.wow.be.tc.plc.protocol.ProtocolDescriptor;
 import com.wow.be.tc.plc.protocol.ValueCodec;
 import com.wow.be.tc.plc.protocol.WireProtocol;
+import com.wow.be.tc.plc.protocol.WordBits;
 import com.wow.be.tc.plc.protocol.modbus.ModbusAddress.Table;
 
 /**
@@ -159,6 +160,10 @@ public class ModbusDriver implements PlcDriver {
 		if (interfaceType == InterfaceType.WRITE && a.table().isReadOnly()) {
 			throw new IllegalArgumentException(p.getName() + ": " + a.table() + " 는 읽기만 됩니다 — 쓰기 인터페이스에는 HR·CO 를 쓰세요");
 		}
+		if (a.isWordBit()) {
+			WordBits.validate(p, p.getAddress(), interfaceType);
+			return;
+		}
 		if (a.table().isBit()) {
 			if (p.getType() != PointType.BOOL) {
 				throw new IllegalArgumentException(p.getName() + ": 코일·이산 입력(" + a.table() + ")은 BOOL 로만 읽고 씁니다");
@@ -169,7 +174,7 @@ public class ModbusDriver implements PlcDriver {
 			}
 		} else {
 			if (p.getType() == PointType.BOOL) {
-				throw new IllegalArgumentException(p.getName() + ": 레지스터(" + a.table() + ")에는 BOOL 을 쓸 수 없습니다 — 코일(CO)·이산 입력(DI)을 쓰세요");
+				throw new IllegalArgumentException(p.getName() + ": 레지스터(" + a.table() + ")에는 BOOL 을 쓸 수 없습니다 — 코일(CO)·이산 입력(DI)이나 레지스터 안 비트(HR1.15)를 쓰세요");
 			}
 			if (p.getType().hasLength() && p.getLength() < 1) {
 				throw new IllegalArgumentException(p.getName() + ": " + p.getType() + " 는 length(바이트 수)가 필요합니다");
@@ -193,6 +198,9 @@ public class ModbusDriver implements PlcDriver {
 
 	/** 점이 차지하는 칸 수 — 레지스터 수 또는 비트 수 */
 	private static int units(PointInfo p, ModbusAddress a) {
+		if (a.isWordBit()) {
+			return 1;
+		}
 		return a.table().isBit() ? p.getCount() : registers(p);
 	}
 
@@ -431,7 +439,7 @@ public class ModbusDriver implements PlcDriver {
 				new ProtocolDescriptor.Area("IR", "입력 레지스터(읽기만)", false, false, true, register),
 				new ProtocolDescriptor.Area("CO", "코일", true, false, false, List.of(PointType.BOOL)),
 				new ProtocolDescriptor.Area("DI", "이산 입력(읽기만)", true, false, true, List.of(PointType.BOOL))),
-			List.of("HR1", "40001", "IR10", "300010", "CO1", "DI5"));
+			List.of("HR1", "40001", "IR10", "300010", "CO1", "DI5", "HR1.15"));
 	}
 
 	@Override
@@ -449,6 +457,9 @@ public class ModbusDriver implements PlcDriver {
 				bits.add(((data[i / 8] >> (i % 8)) & 1) == 1);
 			}
 			return p.getCount() == 1 ? bits.get(0) : bits;
+		}
+		if (item.address.isWordBit()) {
+			return ValueCodec.bitOf(data, at * 2, item.address.bit(), orders.byteOf(p));
 		}
 		return ValueCodec.decode(p.getType(), p.getCount(), p.getLength(), data, at * 2, orders.byteOf(p), orders.wordOf(p));
 	}

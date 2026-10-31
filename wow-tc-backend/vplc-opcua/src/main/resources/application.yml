@@ -1,0 +1,31 @@
+# vplc-opcua — 가상 OPC UA 서버 (docs/virtual-devices.md)
+#
+# DB 를 쓰지 않는다 — 태그·값은 메모리. SecurityPolicy None·익명만(tc D1 과 같음).
+# 태그 경로 Line1.Temp 의 NodeId 는 ns=<네임스페이스 번호>;s=Line1.Temp — 번호는 GET /api/v1/opcua 로 본다(보통 2).
+
+server:
+  port: ${VPLC_OPCUA_HTTP_PORT:8092}
+  shutdown: graceful
+
+spring:
+  application:
+    name: wow-tc-vplc-opcua
+
+vplc-opcua:
+  bind-address: ${VPLC_OPCUA_BIND:127.0.0.1}
+  hostname: ${VPLC_OPCUA_HOSTNAME:127.0.0.1}
+  port: ${VPLC_OPCUA_PORT:4840}
+  path: /vplc
+  tags:
+    # tc e2e·예제 — 커넥터 plc-opcua-vplc(127.0.0.1:4840, endpointPath /vplc)
+    - { path: Line1.Temp, type: FLOAT64, value: 25.5, description: 온도 }
+    - { path: Line1.Count, type: INT32, value: 0, description: 생산 수량 }
+    - { path: Line1.Speed, type: UINT16, value: 1500, description: 속도 }
+    - { path: Line1.Running, type: BOOL, value: true, description: 운전 중 }
+    - { path: Line1.Recipe, type: STRING, value: R-01, description: 레시피 }
+    - { path: Line1.Raw, type: INT16, value: 253, description: "원시 값(배율 0.1 시험)" }
+    # 구독 시험 — 1초마다 바뀌는 값
+    - { path: Line1.Counter, type: INT32, value: 0, simulation: { kind: RAMP, period-ms: 1000, min: 0, max: 1000 }, description: 1초마다 1씩 }
+    - { path: Line1.Wave, type: FLOAT64, value: 0, simulation: { kind: SINE, period-ms: 500, min: 0, max: 100 }, description: 사인파 }
+    - { path: Line1.Blink, type: BOOL, value: false, simulation: { kind: TOGGLE, period-ms: 2000 }, description: 2초마다 켜고 끄기 }
+    - { path: Line2.Temp, type: FLOAT32, value: 18.5, description: 2라인 온도 }

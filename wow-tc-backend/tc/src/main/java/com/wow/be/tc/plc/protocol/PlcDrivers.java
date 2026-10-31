@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import com.wow.be.tc.plc.protocol.melsec.MelsecDriver;
 import com.wow.be.tc.plc.protocol.modbus.ModbusDriver;
+import com.wow.be.tc.plc.protocol.opcua.OpcUaDriver;
 
 /**
  * 프로토콜 → 드라이버. 드라이버는 상태가 없어 하나씩만 둔다. 어댑터가 리플렉션으로 만들어져 Spring 빈을 받지 못하므로 정적 표로 둔다.
@@ -15,7 +16,10 @@ public final class PlcDrivers {
 
 	public static final String DEFAULT_PROTOCOL = MelsecDriver.PROTOCOL;
 
-	private static final Map<String, PlcDriver> DRIVERS = List.<PlcDriver>of(new MelsecDriver(), new ModbusDriver()).stream()
+	/** 화면에 보이는 순서 그대로 */
+	private static final List<PlcDriver> ORDER = List.of(new MelsecDriver(), new ModbusDriver(), new OpcUaDriver());
+
+	private static final Map<String, PlcDriver> DRIVERS = ORDER.stream()
 		.collect(Collectors.toUnmodifiableMap(PlcDriver::protocol, Function.identity()));
 
 	private PlcDrivers() {
@@ -23,8 +27,7 @@ public final class PlcDrivers {
 
 	/** 지원하는 프로토콜 설명 — 화면용 */
 	public static List<ProtocolDescriptor> describeAll() {
-		return DRIVERS.values().stream().map(PlcDriver::describe)
-			.sorted(java.util.Comparator.comparing(d -> !DEFAULT_PROTOCOL.equals(d.protocol()))).toList();
+		return ORDER.stream().map(PlcDriver::describe).toList();
 	}
 
 	/** @throws IllegalArgumentException 모르는 프로토콜(400) */

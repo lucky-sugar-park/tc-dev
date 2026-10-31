@@ -69,9 +69,33 @@ export type PointInfo = {
   length?: number;
   byteOrder?: 'BIG' | 'LITTLE' | null;
   wordOrder?: 'BIG' | 'LITTLE' | null;
+  /** 공학 값 = 원시 × scale + offset (숫자형만, docs/interface-detail-design.md §9.2) */
+  scale?: number | null;
+  offset?: number | null;
+  /** 표시용 단위(예 ℃) */
+  unit?: string | null;
+  /** 쓰기 값 범위(공학 값) */
+  min?: number | null;
+  max?: number | null;
   description?: string;
   order?: number;
 };
+
+/** OPC UA 찾아보기 결과 노드 (docs/opcua-design.md O10) */
+export type BrowseNode = {
+  nodeId: string;
+  browseName?: string | null;
+  displayName?: string | null;
+  nodeClass: string;
+  dataType?: string | null;
+  /** 서버 데이터 형으로 추정한 점 형 — 모르면 null */
+  type?: PointType | null;
+  array: boolean;
+  hasChildren: boolean;
+};
+
+/** 배율·범위를 쓸 수 있는 숫자형 */
+export const isNumericType = (t: PointType): boolean => t !== 'BOOL' && t !== 'STRING' && t !== 'BYTES';
 
 export type PlcStatus = { protocol: string; code: number; text: string };
 

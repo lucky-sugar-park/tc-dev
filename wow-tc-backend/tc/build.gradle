@@ -21,6 +21,10 @@ dependencies {
 
     implementation 'org.apache.commons:commons-collections4:4.4'
 
+    // PLC 통신 (OPC UA — Eclipse Milo 클라이언트, docs/opcua-design.md). 시험은 Milo 서버를 띄워 한다
+    implementation 'org.eclipse.milo:milo-sdk-client:1.1.8'
+    testImplementation 'org.eclipse.milo:milo-sdk-server:1.1.8'
+
     // WebHook 전송
     implementation 'org.apache.httpcomponents.client5:httpclient5'
 

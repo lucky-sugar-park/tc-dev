@@ -1,7 +1,7 @@
 import { apiClient } from 'wow-mes-frontend-shared';
 import { pageCondition } from '../../shared/format';
 import type {
-  ConnectionHistory, InterfaceInfo, PlcConnectionState, PlcConnectorInfo, PointInfo, ProtocolDescriptor, RequestPlan, TestReadResult,
+  BrowseNode, ConnectionHistory, InterfaceInfo, PlcConnectionState, PlcConnectorInfo, PointInfo, ProtocolDescriptor, RequestPlan, TestReadResult,
 } from '../types/plc';
 
 const C = '/v1/plc-connector';
@@ -32,6 +32,10 @@ export const connectorApi = {
   },
   async testConnection(name: string): Promise<Record<string, string>> {
     return (await apiClient.post<Record<string, string>>(`${C}/test-connection/byName/${enc(name)}`)).data;
+  },
+  /** OPC UA 노드 찾아보기 — nodeId 를 비우면 Objects 폴더 */
+  async browse(name: string, nodeId: string | null): Promise<BrowseNode[]> {
+    return (await apiClient.post<BrowseNode[]>(`${C}/browse/byName/${enc(name)}`, { nodeId })).data;
   },
   async testRead(name: string, points: PointInfo[]): Promise<TestReadResult> {
     return (await apiClient.post<TestReadResult>(`${C}/test-read/byName/${enc(name)}`, { points })).data;

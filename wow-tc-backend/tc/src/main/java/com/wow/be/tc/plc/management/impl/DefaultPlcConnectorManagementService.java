@@ -40,6 +40,9 @@ import com.wow.be.tc.plc.management.PlcConnectorManagementService;
 import com.wow.be.tc.plc.protocol.PlcDriver;
 import com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter;
 import com.wow.be.tc.plc.connector.modbus.ModbusTcpAdapter;
+import com.wow.be.tc.plc.connector.opcua.OpcUaAdapter;
+import com.wow.be.tc.plc.connector.opcua.OpcUaTools;
+import com.wow.be.tc.plc.protocol.opcua.OpcUaDriver;
 import com.wow.be.tc.plc.protocol.PlcDrivers;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
@@ -392,11 +395,23 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 			"test-read-" + java.util.UUID.randomUUID()));
 	}
 
+	@Override
+	public List<OpcUaTools.BrowseNode> browse(String name, String nodeId) throws ToolControlException {
+		PlcConnectorInfo info=requirePlcConnectorEntityByName(name).info();
+		if(!OpcUaDriver.PROTOCOL.equals(info.getProtocol())) {
+			throw new IllegalArgumentException("노드 찾아보기는 OPC UA 커넥터만 됩니다: " + name + " (" + info.getProtocol() + ")");
+		}
+		return OpcUaTools.browse(info, PlcDrivers.of(info.getProtocol()).normalizeSettings(info.getSettings(), null), nodeId);
+	}
+
 	/** 포트마다 동시에 연결하고 프로토콜의 연결 확인(MELSEC 루프백, Modbus 레지스터 읽기)까지(#12) — 예전에는 첫 포트에 TCP 연결만 봤다 */
 	private Map<String, String> testConnection(PlcConnectorInfo pInfo) {
 		log.debug("DefaultPlcConnectorManagementService.testConnection(PlcInfo pInfo) is called.");
 		String legacy=pInfo.getMessageFrameFormat()!=null ? pInfo.getMessageFrameFormat().name() : null;
 		PlcDriver driver=PlcDrivers.of(pInfo.getProtocol());
+		if(OpcUaDriver.PROTOCOL.equals(driver.protocol())) {
+			return OpcUaTools.testConnection(pInfo, driver.normalizeSettings(pInfo.getSettings(), legacy));
+		}
 		WireProtocol wire=driver.wire(driver.normalizeSettings(pInfo.getSettings(), legacy));
 		return PlcConnectionTester.test(pInfo.getHostIp(), pInfo.getPorts(), pInfo.getConnectionVips(), wire);
 	}
@@ -540,7 +555,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 			}
 		} else {
 			info.setMessageFrameFormat(FrameFormat.BINARY);
-			info.setAdapterClassName(ModbusTcpAdapter.class.getName());
+			info.setAdapterClassName(OpcUaDriver.PROTOCOL.equals(driver.protocol()) ? OpcUaAdapter.class.getName() : ModbusTcpAdapter.class.getName());
 		}
 	}
 }

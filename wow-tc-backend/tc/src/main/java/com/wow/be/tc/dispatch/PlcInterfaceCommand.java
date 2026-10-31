@@ -20,6 +20,7 @@ import com.wow.be.tc.plc.protocol.PlcDrivers;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PlcStatus;
+import com.wow.be.tc.plc.protocol.PointScaling;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -81,6 +82,8 @@ public class PlcInterfaceCommand extends AbstractMessageCommand<TcMessageRequest
 			result = ctx.getAdapter().execute(new PlcOperation(op.protocol(), op.settings(), PlcOperation.Kind.READ,
 				op.points(), Map.of(), op.reqId()));
 		}
+		// 읽은 원시 값 → 공학 값(배율·오프셋, docs/interface-detail-design.md §9.2)
+		result = new PlcResult(PointScaling.toEngineering(op.points(), result.values()), result.status());
 		ctx.setResult(result);
 
 		PlcStatus status = result.status();
@@ -141,7 +144,15 @@ public class PlcInterfaceCommand extends AbstractMessageCommand<TcMessageRequest
 			throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED, "PLC 커넥터·인터페이스 설정이 잘못되었습니다: " + e.getMessage());
 		}
 		PlcOperation.Kind kind = iInfo.getInterfaceType() == InterfaceType.WRITE ? PlcOperation.Kind.WRITE : PlcOperation.Kind.READ;
-		Map<String, Object> values = kind == PlcOperation.Kind.WRITE && request.getData() != null ? request.getData() : Map.of();
+		Map<String, Object> values = Map.of();
+		if (kind == PlcOperation.Kind.WRITE && request.getData() != null) {
+			try {
+				// 요청 값은 공학 값 — 범위를 보고 원시 값으로(드라이버·원격 어댑터는 원시 값만 다룬다)
+				values = PointScaling.toRaw(iInfo.getPoints(), request.getData());
+			} catch (IllegalArgumentException e) {
+				throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "쓰기 값이 잘못되었습니다: " + e.getMessage());
+			}
+		}
 		PlcOperation op = new PlcOperation(pInfo.getProtocol(), settings, kind, iInfo.getPoints(), values, request.getTransactionId());
 		return new PlcExchangeContext(request, response, iInfo, pInfo, adapter, op, null);
 	}

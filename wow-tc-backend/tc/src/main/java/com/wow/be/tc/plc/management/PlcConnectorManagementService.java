@@ -60,6 +60,9 @@ public interface PlcConnectorManagementService {
 	 * 인스턴스로 넘긴다. 점이 틀리면 IllegalArgumentException(400), 커넥터가 없으면 404, 게시 전이면 503.
 	 */
 	public abstract PlcResult testRead(String name, List<PointInfo> points) throws ToolControlException;
+
+	/** OPC UA 노드 찾아보기(docs/opcua-design.md O10) — nodeId 를 비우면 Objects 폴더. OPC UA 커넥터가 아니면 400 */
+	public abstract List<com.wow.be.tc.plc.connector.opcua.OpcUaTools.BrowseNode> browse(String name, String nodeId) throws ToolControlException;
 	
 	public abstract void savePlcConnectionEventHistory(PlcConnectionEventHistInfo pcehInfo);
 	

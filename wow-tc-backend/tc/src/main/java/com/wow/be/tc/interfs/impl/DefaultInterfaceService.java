@@ -31,6 +31,7 @@ import com.wow.be.tc.interfs.RequestPlanInfo;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.plc.management.PlcConnectorManagementService;
 import com.wow.be.tc.plc.protocol.PlannedRequest;
+import com.wow.be.tc.plc.protocol.PointScaling;
 import com.wow.be.tc.plc.protocol.PlcDriver;
 import com.wow.be.tc.plc.protocol.PlcDrivers;
 import com.wow.be.tc.plc.protocol.PlcOperation;
@@ -113,7 +114,9 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		interfaceRepository.updateApplyUseByBatch(ids, use);
 	}
 	
+	/** 점까지 읽는다 — 웹 요청 밖(OPC UA 구독 맞추기 등 스케줄 스레드)에서도 지연 로딩이 되게 트랜잭션 안에서 */
 	@Override
+	@Transactional
 	public List<InterfaceInfo> searchInterface() {
 		log.debug("");
 		return infos(interfaceRepository.findAll());
@@ -251,6 +254,10 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		}
 		PlcDriver driver=PlcDrivers.of(connector.getProtocol());
 		info.setSettings(driver.normalizeInterfaceSettings(info.getSettings()));
+		// 구독(OPC UA accessMode=SUBSCRIBE)은 읽기 인터페이스만 — 값이 바뀌면 서버가 알려 주는 것(docs/opcua-design.md O8)
+		if("SUBSCRIBE".equals(String.valueOf(info.getSettings().get("accessMode"))) && info.getInterfaceType()!=InterfaceType.READ) {
+			throw new IllegalArgumentException("구독(accessMode=SUBSCRIBE)은 READ 인터페이스만 됩니다");
+		}
 		Set<String> names=new HashSet<>();
 		for(int i=0;i<points.size();i++) {
 			PointInfo point=points.get(i);
@@ -258,6 +265,7 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 				throw new IllegalArgumentException("점 " + i + " 이 비었습니다");
 			}
 			driver.validatePoint(point, info.getInterfaceType());
+			PointScaling.validate(point);
 			if(!names.add(point.getName())) {
 				throw new IllegalArgumentException("점 이름이 겹칩니다: " + point.getName());
 			}
@@ -284,7 +292,8 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		List<String> notes=new ArrayList<>();
 		Map<String, Object> values=Map.of();
 		if(write) {
-			values=PlannedRequest.withSampleValues(info.getPoints(), data);
+			// 쓰기 값은 공학 값 — 실행처럼 원시 값으로 바꿔 프레임을 만든다(범위 밖이면 400)
+			values=PlannedRequest.withSampleValues(info.getPoints(), PointScaling.toRaw(info.getPoints(), data));
 			List<String> sampled=info.getPoints().stream()
 				.filter(p->data==null || data.get(p.getName())==null).map(PointInfo::getName).toList();
 			if(!sampled.isEmpty()) {

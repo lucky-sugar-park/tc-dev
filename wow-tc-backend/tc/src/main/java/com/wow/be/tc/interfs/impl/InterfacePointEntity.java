@@ -53,6 +53,21 @@ public class InterfacePointEntity {
 	@Column(name="WORD_ORDER", length=8)
 	private String wordOrder;
 
+	@Column(name="SCALE")
+	private Double scale;
+
+	@Column(name="OFFSET_VALUE")
+	private Double offset;
+
+	@Column(name="UNIT", length=32)
+	private String unit;
+
+	@Column(name="MIN_VALUE")
+	private Double min;
+
+	@Column(name="MAX_VALUE")
+	private Double max;
+
 	@Column(name="DESCRIPTION", length=1024)
 	private String description;
 
@@ -66,6 +81,11 @@ public class InterfacePointEntity {
 		p.setLength(length!=null?length:0);
 		p.setByteOrder(byteOrder!=null?ByteOrder.valueOf(byteOrder):null);
 		p.setWordOrder(wordOrder!=null?ByteOrder.valueOf(wordOrder):null);
+		p.setScale(scale);
+		p.setOffset(offset);
+		p.setUnit(unit);
+		p.setMin(min);
+		p.setMax(max);
 		p.setDescription(description);
 		return p;
 	}
@@ -80,6 +100,11 @@ public class InterfacePointEntity {
 		e.setLength(p.getLength());
 		e.setByteOrder(p.getByteOrder()!=null?p.getByteOrder().name():null);
 		e.setWordOrder(p.getWordOrder()!=null?p.getWordOrder().name():null);
+		e.setScale(p.getScale());
+		e.setOffset(p.getOffset());
+		e.setUnit(p.getUnit()!=null && !p.getUnit().isBlank()?p.getUnit().trim():null);
+		e.setMin(p.getMin());
+		e.setMax(p.getMax());
 		e.setDescription(p.getDescription());
 		return e;
 	}

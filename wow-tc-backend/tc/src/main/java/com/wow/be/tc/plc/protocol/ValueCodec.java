@@ -193,6 +193,12 @@ public final class ValueCodec {
 		}
 	}
 
+	/** 16비트 워드 하나(offset 의 2바이트, byteOrder 로 조립) 안의 비트 — 워드 안 비트 점(docs/word-bit-points.md) */
+	public static boolean bitOf(byte[] area, int offset, int bit, ByteOrder byteOrder) {
+		long word = readBits(area, offset, 2, byteOrder, ByteOrder.LITTLE);
+		return ((word >> bit) & 1) == 1;
+	}
+
 	/** BOOL 쓰기 값 — true/false, 1/0, "true"/"false"/"1"/"0" */
 	public static boolean bool(Object value, String name) {
 		if (value instanceof Boolean b) {

@@ -285,4 +285,20 @@ class ModbusDriverTest {
 		assertThat(r.status().ok()).isTrue();
 		assertThat(fake.sent).containsExactly("000000000006010600090001", "000000000006010600 0A0002".replace(" ", ""));
 	}
+
+	@Test
+	void 레지스터_안_비트() throws ToolControlException {
+		assertThat(ModbusAddress.parse("HR1.15", 1)).isEqualTo(new ModbusAddress(Table.HOLDING_REGISTER, 0, 15));
+		assertThat(ModbusAddress.parse("40001.3", 1)).isEqualTo(new ModbusAddress(Table.HOLDING_REGISTER, 0, 3));
+		assertThatThrownBy(() -> ModbusAddress.parse("HR1.16", 1)).hasMessageContaining("0~15");
+		assertThatThrownBy(() -> ModbusAddress.parse("HR1.A", 1)).hasMessageContaining("0~15");
+		assertThatThrownBy(() -> ModbusAddress.parse("CO1.2", 1)).hasMessageContaining("코일");
+		assertThatThrownBy(() -> driver.validatePoint(point("a", "HR1.3", PointType.BOOL), InterfaceType.WRITE)).hasMessageContaining("읽기만");
+		// HR1 = 0x8005(BIG) → 비트 0·2·15 켜짐, IR 도 된다
+		Fake fake = new Fake(reply("03 02 8005"));
+		PlcResult r = read(defaults, fake, point("b0", "HR1.0", PointType.BOOL), point("b1", "HR1.1", PointType.BOOL),
+			point("b15", "HR1.15", PointType.BOOL));
+		assertThat(fake.sent).containsExactly("000000000006010300000001");
+		assertThat(r.values()).containsEntry("b0", true).containsEntry("b1", false).containsEntry("b15", true);
+	}
 }
