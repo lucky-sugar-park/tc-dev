@@ -64,7 +64,9 @@ public class TcPermissionChecker implements PermissionChecker {
 		Map.entry("tc.apiclient", "API 클라이언트"),
 		Map.entry("tc.user", "사용자"),
 		Map.entry("tc.option", "운영 옵션"),
-		Map.entry("action.tc.dispatch", "PLC 요청"));
+		Map.entry("action.tc.dispatch", "PLC 요청"),
+		// 관리자만(OPERATOR 표에 없다) — docs/redelivery-design.md R7
+		Map.entry("action.tc.redeliver", "결과 재전송"));
 
 	/** 기존 JWT 호출자 전환 스위치(설계 §6.10). 전환이 끝나 기본은 꺼짐 — 재기동 없이 다시 켤 수 있다 */
 	private final DispatchTransitionOption transition;

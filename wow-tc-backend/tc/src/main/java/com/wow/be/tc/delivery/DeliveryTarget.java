@@ -1,5 +1,9 @@
 package com.wow.be.tc.delivery;
 
+import java.util.Objects;
+
+import org.springframework.http.HttpHeaders;
+
 import com.wow.be.tc.delivery.DeliveryDefinitionInfo.DeliverOn;
 import com.wow.be.tc.dispatch.TcMessageResponse;
 
@@ -12,8 +16,16 @@ import com.wow.be.tc.dispatch.TcMessageResponse;
  * @param deliverOn    성공·실패 중 언제 보낼지
  * @param onChangeOnly PLC 응답이 직전과 달라졌을 때만 보낼지
  * @param table        DB_TABLE 의 테이블 이름 (그 밖에는 null)
+ * @param redeliveryOf 관리자 재전송이면 원본 감사 ID, 처음 전달이면 null (docs/redelivery-design.md)
  */
-public record DeliveryTarget(DeliveryType type, String name, String url, DeliverOn deliverOn, boolean onChangeOnly, String table) {
+public record DeliveryTarget(DeliveryType type, String name, String url, DeliverOn deliverOn, boolean onChangeOnly, String table,
+		Long redeliveryOf) {
+
+	/** 재전송임을 받는 쪽에 알리는 HTTP 헤더 */
+	public static final String REDELIVERY_HEADER = "X-TC-Redelivery";
+
+	/** 재전송의 원본 감사 ID */
+	public static final String REDELIVERY_OF_HEADER = "X-TC-Redelivery-Of";
 
 	public enum DeliveryType {
 		/** 요청이 지정한 return url 로 PUT (레거시 pushUrl) */
@@ -25,7 +37,30 @@ public record DeliveryTarget(DeliveryType type, String name, String url, Deliver
 	}
 
 	public DeliveryTarget(DeliveryType type, String name, String url, DeliverOn deliverOn, boolean onChangeOnly) {
-		this(type, name, url, deliverOn, onChangeOnly, null);
+		this(type, name, url, deliverOn, onChangeOnly, null, null);
+	}
+
+	public DeliveryTarget(DeliveryType type, String name, String url, DeliverOn deliverOn, boolean onChangeOnly, String table) {
+		this(type, name, url, deliverOn, onChangeOnly, table, null);
+	}
+
+	/** 같은 대상으로 하는 재전송 */
+	public DeliveryTarget redeliveryOf(long auditId) {
+		return new DeliveryTarget(type, name, url, deliverOn, onChangeOnly, table, auditId);
+	}
+
+	/** 재전송이면 HTTP 헤더를 붙인다 */
+	public void addRedeliveryHeaders(HttpHeaders headers) {
+		if (redeliveryOf != null) {
+			headers.set(REDELIVERY_HEADER, "true");
+			headers.set(REDELIVERY_OF_HEADER, String.valueOf(redeliveryOf));
+		}
+	}
+
+	/** 대상 이름이 같은가 — 유형, 이름, (DB_TABLE 이면) 테이블 */
+	public boolean sameAs(DeliveryType otherType, String otherName, String otherTable) {
+		return type == otherType && Objects.equals(name, otherName)
+			&& (type != DeliveryType.DB_TABLE || (table != null && table.equalsIgnoreCase(otherTable)));
 	}
 
 	/** 조건 없이 늘 보내는 대상 (레거시 방식) */

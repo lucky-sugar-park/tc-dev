@@ -20,6 +20,13 @@ public interface ExchangedMessageAuditService {
 	public abstract long deleteMessageAudits(Date timestamp);
 
 	public abstract ExchangedMessageAuditInfo findMessageAuditById(long id);
+
+	/** 있는 것만 돌려준다(없는 ID 는 빠진다). */
+	public abstract List<ExchangedMessageAuditInfo> findMessageAuditsByIds(List<Long> ids);
+
+	public abstract List<ExchangedMessageAuditInfo> searchByMessageId(String messageId, String messageType);
+
+	public abstract List<ExchangedMessageAuditInfo> searchByTransactionId(String transactionId, String name, String messageType);
 	
 	public abstract List<ExchangedMessageAuditInfo> searchMessageAudits();
 	

@@ -22,6 +22,8 @@ import lombok.Data;
  *       core-size: 4
  *       max-size: 16
  *       queue-capacity: 500
+ *     redelivery-max-batch: 500
+ *     redelivery-duplicate-window: 10s
  * </pre>
  */
 @Data
@@ -39,6 +41,12 @@ public class DeliveryProperties {
 	private List<String> allowedUrlPrefixes = new ArrayList<>();
 
 	private ExecutorProperties executor = new ExecutorProperties();
+
+	/** 관리자 재전송 한 번에 보낼 수 있는 건수(대상 × 기록) — docs/redelivery-design.md R8 */
+	private int redeliveryMaxBatch = 500;
+
+	/** 같은 원본·같은 대상 재전송을 이 시간 안에 다시 요청하면 건너뛴다(중복 클릭) — R11 */
+	private Duration redeliveryDuplicateWindow = Duration.ofSeconds(10);
 
 	@Data
 	public static class ExecutorProperties {

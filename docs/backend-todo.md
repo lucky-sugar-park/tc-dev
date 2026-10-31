@@ -46,7 +46,7 @@
 | 8 | framework 다음 버전 반영 | ✅ | framework-core **0.8.46** 배포·tc 반영 완료(2026-10-31). 명세 [framework-core-0.8.46-changes.md](framework-core-0.8.46-changes.md) §5 에 결과 |
 | 9 | 상태를 바꾸는 GET 을 POST·DELETE 로 (결정 D5) | ✅ | 29개 — 경로는 그대로, 삭제는 DELETE·제어·사용 변경·연결 시험은 POST, 예전 GET 은 405(2026-10-31). e2e `test_http_methods.py`. 새 프론트는 이 메서드로 만든다 |
 | 10 | DB_TABLE 결과 전달 채널 | ✅ | [db-table-delivery.md](db-table-delivery.md). 런타임 등록 DB 연결(비밀번호 AES-GCM, `TC_SECRET_KEY`), 결과 1건 = 1행(공통 칼럼 + `PAYLOAD` JSON), 테이블은 받는 쪽이 만들고 tc 는 검증, 실패도 기록. 운영 반영에 `TC_SECRET_KEY`·migration 006 필요 |
-| 11 | 비동기 결과 전달 실패 재시도(outbox) | ⏸ | 필요 여부 미정 |
+| 11 | 결과 재전송 — 관리자가 감사 기록을 골라 수동으로(성공·실패 무관) | ✅ 백엔드 | [redelivery-design.md](redelivery-design.md)(2026-10-31). 자동 재시도(outbox) 대신. 새 표 없이 송수신 감사로 — DELIVERY 감사에 보낸 응답 전체를 남긴다. `POST /api/v1/ifsvc/redelivery/{deliveries,responses}`, 관리자만. 기존 버그(`WebHookManager` NPE)도 고침. 화면은 프론트 재작성 때. 운영 반영은 migration·재기동 없음(배포 때 함께) |
 
 ## 장기 과제
 

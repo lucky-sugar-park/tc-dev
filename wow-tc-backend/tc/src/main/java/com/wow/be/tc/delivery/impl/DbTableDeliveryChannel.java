@@ -1,9 +1,12 @@
 package com.wow.be.tc.delivery.impl;
 
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -13,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.dbconn.DbConnectionService;
 import com.wow.be.tc.dbconn.impl.DefaultDbConnectionService;
+import com.wow.be.tc.delivery.AlreadyDeliveredException;
 import com.wow.be.tc.delivery.DeliveryTarget;
 import com.wow.be.tc.delivery.ResultDeliveryChannel;
 import com.wow.be.tc.dispatch.TcMessageRequest;
@@ -66,7 +70,29 @@ public class DbTableDeliveryChannel implements ResultDeliveryChannel {
 		} catch (ToolControlException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
-		jdbc.update(insertSql(target.table()), params(request, response));
+		try {
+			jdbc.update(insertSql(target.table()), params(request, response));
+		} catch (DataIntegrityViolationException e) {
+			// 받는 쪽이 유니크 키를 걸어 둔 테이블에 재전송한 경우 — 이미 기록된 결과다
+			if (target.redeliveryOf() != null && isDuplicateKey(e)) {
+				throw new AlreadyDeliveredException("이미 있음(중복 키)", e);
+			}
+			throw e;
+		}
+	}
+
+	/** 번역기에 따라 DuplicateKeyException 이 아닌 DataIntegrityViolationException 으로 올 수 있어 원인도 본다 */
+	static boolean isDuplicateKey(DataIntegrityViolationException e) {
+		if (e instanceof DuplicateKeyException) {
+			return true;
+		}
+		for (Throwable t = e.getCause(); t != null; t = t.getCause()) {
+			// MySQL·MariaDB ER_DUP_ENTRY, 표준 SQLSTATE 23505
+			if (t instanceof SQLException sql && (sql.getErrorCode() == 1062 || "23505".equals(sql.getSQLState()))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	static String insertSql(String table) {

@@ -179,6 +179,7 @@ POST /api/v1/ifsvc/request-and-reply ──┤ 또는 Bearer JWT (화면에서 �
   | `tc.user` | 사용자 |
   | `tc.apiclient` | API 클라이언트 |
   | `action.tc.dispatch` | PLC 요청 |
+  | `action.tc.redeliver` | 결과 재전송 — 관리자만 ([redelivery-design.md](redelivery-design.md) R7) |
 
 - **구현 계약**: 모르는 사용자나 자원이면 예외를 던지지 않고 거부(`Decision.deny`)를 돌려준다. 예외를 던지면 403이 아니라 500이 된다.
 - **`PermissionModeSource`**: 처음에는 `AUDIT` 모드로 둔다. 선언이 빠진 쓰기 API를 기록으로 찾아 선언을 채운 뒤 `ENFORCE`로 바꾼다. 모드는 운영 옵션으로 두어 재기동 없이 바꾼다.

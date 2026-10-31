@@ -33,6 +33,7 @@ public class WebHookDeliveryChannel implements ResultDeliveryChannel {
 		restClient.post()
 			.uri(target.url())
 			.contentType(MediaType.APPLICATION_JSON)
+			.headers(target::addRedeliveryHeaders)
 			.body(response)
 			.retrieve()
 			.toBodilessEntity();

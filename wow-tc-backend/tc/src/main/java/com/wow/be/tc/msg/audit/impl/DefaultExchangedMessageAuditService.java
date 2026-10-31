@@ -94,6 +94,23 @@ public class DefaultExchangedMessageAuditService implements ExchangedMessageAudi
 		ExchangedMessageAuditEntity entity=exchangedMessageAuditRepository.findById(id).get();
 		return entity.info();
 	}
+
+	@Override
+	public List<ExchangedMessageAuditInfo> findMessageAuditsByIds(List<Long> ids) {
+		return exchangedMessageAuditRepository.findAllById(ids).stream().map(ExchangedMessageAuditEntity::info).toList();
+	}
+
+	@Override
+	public List<ExchangedMessageAuditInfo> searchByMessageId(String messageId, String messageType) {
+		return exchangedMessageAuditRepository.findByMessageIdAndMessageType(messageId, messageType).stream()
+			.map(ExchangedMessageAuditEntity::info).toList();
+	}
+
+	@Override
+	public List<ExchangedMessageAuditInfo> searchByTransactionId(String transactionId, String name, String messageType) {
+		return exchangedMessageAuditRepository.findByTransactionIdAndNameAndMessageType(transactionId, name, messageType).stream()
+			.map(ExchangedMessageAuditEntity::info).toList();
+	}
 	
 
 	@Override

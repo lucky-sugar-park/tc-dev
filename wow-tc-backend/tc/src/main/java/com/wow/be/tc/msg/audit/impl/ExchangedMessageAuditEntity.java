@@ -1,11 +1,14 @@
 package com.wow.be.tc.msg.audit.impl;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 import com.wow.be.framework.persist.PersistentEntity;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 
@@ -32,6 +35,8 @@ import lombok.ToString;
 public class ExchangedMessageAuditEntity extends PersistentEntity<ExchangedMessageAuditInfo> {
 
 	private static final long serialVersionUID = 1L;
+
+	private static final ObjectMapper JSON = new ObjectMapper();
 
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
@@ -86,8 +91,7 @@ public class ExchangedMessageAuditEntity extends PersistentEntity<ExchangedMessa
 		info.setTimestamp(this.getTimestamp());
 		info.setSender(this.getSender());
 		info.setReceiver(this.getReceiver());
-		Gson gson=new GsonBuilder().setPrettyPrinting().create();
-		info.setDataMap(gson.fromJson(jsonString, new TypeToken<Map<String, String>>(){}.getType()));
+		info.setDataMap(parseJson(jsonString));
 		info.setDescription(this.getDescription());
 		info.setPrincipal(this.getPrincipal());
 		
@@ -120,6 +124,25 @@ public class ExchangedMessageAuditEntity extends PersistentEntity<ExchangedMessa
 		super.setCreatedDate(info.getCreatedDate());
 		super.setUpdatedBy(info.getUpdatedBy());
 		super.setUpdatedDate(info.getUpdatedDate());
+	}
+
+	/**
+	 * 저장된 JSON 을 값 타입 그대로 읽는다. 예전에는 {@code Map<String, String>} 으로 읽어 숫자가 문자열이 되고
+	 * 중첩 객체(DELIVERY 의 response)는 읽지 못했다. 재전송은 이 값을 그대로 다시 보낸다(docs/redelivery-design.md §2).
+	 */
+	static Map<String, Object> parseJson(String json) {
+		if (json == null || json.isBlank() || "null".equals(json.trim())) {
+			return new HashMap<>();
+		}
+		try {
+			Map<String, Object> map = JSON.readValue(json, new TypeReference<Map<String, Object>>() {});
+			return map != null ? map : new HashMap<>();
+		} catch (JsonProcessingException e) {
+			// 객체가 아닌 JSON 등 — 화면에서 원문을 볼 수 있게 둔다
+			Map<String, Object> raw = new HashMap<>();
+			raw.put("raw", json);
+			return raw;
+		}
 	}
 
 	@Override

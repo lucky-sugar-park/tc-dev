@@ -22,7 +22,17 @@ public class WebHookManager {
 	private WebHookManager() {
 		log.info("WebHookManager singleton instance is created.");
 		hookMap=new HashMap<>();
-		applicationContext=SessionContext.getGlobalSessionContext().getApplicationContext();
+	}
+
+	/**
+	 * 처음 만들어지는 때(WebHookInit 의 @PostConstruct)는 전역 컨텍스트가 아직 없어 null 이다. 그때 잡아 두면 캐시에 없는 이름을 찾을 때마다
+	 * NPE 가 났다(지운 WebHook 을 쓰는 전달 정의, 재전송) — 쓸 때 가져온다.
+	 */
+	private WebHookManagementService service() {
+		if(applicationContext==null) {
+			applicationContext=SessionContext.getGlobalSessionContext().getApplicationContext();
+		}
+		return applicationContext.getBean(WebHookManagementService.class);
 	}
 
 	public static WebHookManager getManager() {
@@ -46,8 +56,7 @@ public class WebHookManager {
 		log.debug("WebHookManager.getWebHook(String name)...");
 		WebHook webHook=hookMap.get(name);
 		if(webHook==null) {
-			WebHookManagementService whmService=(WebHookManagementService)applicationContext.getBean(WebHookManagementService.class);
-			WebHookInfo info=whmService.findWebHookByName(name);
+			WebHookInfo info=service().findWebHookByName(name);
 			if(info!=null) {
 				webHook=new WebHook();
 				webHook.setId(info.getId());
@@ -67,8 +76,7 @@ public class WebHookManager {
 	
 	public void sync() {
 		log.info("WebHookManager.sync() is called.");
-		WebHookManagementService whmService=(WebHookManagementService)applicationContext.getBean(WebHookManagementService.class);
-		sync(whmService.searchAllWebHook());
+		sync(service().searchAllWebHook());
 	}
 	
 	public void sync(List<WebHookInfo> webHookList) {

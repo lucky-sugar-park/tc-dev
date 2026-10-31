@@ -33,6 +33,7 @@ public class CallbackUrlDeliveryChannel implements ResultDeliveryChannel {
 		restClient.put()
 			.uri(target.url())
 			.contentType(MediaType.APPLICATION_JSON)
+			.headers(target::addRedeliveryHeaders)
 			.body(response)
 			.retrieve()
 			.toBodilessEntity();

@@ -3,6 +3,7 @@ package com.wow.be.tc.delivery.impl;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -13,6 +14,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wow.be.tc.delivery.AlreadyDeliveredException;
 import com.wow.be.tc.delivery.DeliveryConfig;
 import com.wow.be.tc.delivery.DeliveryDefinitionInfo;
 import com.wow.be.tc.delivery.DeliveryDefinitionService;
@@ -44,11 +48,20 @@ import lombok.extern.slf4j.Slf4j;
  * </ul>
  * 정의의 조건(성공·실패, 값이 바뀔 때만)은 응답을 보고 {@link #deliver} 에서 거른다.
  *
- * <p>재시도와 실패 이력 테이블(outbox)은 아직 없다 — 실패하면 감사 로그와 경고 로그만 남는다.
+ * <p>자동 재시도(outbox)는 없다 — 실패하면 감사 로그와 경고 로그만 남고, 관리자가 감사 기록을 골라 다시 보낸다
+ * ({@link #deliverNow}, docs/redelivery-design.md).
  */
 @Slf4j
 @Service
 public class DefaultResultDeliveryService implements ResultDeliveryService {
+
+	/** DELIVERY 감사 MSG_JSON 의 키 — 보낸 응답 */
+	public static final String AUDIT_RESPONSE = "response";
+
+	/** DELIVERY 감사 MSG_JSON 의 키 — 재전송이면 원본 감사 ID */
+	public static final String AUDIT_REDELIVERY_OF = "redeliveryOf";
+
+	private static final ObjectMapper JSON = new ObjectMapper();
 
 	private final Map<DeliveryType, ResultDeliveryChannel> channels = new EnumMap<>(DeliveryType.class);
 
@@ -175,6 +188,16 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 		return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
 	}
 
+	@Override
+	public void deliverNow(DeliveryTarget target, TcMessageRequest request, TcMessageResponse response) {
+		deliverOne(target, request, response);
+	}
+
+	@Override
+	public boolean allowsUrl(String url) {
+		return isAllowed(url);
+	}
+
 	private void deliverOne(DeliveryTarget target, TcMessageRequest request, TcMessageResponse response) {
 		// 주소 허용 목록은 HTTP 전달에만 — DB_TABLE 은 관리자가 등록한 DB 연결만 쓸 수 있다
 		if (target.type() != DeliveryType.DB_TABLE && !isAllowed(target.url())) {
@@ -189,6 +212,8 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 		try {
 			channel.deliver(target, request, response);
 			record(target, request, response, null);
+		} catch (AlreadyDeliveredException e) {
+			record(target, request, response, null, e.getMessage());
 		} catch (RuntimeException e) {
 			record(target, request, response, "전달하지 못했습니다: " + e.getMessage());
 		}
@@ -204,9 +229,22 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 
 	/** @param failure 실패 사유, 성공이면 null */
 	private void record(DeliveryTarget target, TcMessageRequest request, TcMessageResponse response, String failure) {
+		record(target, request, response, failure, null);
+	}
+
+	/**
+	 * DELIVERY 감사. {@code MSG_JSON} 에 보낸 응답 전체와 재전송 원본을 남긴다 — 이 한 줄로 같은 것을 다시 보낼 수 있다
+	 * (docs/redelivery-design.md §2.1). 성공이면 DESCRIPTION 은 {@code OK} 로 시작한다.
+	 *
+	 * @param failure 실패 사유, 성공이면 null
+	 * @param note    성공일 때 덧붙일 말(예: 이미 있음)
+	 */
+	private void record(DeliveryTarget target, TcMessageRequest request, TcMessageResponse response, String failure, String note) {
 		if (failure == null) {
-			log.info("결과 전달 완료: {} {} → {}, opcode={}, transactionId={}",
-				target.type(), target.name(), target.destination(), request.getOpcode(), request.getTransactionId());
+			log.info("결과 전달 완료{}: {} {} → {}, opcode={}, transactionId={}{}",
+				target.redeliveryOf() != null ? "(재전송 #" + target.redeliveryOf() + ")" : "",
+				target.type(), target.name(), target.destination(), request.getOpcode(), request.getTransactionId(),
+				note != null ? " — " + note : "");
 		} else {
 			log.warn("결과 전달 실패: {} {} → {}, opcode={}, transactionId={} — {}",
 				target.type(), target.name(), target.destination(), request.getOpcode(), request.getTransactionId(), failure);
@@ -221,8 +259,11 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 			info.setTimestamp(new Date());
 			info.setSender(response.getSender());
 			info.setReceiver(target.type() + ":" + target.name() + ":" + target.destination());
-			info.setDataMap(Map.of());
-			info.setDescription(failure == null ? "OK" : failure);
+			Map<String, Object> body = new LinkedHashMap<>();
+			body.put(AUDIT_RESPONSE, JSON.convertValue(response, new TypeReference<Map<String, Object>>() {}));
+			body.put(AUDIT_REDELIVERY_OF, target.redeliveryOf());
+			info.setDataMap(body);
+			info.setDescription(failure != null ? failure : note != null ? "OK (" + note + ")" : "OK");
 			info.setPrincipal(request.getPrincipal() != null ? request.getPrincipal() : RequestPrincipals.SYSTEM);
 			auditService.writeAudit(info);
 		} catch (RuntimeException e) {

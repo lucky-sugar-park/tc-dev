@@ -32,4 +32,13 @@ public interface ResultDeliveryService {
 	 * @return 모든 대상의 전달이 끝나면(성공·실패 무관) 완료되는 future. 기다릴 필요가 없으면 무시한다.
 	 */
 	CompletableFuture<Void> deliver(List<DeliveryTarget> targets, TcMessageRequest request, TcMessageResponse response);
+
+	/**
+	 * 한 대상에 지금 스레드에서 보내고 감사(DELIVERY)를 남긴다. 전달 조건(deliverOn, onChangeOnly)은 보지 않는다 — 관리자 재전송용.
+	 * 실패는 던지지 않고 감사에 남긴다.
+	 */
+	void deliverNow(DeliveryTarget target, TcMessageRequest request, TcMessageResponse response);
+
+	/** HTTP 전달 주소가 허용 목록({@code tc.delivery.allowed-url-prefixes}) 안인가 */
+	boolean allowsUrl(String url);
 }
