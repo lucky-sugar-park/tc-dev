@@ -4,17 +4,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import com.wow.be.tc.ToolControlException;
+import com.wow.be.tc.plc.protocol.WireProtocol;
 
 /**
  * MC 프로토콜 3E·4E 프레임(BINARY·ASCII) 조립과 해석 (docs/plc-protocol-design.md §6.1).
  *
  * <ul>
  *   <li>4E 는 3E 머리에 일련번호(2바이트)와 예비(2바이트)가 더해진다 — 응답이 요청의 일련번호를 그대로 돌려줘, 늦게 온 응답을
- *       연결을 끊지 않고도 가려낼 수 있다. 일련번호는 연결(채널)이 정하므로 여기서는 0 으로 만들고 {@link #setSerial} 로 넣는다.</li>
+ *       연결을 끊지 않고도 가려낼 수 있다. 일련번호는 연결(채널)이 정하므로 여기서는 0 으로 만들고 {@link #setSerial4E} 로 넣는다.</li>
  *   <li>응답 길이 계산({@link #responseLength})은 어댑터의 디코더와 연결 시험이 함께 쓴다 — 3E·4E 를 서브헤더로 가린다.</li>
+ *   <li>{@link WireProtocol} — TCP 어댑터에 응답 자르기·일련번호(4E 만)·연결 확인(루프백)을 알려 준다.</li>
  * </ul>
  */
-public final class McFrames {
+public final class McFrames implements WireProtocol {
 
 	public static final int CMD_LOOPBACK = 0x0619;
 
@@ -182,6 +184,39 @@ public final class McFrames {
 		return out;
 	}
 
+	// ── 전송 규약(WireProtocol) ──
+
+	@Override
+	public int responseLength(byte[] buf, int available) {
+		return responseLength(buf, available, ascii);
+	}
+
+	/** 4E 요청만 — 같은 연결에 RAW 인터페이스의 3E 요청이 섞여도 요청마다 본다 */
+	@Override
+	public boolean hasSerial(byte[] request) {
+		return isFourERequest(request);
+	}
+
+	@Override
+	public void setSerial(byte[] request, int serial) {
+		setSerial4E(request, serial);
+	}
+
+	@Override
+	public int serialOf(byte[] response) {
+		return serial4EOf(response);
+	}
+
+	@Override
+	public byte[] healthCheckRequest() {
+		return loopback();
+	}
+
+	@Override
+	public boolean healthCheckOk(byte[] response) {
+		return loopbackOk(response);
+	}
+
 	// ── 일련번호(4E) ──
 
 	/** 4E 요청인가 — 서브헤더로 본다(BINARY 54 00, ASCII "5400") */
@@ -190,7 +225,7 @@ public final class McFrames {
 	}
 
 	/** 4E 요청에 일련번호를 넣는다(BINARY 리틀엔디안 2바이트, ASCII 16진 4자리). 3E 면 그대로 */
-	public static void setSerial(byte[] frame, int serial) {
+	public static void setSerial4E(byte[] frame, int serial) {
 		if (frame.length >= 4 && frame[0] == 0x54 && frame[1] == 0x00) {
 			frame[2] = (byte) serial;
 			frame[3] = (byte) (serial >> 8);
@@ -201,7 +236,7 @@ public final class McFrames {
 	}
 
 	/** 응답의 일련번호. 3E 응답이면 -1 */
-	public static int serialOf(byte[] response) {
+	public static int serial4EOf(byte[] response) {
 		if (response.length >= 4 && (response[0] & 0xFF) == 0xD4 && response[1] == 0x00) {
 			return (response[2] & 0xFF) | (response[3] & 0xFF) << 8;
 		}

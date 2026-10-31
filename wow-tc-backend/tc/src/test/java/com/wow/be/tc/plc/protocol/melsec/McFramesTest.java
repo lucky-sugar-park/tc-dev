@@ -38,21 +38,21 @@ class McFramesTest {
 		byte[] req = f.request(MelsecDriver.CMD_READ, MelsecDriver.SUB_WORD, MelsecDevice.D, 100, 2, null);
 		assertThat(hex(req)).isEqualTo("5400" + "0000" + "0000" + "00FFFF0300" + "0C00" + "1000" + "0104" + "0000" + "640000A8" + "0200");
 		assertThat(McFrames.isFourERequest(req)).isTrue();
-		McFrames.setSerial(req, 0x1234);
+		McFrames.setSerial4E(req, 0x1234);
 		assertThat(hex(req)).startsWith("54003412");
 
 		McFrames a = new McFrames(settings("4E_ASCII"));
 		byte[] areq = a.request(MelsecDriver.CMD_READ, MelsecDriver.SUB_WORD, MelsecDevice.D, 100, 2, null);
-		McFrames.setSerial(areq, 0x00AB);
+		McFrames.setSerial4E(areq, 0x00AB);
 		assertThat(new String(areq, StandardCharsets.US_ASCII)).startsWith("540000AB0000" + "00FF03FF00" + "0018");
 		assertThat(McFrames.isFourERequest(hex("500000FF"))).isFalse();
 	}
 
 	@Test
 	void 응답의_일련번호() {
-		assertThat(McFrames.serialOf(hex("D400 3412 0000 00FFFF0300 0200 0000"))).isEqualTo(0x1234);
-		assertThat(McFrames.serialOf("D40000AB000000FF03FF0000040000".getBytes(StandardCharsets.US_ASCII))).isEqualTo(0xAB);
-		assertThat(McFrames.serialOf(hex("D000 00FFFF0300 0200 0000"))).isEqualTo(-1);
+		assertThat(McFrames.serial4EOf(hex("D400 3412 0000 00FFFF0300 0200 0000"))).isEqualTo(0x1234);
+		assertThat(McFrames.serial4EOf("D40000AB000000FF03FF0000040000".getBytes(StandardCharsets.US_ASCII))).isEqualTo(0xAB);
+		assertThat(McFrames.serial4EOf(hex("D000 00FFFF0300 0200 0000"))).isEqualTo(-1);
 	}
 
 	@Test

@@ -6,6 +6,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.wow.be.tc.plc.protocol.melsec.MelsecDriver;
+import com.wow.be.tc.plc.protocol.modbus.ModbusDriver;
 
 /**
  * 프로토콜 → 드라이버. 드라이버는 상태가 없어 하나씩만 둔다. 어댑터가 리플렉션으로 만들어져 Spring 빈을 받지 못하므로 정적 표로 둔다.
@@ -14,7 +15,7 @@ public final class PlcDrivers {
 
 	public static final String DEFAULT_PROTOCOL = MelsecDriver.PROTOCOL;
 
-	private static final Map<String, PlcDriver> DRIVERS = List.<PlcDriver>of(new MelsecDriver()).stream()
+	private static final Map<String, PlcDriver> DRIVERS = List.<PlcDriver>of(new MelsecDriver(), new ModbusDriver()).stream()
 		.collect(Collectors.toUnmodifiableMap(PlcDriver::protocol, Function.identity()));
 
 	private PlcDrivers() {

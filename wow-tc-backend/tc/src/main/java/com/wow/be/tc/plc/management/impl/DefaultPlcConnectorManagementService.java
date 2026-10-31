@@ -38,7 +38,10 @@ import com.wow.be.tc.plc.management.PlcOwnershipManager;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.plc.management.PlcConnectorManagementService;
 import com.wow.be.tc.plc.protocol.PlcDriver;
+import com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter;
+import com.wow.be.tc.plc.connector.modbus.ModbusTcpAdapter;
 import com.wow.be.tc.plc.protocol.PlcDrivers;
+import com.wow.be.tc.plc.protocol.WireProtocol;
 import com.wow.be.tc.plc.protocol.melsec.MelsecDriver;
 
 import io.netty.bootstrap.Bootstrap;
@@ -355,15 +358,13 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		return testConnection(plcInfo);
 	}
 	
-	/** 포트마다 동시에 연결하고 MELSEC 이면 루프백까지(#12) — 예전에는 첫 포트에 TCP 연결만 봤다 */
+	/** 포트마다 동시에 연결하고 프로토콜의 연결 확인(MELSEC 루프백, Modbus 레지스터 읽기)까지(#12) — 예전에는 첫 포트에 TCP 연결만 봤다 */
 	private Map<String, String> testConnection(PlcConnectorInfo pInfo) {
 		log.debug("DefaultPlcConnectorManagementService.testConnection(PlcInfo pInfo) is called.");
-		Map<String, Object> settings=null;
-		if(MelsecDriver.PROTOCOL.equals(pInfo.getProtocol())) {
-			String legacy=pInfo.getMessageFrameFormat()!=null ? pInfo.getMessageFrameFormat().name() : null;
-			settings=PlcDrivers.of(pInfo.getProtocol()).normalizeSettings(pInfo.getSettings(), legacy);
-		}
-		return PlcConnectionTester.test(pInfo.getHostIp(), pInfo.getPorts(), pInfo.getConnectionVips(), settings);
+		String legacy=pInfo.getMessageFrameFormat()!=null ? pInfo.getMessageFrameFormat().name() : null;
+		PlcDriver driver=PlcDrivers.of(pInfo.getProtocol());
+		WireProtocol wire=driver.wire(driver.normalizeSettings(pInfo.getSettings(), legacy));
+		return PlcConnectionTester.test(pInfo.getHostIp(), pInfo.getPorts(), pInfo.getConnectionVips(), wire);
 	}
 	
 	private Map<String, String> testConnection(String ip, int port, String localIp) {
@@ -485,7 +486,11 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 
 	/**
 	 * 프로토콜 드라이버로 커넥터 설정을 검증하고 기본값을 채운다(잘못되면 IllegalArgumentException → 400).
-	 * MELSEC 은 어댑터의 응답 해석기가 {@code messageFrameFormat} 을 보므로 설정의 프레임과 맞춘다.
+	 * <ul>
+	 *   <li>MELSEC 은 RAW 요청 객체가 {@code messageFrameFormat} 을 보므로 설정의 프레임과 맞춘다. 다른 프로토콜은 BINARY.</li>
+	 *   <li>어댑터 클래스는 프로토콜이 정한다 — Modbus 면 {@link ModbusTcpAdapter}. MELSEC 은 비었거나 다른 프로토콜의 어댑터일 때만
+	 *       {@link MelsecProgrammableControllerAdapter} 로(옛 패키지 이름이 든 행은 그대로 둔다 — LegacyClassNames 가 찾는다).</li>
+	 * </ul>
 	 */
 	static void normalizeProtocol(PlcConnectorInfo info) {
 		PlcDriver driver=PlcDrivers.of(info.getProtocol());
@@ -495,6 +500,13 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		info.setSettings(settings);
 		if(MelsecDriver.PROTOCOL.equals(driver.protocol())) {
 			info.setMessageFrameFormat(String.valueOf(settings.get("frame")).endsWith("ASCII") ? FrameFormat.ASCII : FrameFormat.BINARY);
+			String cls=info.getAdapterClassName();
+			if(cls==null || cls.isBlank() || ModbusTcpAdapter.class.getName().equals(cls)) {
+				info.setAdapterClassName(MelsecProgrammableControllerAdapter.class.getName());
+			}
+		} else {
+			info.setMessageFrameFormat(FrameFormat.BINARY);
+			info.setAdapterClassName(ModbusTcpAdapter.class.getName());
 		}
 	}
 }

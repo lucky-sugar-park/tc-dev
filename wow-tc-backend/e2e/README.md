@@ -21,8 +21,10 @@
 | `test_plc_remote.py` | 두 인스턴스 PLC 교환 전달(다중화 4단계) — 주인이 아닌 인스턴스로 온 요청, 감사 한 번, 내부 엔드포인트 서명·포트, `TC_E2E_FAILOVER=graceful\|kill` 이면 이어받기 시간. **두 번째 인스턴스(`TC_E2E_BASE_URL_B`)가 있을 때만**(아니면 건너뜀) | 10(+2~3) |
 | `test_plc_points.py` | POINTS 인터페이스(PLC 일반화 1단계) — RAW 와 같은 값, 여러 형 쓰기·readBack, 값 기반 변경 감지, plcStatus, 등록·쓰기 값 검증, 커넥터 설정 정규화, RAW READ 에 쓰기 명령 거절(M2), 인터페이스 삭제. 비트 디바이스는 vplc 에 M 메모리가 있을 때만 | 23(+1) |
 | `test_plc_mc.py` | MELSEC 보강(PLC 일반화 2단계) — vplc 오류 종료 코드(없는 메모리), 포트별 연결 시험(TCP+루프백), 4E 프레임(POINTS 4E·RAW 3E 같은 연결, 시간 초과에 연결 유지), 주기적 루프백(멈춘 PLC 연결 닫고 다시 잇기). **vplc 를 잠시 멈추고 plc-e2e 설정을 바꿨다가 되돌린다** | 12 |
+| `test_plc_modbus.py` | Modbus TCP(PLC 일반화 3단계) — 가짜 장치(:15200)를 띄워 커넥터 자동 설정·연결 시험, RAW 거절, 점 검증, HR·IR·DI 읽기·HR·CO 쓰기(readBack), 워드 순서 LITTLE, 예외 응답 → plcStatus, 시간 초과에 연결 유지, 쉬는 연결 확인으로 닫고 다시 잇기. 커넥터 `plc-modbus-e2e` 를 만들고 지운다 | 23 |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |
+| `fake_modbus.py` | 시험용 가짜 Modbus TCP 장치(FC 1·2·3·4·5·6·15·16, 처음 값, 답하지 않는 주소 HR500, HR990 에 n 을 쓰면 n 초 동안 무응답) | |
 | `ShutdownViaJmx.java` | JMX 로 Spring Boot 정상 종료 요청(Windows 에서 SIGTERM 대신) | |
 
 ## 준비

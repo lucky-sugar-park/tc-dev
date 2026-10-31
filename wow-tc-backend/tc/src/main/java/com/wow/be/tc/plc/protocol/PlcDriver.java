@@ -28,4 +28,7 @@ public interface PlcDriver {
 
 	/** 작업을 한다. 쓰기 값이 빠졌거나 잘못되면 {@code ERR_400} */
 	PlcResult execute(PlcOperation operation, FrameExchanger exchanger) throws ToolControlException;
+
+	/** TCP 연결 계층에 알려 줄 전송 규약(응답 자르기·요청 번호·연결 확인) — 정규화한 설정으로 만든다 */
+	WireProtocol wire(Map<String, Object> settings);
 }

@@ -155,7 +155,7 @@ try:
     con.update({"name": f"e2e-proto-{RUN}", "ports": [15999], "published": False, "status1": "REGISTERED", "status2": "STOPPED"})
     s, b = call("POST", "/api/v1/plc-connector/register", dict(con, protocol="MELSEC_MC", settings={"frame": "1E_BINARY"}))
     check("커넥터 설정 거절 400 — 없는 프레임", s == 400 and "frame" in str(b), (s, b))
-    s, b = call("POST", "/api/v1/plc-connector/register", dict(con, protocol="MODBUS_TCP", settings={}))
+    s, b = call("POST", "/api/v1/plc-connector/register", dict(con, protocol="OPC_UA", settings={}))
     check("커넥터 거절 400 — 아직 없는 프로토콜", s == 400 and "프로토콜" in str(b), (s, b))
     s, b = call("POST", "/api/v1/plc-connector/register", dict(con, protocol="MELSEC_MC", settings={"ioNo": "0x03E0"}))
     got = call("GET", f"/api/v1/plc-connector/find/byName/{con['name']}")[1]

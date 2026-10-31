@@ -18,6 +18,7 @@ import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PlcStatus;
 import com.wow.be.tc.plc.protocol.PointType;
 import com.wow.be.tc.plc.protocol.ValueCodec;
+import com.wow.be.tc.plc.protocol.WireProtocol;
 
 /**
  * MELSEC MC 프로토콜 3E·4E 드라이버 (docs/plc-protocol-design.md §6.1). 프레임 조립·해석은 {@link McFrames}.
@@ -212,6 +213,11 @@ public class MelsecDriver implements PlcDriver {
 			}
 		}
 		return new PlcResult(Map.of(), PlcStatus.ok(PROTOCOL));
+	}
+
+	@Override
+	public WireProtocol wire(Map<String, Object> settings) {
+		return new McFrames(settings);
 	}
 
 	public static PlcStatus status(int endCode) {

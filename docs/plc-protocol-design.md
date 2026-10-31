@@ -85,7 +85,7 @@ flowchart LR
 | 프로토콜 | `settings` |
 |---|---|
 | `MELSEC_MC` | `frame`(`3E_BINARY`·`3E_ASCII`·`4E_BINARY`), `networkNo`, `pcNo`, `ioNo`, `stationNo`, `monitoringTimer`(250ms 단위), `maxWordsPerRequest`(기본 960) |
-| `MODBUS_TCP` | `unitId`, `byteOrder`(기본 BIG), `wordOrder`(기본 BIG — 32비트 값의 워드 순서), `addressBase`(0 또는 1), `maxRegistersPerRequest`(기본 125), `maxCoilsPerRequest`(기본 2000) |
+| `MODBUS_TCP` | `unitId`(기본 1), `byteOrder`(기본 BIG), `wordOrder`(기본 BIG — 32비트 값의 워드 순서), `addressBase`(0 또는 1, 기본 1), `maxRegistersPerRequest`(기본 125), `maxCoilsPerRequest`(기본 2000), `healthCheckIntervalSec`(기본 30) |
 | `OPC_UA` | `endpointUrl`, `securityPolicy`(None·Basic256Sha256 …), `securityMode`, `auth`(`anonymous`·`username`), `username`, `password`(암호화 저장 — `TC_SECRET_KEY`, DB 연결과 같은 방식), `sessionTimeoutMs` |
 
 지금의 `messageFrameFormat`·헤더 템플릿·`memTypes` 는 MELSEC `settings` 로 옮긴다(§8 이전).
@@ -177,7 +177,7 @@ public interface PlcSession {                      // 지금의 ProgrammableCont
 
 | 항목 | 내용 |
 |---|---|
-| 주소 | 영역 + 번호: 코일(`CO`, FC1·5·15), 입력 접점(`DI`, FC2), 입력 레지스터(`IR`, FC4), 보유 레지스터(`HR`, FC3·6·16). 5·6자리 관례 번호(40001)와 영역+0 기준(`hr:0`)을 모두 받고 `addressBase` 로 맞춘다 |
+| 주소 | 영역 + 번호: 코일(`CO`, FC1·5·15), 입력 접점(`DI`, FC2), 입력 레지스터(`IR`, FC4), 보유 레지스터(`HR`, FC3·6·16). `HR100` 의 번호는 `addressBase`(기본 1 — `HR1` 이 프로토콜 주소 0)를 따르고, 5·6자리 관례 번호(`40001`·`300010`)는 늘 1부터 센다 |
 | 값 | 레지스터 16비트 빅엔디안. 32·64비트의 **워드 순서는 장비마다 달라** 커넥터 기본값 + 점별로 바꾼다 |
 | 프레임 | MBAP 헤더의 트랜잭션 ID 로 응답을 요청과 맞춘다(4E 와 같은 이점) |
 | 오류 | 예외 응답(함수 코드 + 0x80, 예외 코드)을 `plcStatus` 로 |
@@ -249,7 +249,7 @@ POST /internal/plc/{name}/execute
 
 1. **모델·드라이버 경계 + MELSEC 이식**: `PlcDriver`·`PlcSession`·`ChannelPool`·`ValueCodec`, MELSEC 주소 파서·블록 묶기, POINTS 인터페이스·API(`INTERFACE_POINT`), 응답 `plcStatus`, 값 기반 변경 감지, 결함 M1~M3, RAW 호환. 커넥터 `protocol`·`settings` migration. — **완료(2026-10-31)**, §12.
 2. **MELSEC 보강(#12)**: 4E 프레임, 응답 길이 검증(M4), 주기적 루프백, 포트 여러 개 병렬 연결 시험. vplc 4E·루프백. — **완료(2026-10-31)**, §13.
-3. **Modbus TCP**: 드라이버·e2e 가짜 장비.
+3. **Modbus TCP**: 드라이버·e2e 가짜 장비. — **완료(2026-10-31)**, §14.
 4. **다중화 계약 `/execute`**, 변환 도구(RAW → POINTS).
 5. **API 계약 고정 → 프론트 재작성**(커넥터·인터페이스 화면은 이 모델로). 시험 읽기 API(`POST /api/v1/plc-connector/{name}/test-read`, 점 목록을 받아 바로 읽기)를 화면용으로 둔다.
 6. **OPC UA**(2차, 프론트와 병행) → 구독(3차).
@@ -324,3 +324,45 @@ POST /internal/plc/{name}/execute
 - 단위 `McFramesTest`(4E 요청·일련번호, 응답 길이 3E·4E·BINARY·ASCII·붙어 온 프레임, 4E 해석, 루프백), `MelsecDriverTest` 갱신.
 - e2e `test_plc_mc.py`(12) — vplc 오류 종료 코드, 포트별 연결 시험, 4E(POINTS 4E·RAW 3E 같은 값, 시간 초과에 연결 유지), 주기적 루프백(멈춘 vplc 연결 닫고 재개 뒤 다시 잇기). 정상 종료 포함 전체 e2e 통과.
 - 남은 것: 실제 MELSEC PLC 로 4E·루프백 확인(vplc 는 규격대로 만들었을 뿐이다).
+
+## 14. 3단계 구현 — Modbus TCP (2026-10-31)
+
+### 14.1 TCP 공통 계층
+
+MELSEC 어댑터에 들어 있던 연결 관리를 프로토콜과 떼어 Modbus 가 같이 쓴다.
+
+| 것 | 내용 |
+|---|---|
+| `WireProtocol`(`plc.protocol`) | 프로토콜이 연결 계층에 알려 주는 것 — 응답을 어디서 자르는지(`responseLength`), 요청에 짝지을 번호가 있는지(`hasSerial`·`setSerial`·`serialOf`), 쉬는 연결 확인 프레임(`healthCheckRequest`·`healthCheckOk`). 드라이버가 설정으로 만든다(`PlcDriver.wire`) |
+| `TcpPlcAdapter`(`plc.connector.tcp`) | 연결·재연결·채널 빌려 쓰기·시간 초과·주기적 연결 확인·이벤트. **번호가 있는 요청은 시간 초과에도 연결을 끊지 않는다**(MELSEC 4E·Modbus), 없으면(3E) 지금처럼 끊고 다시 잇는다. 하위 클래스는 프로토콜 이름과 RAW 처리만 정한다 |
+| `TcpChannel`·`FrameDecoder`·`FrameEncoder` | 예전 `MelsecChannel`·`NettyMessageDecoder`·`NettyMessageEncoder` — 일련번호 대조와 응답 자르기를 `WireProtocol` 에 묻는다 |
+| `MelsecProgrammableControllerAdapter` | `TcpPlcAdapter` 하위 클래스로 줄었다(RAW 요청·응답 객체만). DB 의 `adapterClassName` 때문에 이름은 그대로 |
+| `McFrames` | `WireProtocol` 을 구현(4E 요청만 번호, 루프백). 정적 도우미 이름을 `setSerial4E`·`serial4EOf` 로 |
+| 연결 시험 | 프로토콜의 연결 확인 프레임으로(MELSEC 루프백, Modbus 레지스터 읽기) |
+| 끊김 사유 문구 | `연결 확인(루프백·시험 읽기)에 답이 없음` — 두 프로토콜 공통 |
+
+### 14.2 Modbus TCP
+
+| 항목 | 내용 |
+|---|---|
+| 드라이버 `ModbusDriver`(`MODBUS_TCP`) | 설정 §4.1(모르는 항목은 400). 영역 HR·IR 은 숫자·STRING·BYTES, CO·DI 는 BOOL 만. IR·DI 를 WRITE 인터페이스에 쓰면 400. 한 점은 125레지스터(쓰기 123)·2000비트(쓰기 1968)까지 |
+| 읽기 | 같은 영역의 가까운 점끼리 한 번(빈 칸 8레지스터·16코일까지, 설정 상한까지). FC 1·2·3·4. 응답의 함수 코드·바이트 수·MBAP 길이 칸을 본다 |
+| 쓰기 | 바로 이어진 점끼리 묶어 하나면 FC 6·5, 여럿이면 FC 16·15. 응답이 주소·개수(값)를 그대로 돌려주는지 본다. 프레임 사이는 원자적이지 않다(MELSEC 과 같음) |
+| 값 | 바이트 순서 `byteOrder`, 32·64비트 워드 순서 `wordOrder`(CDAB 장비는 LITTLE), 점별 재정의. 코일은 낮은 비트가 첫 코일 |
+| 예외 응답 | `plcStatus` = (`MODBUS_TCP`, 예외 코드, `Modbus 예외 코드 0x02 (잘못된 데이터 주소)`), `success=false`·`ERR_502_TC_PLC_ERROR`. 연결은 그대로 |
+| 트랜잭션 ID | 채널이 요청마다 1~0xFFFF 를 넣는다 — 시간 초과에도 연결을 유지하고 늦은 응답은 버린다 |
+| 연결 확인 | 쉬는 채널에 보유 레지스터 하나(주소 0) 읽기. 예외 응답이 와도 살아 있다고 본다(그 주소가 없는 장치) |
+| 어댑터 `ModbusTcpAdapter` | POINTS 만. RAW 요청은 409, RAW 인터페이스 등록(READ·WRITE)은 400 |
+| 커넥터 | `protocol: MODBUS_TCP` 로 등록하면 `adapterClassName` 이 `ModbusTcpAdapter` 로, `messageFrameFormat` 은 BINARY 로 정해진다. MELSEC 은 비었거나 Modbus 어댑터일 때만 MELSEC 어댑터로 바꾼다(옛 패키지 이름 행은 그대로) |
+| 다중화 | 드라이버가 상태 없이 `FrameExchanger` 만 쓰므로 원격 어댑터(주인 인스턴스로 프레임 전달)가 그대로 된다 — 트랜잭션 ID 는 주인 쪽 채널이 넣는다 |
+
+### 14.3 함께 고친 것
+
+- 커넥터 조회가 `PORTS`·`CONNECTION_VIPS`·`MEM_TYPES` 가 NULL 이면 500 — 메모리 종류를 적지 않는 Modbus 커넥터에서 드러났다. 빈 목록으로 읽는다.
+
+### 14.4 시험
+
+- 단위 `ModbusDriverTest`(13) — 주소(영역+번호·Modicon·범위), 설정, 점 검증, 읽기 묶기·값(BIG·CDAB·문자열·코일), 예외 응답, 응답 검증, 쓰기(FC 6·16·5·15), 전송 규약(자르기·트랜잭션 ID·연결 확인).
+- e2e `fake_modbus.py`(가짜 장치, 시험이 :15200 에 띄움) + `test_plc_modbus.py`(23) — 커넥터 자동 설정·연결 시험, RAW 거절, 읽기·쓰기(readBack), 워드 순서 LITTLE, 예외 응답, 시간 초과에 연결 유지, 쉬는 연결 확인으로 닫고 다시 잇기.
+- 단위 93개, 정상 종료 포함 전체 e2e 통과(기본 모드). 두 인스턴스(소유권 켬)에서 test_plc_remote·test_plc_points·test_plc_modbus(A·B 양쪽으로) 통과, test_plc_ownership(한 대 시험) 통과. `test_plc_points` 의 "아직 없는 프로토콜" 예를 MODBUS_TCP → OPC_UA 로.
+- 남은 것: 실제 Modbus 장비 확인, vplc 의 Modbus 서버(지금은 e2e 가짜 장치뿐).

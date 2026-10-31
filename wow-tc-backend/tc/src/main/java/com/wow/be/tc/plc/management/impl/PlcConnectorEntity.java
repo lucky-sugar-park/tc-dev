@@ -119,16 +119,14 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 		info.setStatus2(PlcConnectorOperStatus.valueOf(this.status2));
 		info.setHostIp(this.hostIp);
 		
-		String portArr[]=this.ports.split(",");
-		for(String port: portArr) {
-			info.addPort(Integer.parseInt(port.trim()));
+		for(String port: split(this.ports)) {
+			info.addPort(Integer.parseInt(port));
 		}
 		
 		info.setConnLimitPerPort(this.getConnLimitPerPort()!=null?this.getConnLimitPerPort():-1);
 		
-		String vipsArr[]=this.connectionVips.split(",");
-		for(String vip: vipsArr) {
-			info.addVip(vip.trim());
+		for(String vip: split(this.connectionVips)) {
+			info.addVip(vip);
 		}
 		
 		info.setMessageFrameFormat(FrameFormat.toFrameFormat(messageFrameFormat));
@@ -150,9 +148,9 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 		info.setCommProtocolHeadersReqTemplate(reqHeaderTemplate);
 		info.setCommProtocolHeadersResTemplate(resHeaderTemplate);
 		
-		String memTypeArr[]=this.memTypes.split(",");
-		for(String memType:memTypeArr) {
-			info.addMemType(memType.trim());
+		// Modbus 커넥터처럼 메모리 종류를 적지 않은 행은 NULL 이다
+		for(String memType: split(this.memTypes)) {
+			info.addMemType(memType);
 		}
 		
 		info.setProtocol(this.protocol!=null && !this.protocol.isBlank()?this.protocol:PlcDrivers.DEFAULT_PROTOCOL);
@@ -172,6 +170,19 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 		info.setUpdatedBy(super.getUpdatedBy());
 		info.setUpdatedDate(super.getUpdatedDate());
 		return info;
+	}
+
+	/** 쉼표로 나눈 칼럼 — NULL·빈 칸은 빈 목록 */
+	private static java.util.List<String> split(String column) {
+		java.util.List<String> out=new java.util.ArrayList<>();
+		if(column!=null) {
+			for(String v: column.split(",")) {
+				if(!v.isBlank()) {
+					out.add(v.trim());
+				}
+			}
+		}
+		return out;
 	}
 
 	@Override

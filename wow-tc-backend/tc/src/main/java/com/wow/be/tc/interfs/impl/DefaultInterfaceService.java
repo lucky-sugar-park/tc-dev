@@ -39,6 +39,7 @@ import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.plc.management.PlcConnectorManagementService;
 import com.wow.be.tc.plc.protocol.PlcDriver;
 import com.wow.be.tc.plc.protocol.PlcDrivers;
+import com.wow.be.tc.plc.protocol.melsec.MelsecDriver;
 
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -301,6 +302,7 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	 */
 	void validatePoints(InterfaceInfo info) {
 		if(info.getMode()!=InterfaceMode.POINTS) {
+			rejectRawOnNonMelsec(info);
 			return;
 		}
 		if(info.getInterfaceType()!=InterfaceType.READ && info.getInterfaceType()!=InterfaceType.WRITE) {
@@ -332,6 +334,19 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 				throw new IllegalArgumentException("점 이름이 겹칩니다: " + point.getName());
 			}
 			point.setOrder(i);
+		}
+	}
+
+	/** RAW(MC 헤더·데이터 바이트 정의)는 MELSEC 전용 — 다른 프로토콜 커넥터의 READ·WRITE 인터페이스면 400 */
+	private void rejectRawOnNonMelsec(InterfaceInfo info) {
+		if((info.getInterfaceType()!=InterfaceType.READ && info.getInterfaceType()!=InterfaceType.WRITE)
+				|| info.getPlcName()==null || info.getPlcName().isBlank()) {
+			return;
+		}
+		PlcConnectorInfo connector=plcConnectorService.findPlcConnectorByName(info.getPlcName());
+		if(connector!=null && !MelsecDriver.PROTOCOL.equals(connector.getProtocol())) {
+			throw new IllegalArgumentException("RAW 인터페이스는 MELSEC 커넥터에만 씁니다 — " + info.getPlcName() + " 는 "
+				+ connector.getProtocol() + " 이므로 mode=POINTS 와 points 로 정의하세요");
 		}
 	}
 
