@@ -99,7 +99,9 @@ class MelsecDriverTest {
 		assertThat(binary).containsEntry("frame", "3E_BINARY").containsEntry("pcNo", 0xFF).containsEntry("ioNo", 0x03FF);
 		assertThat(driver.normalizeSettings(null, "ASCII")).containsEntry("frame", "3E_ASCII");
 		assertThat(driver.normalizeSettings(Map.of("ioNo", "0x03E0"), null)).containsEntry("ioNo", 0x03E0);
-		assertThatThrownBy(() -> driver.normalizeSettings(Map.of("frame", "4E_BINARY"), null)).hasMessageContaining("4E");
+		assertThat(driver.normalizeSettings(Map.of("frame", "4E_BINARY"), null)).containsEntry("frame", "4E_BINARY")
+			.containsEntry("healthCheckIntervalSec", 30);
+		assertThatThrownBy(() -> driver.normalizeSettings(Map.of("frame", "1E_BINARY"), null)).hasMessageContaining("frame");
 		assertThatThrownBy(() -> driver.normalizeSettings(Map.of("unknown", 1), null)).hasMessageContaining("없는 항목");
 	}
 

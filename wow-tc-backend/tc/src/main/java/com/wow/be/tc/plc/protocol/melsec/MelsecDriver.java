@@ -1,6 +1,5 @@
 package com.wow.be.tc.plc.protocol.melsec;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -21,7 +20,7 @@ import com.wow.be.tc.plc.protocol.PointType;
 import com.wow.be.tc.plc.protocol.ValueCodec;
 
 /**
- * MELSEC MC 프로토콜 3E 드라이버 (docs/plc-protocol-design.md §6.1).
+ * MELSEC MC 프로토콜 3E·4E 드라이버 (docs/plc-protocol-design.md §6.1). 프레임 조립·해석은 {@link McFrames}.
  *
  * <ul>
  *   <li>읽기: 같은 디바이스의 가까운 점끼리 워드 일괄 읽기(0401/0000) 한 번으로 묶는다(빈 칸 {@link #MERGE_GAP} 워드까지,
@@ -39,6 +38,12 @@ public class MelsecDriver implements PlcDriver {
 	public static final String FRAME_3E_BINARY = "3E_BINARY";
 
 	public static final String FRAME_3E_ASCII = "3E_ASCII";
+
+	public static final String FRAME_4E_BINARY = "4E_BINARY";
+
+	public static final String FRAME_4E_ASCII = "4E_ASCII";
+
+	private static final java.util.Set<String> FRAMES = java.util.Set.of(FRAME_3E_BINARY, FRAME_3E_ASCII, FRAME_4E_BINARY, FRAME_4E_ASCII);
 
 	/** 3E 워드 일괄 읽기·쓰기 한 번의 최대 워드 수 */
 	static final int MAX_WORDS = 960;
@@ -75,8 +80,8 @@ public class MelsecDriver implements PlcDriver {
 			frame = "ASCII".equalsIgnoreCase(legacyFrameFormat) ? FRAME_3E_ASCII : FRAME_3E_BINARY;
 		}
 		String f = frame.toString().trim().toUpperCase();
-		if (!f.equals(FRAME_3E_BINARY) && !f.equals(FRAME_3E_ASCII)) {
-			throw new IllegalArgumentException("MELSEC frame 은 " + FRAME_3E_BINARY + " 또는 " + FRAME_3E_ASCII + " 입니다(4E 는 다음 단계): " + frame);
+		if (!FRAMES.contains(f)) {
+			throw new IllegalArgumentException("MELSEC frame 은 " + FRAMES + " 중 하나입니다: " + frame);
 		}
 		out.put("frame", f);
 		out.put("networkNo", number(in, "networkNo", 0x00, 0, 0xFF));
@@ -85,10 +90,12 @@ public class MelsecDriver implements PlcDriver {
 		out.put("stationNo", number(in, "stationNo", 0x00, 0, 0xFF));
 		out.put("monitoringTimer", number(in, "monitoringTimer", 0x0010, 0, 0xFFFF));
 		out.put("maxWordsPerRequest", number(in, "maxWordsPerRequest", MAX_WORDS, 1, MAX_WORDS));
+		// 쉬는 채널에 루프백(0619)을 보내 반쯤 죽은 연결을 찾는 주기(초). 0 이면 하지 않는다(#12)
+		out.put("healthCheckIntervalSec", number(in, "healthCheckIntervalSec", 30, 0, 3600));
 		for (String key : in.keySet()) {
 			if (!out.containsKey(key)) {
 				throw new IllegalArgumentException("MELSEC 설정에 없는 항목입니다: " + key
-					+ " (frame, networkNo, pcNo, ioNo, stationNo, monitoringTimer, maxWordsPerRequest)");
+					+ " (frame, networkNo, pcNo, ioNo, stationNo, monitoringTimer, maxWordsPerRequest, healthCheckIntervalSec)");
 			}
 		}
 		return out;
@@ -152,7 +159,7 @@ public class MelsecDriver implements PlcDriver {
 
 	@Override
 	public PlcResult execute(PlcOperation op, FrameExchanger exchanger) throws ToolControlException {
-		Frames frames = new Frames(op.settings());
+		McFrames frames = new McFrames(op.settings());
 		List<Item> items = new ArrayList<>();
 		for (PointInfo p : op.points()) {
 			try {
@@ -165,14 +172,14 @@ public class MelsecDriver implements PlcDriver {
 		return op.kind() == PlcOperation.Kind.READ ? read(op, items, frames, exchanger) : write(op, items, frames, exchanger);
 	}
 
-	private PlcResult read(PlcOperation op, List<Item> items, Frames frames, FrameExchanger exchanger) throws ToolControlException {
+	private PlcResult read(PlcOperation op, List<Item> items, McFrames frames, FrameExchanger exchanger) throws ToolControlException {
 		Map<String, Object> values = new LinkedHashMap<>();
 		for (Block block : blocks(items, frames.maxWords)) {
 			int start = block.device.isBit() ? block.firstWord * 16 : block.firstWord;
 			byte[] response = exchanger.exchange(op.reqId(), frames.request(CMD_READ, SUB_WORD, block.device, start, block.words(), null));
-			Reply reply = frames.reply(response);
-			if (reply.endCode != 0) {
-				return new PlcResult(values, status(reply.endCode));
+			McFrames.McReply reply = frames.reply(response);
+			if (reply.endCode() != 0) {
+				return new PlcResult(values, status(reply.endCode()));
 			}
 			byte[] data = frames.words(reply, block.words());
 			for (Item item : block.items) {
@@ -182,7 +189,7 @@ public class MelsecDriver implements PlcDriver {
 		return new PlcResult(values, PlcStatus.ok(PROTOCOL));
 	}
 
-	private PlcResult write(PlcOperation op, List<Item> items, Frames frames, FrameExchanger exchanger) throws ToolControlException {
+	private PlcResult write(PlcOperation op, List<Item> items, McFrames frames, FrameExchanger exchanger) throws ToolControlException {
 		List<Run> runs = new ArrayList<>();
 		for (Item item : items) {
 			Object value = op.values() != null ? op.values().get(item.point.getName()) : null;
@@ -199,9 +206,9 @@ public class MelsecDriver implements PlcDriver {
 			byte[] request = run.bit
 				? frames.request(CMD_WRITE, SUB_BIT, run.device, run.start, run.bits.length, frames.bitData(run.bits))
 				: frames.request(CMD_WRITE, SUB_WORD, run.device, run.start, run.data.length / 2, frames.wordData(run.data));
-			Reply reply = frames.reply(exchanger.exchange(op.reqId(), request));
-			if (reply.endCode != 0) {
-				return new PlcResult(Map.of(), status(reply.endCode));
+			McFrames.McReply reply = frames.reply(exchanger.exchange(op.reqId(), request));
+			if (reply.endCode() != 0) {
+				return new PlcResult(Map.of(), status(reply.endCode()));
 			}
 		}
 		return new PlcResult(Map.of(), PlcStatus.ok(PROTOCOL));
@@ -359,180 +366,4 @@ public class MelsecDriver implements PlcDriver {
 		}
 	}
 
-	// ── 프레임 ──
-
-	record Reply(int endCode, byte[] data, boolean ascii) {
-	}
-
-	/** 3E 프레임(BINARY·ASCII) 조립과 해석 — 커넥터 설정의 번호·타이머를 쓴다 */
-	static final class Frames {
-
-		final boolean ascii;
-
-		final int network;
-
-		final int pc;
-
-		final int io;
-
-		final int station;
-
-		final int timer;
-
-		final int maxWords;
-
-		Frames(Map<String, Object> settings) {
-			Map<String, Object> s = settings != null ? settings : Map.of();
-			this.ascii = FRAME_3E_ASCII.equals(String.valueOf(s.getOrDefault("frame", FRAME_3E_BINARY)));
-			this.network = intOf(s, "networkNo", 0x00);
-			this.pc = intOf(s, "pcNo", 0xFF);
-			this.io = intOf(s, "ioNo", 0x03FF);
-			this.station = intOf(s, "stationNo", 0x00);
-			this.timer = intOf(s, "monitoringTimer", 0x0010);
-			this.maxWords = intOf(s, "maxWordsPerRequest", MAX_WORDS);
-		}
-
-		private static int intOf(Map<String, Object> s, String key, int def) {
-			Object v = s.get(key);
-			return v instanceof Number n ? n.intValue() : v != null ? Integer.parseInt(v.toString()) : def;
-		}
-
-		/**
-		 * 요청 프레임. data 는 이미 프레임 형식에 맞춘 것 — BINARY 면 바이트, ASCII 면 문자 바이트({@link #wordData}·{@link #bitData}).
-		 */
-		byte[] request(int command, int subCommand, MelsecDevice device, int start, int count, byte[] data) {
-			int dataLen = data == null ? 0 : data.length;
-			if (ascii) {
-				String number = device.isHexNumber() ? String.format("%06X", start) : String.format("%06d", start);
-				String body = String.format("%04X%04X%04X", timer, command, subCommand) + device.asciiCode() + number
-					+ String.format("%04X", count);
-				String head = String.format("5000%02X%02X%04X%02X%04X", network, pc, io, station, body.length() + dataLen);
-				byte[] text = (head + body).getBytes(StandardCharsets.US_ASCII);
-				byte[] out = new byte[text.length + dataLen];
-				System.arraycopy(text, 0, out, 0, text.length);
-				if (data != null) {
-					System.arraycopy(data, 0, out, text.length, dataLen);
-				}
-				return out;
-			}
-			byte[] out = new byte[21 + dataLen];
-			int i = 0;
-			out[i++] = 0x50;
-			out[i++] = 0x00;
-			out[i++] = (byte) network;
-			out[i++] = (byte) pc;
-			out[i++] = (byte) io;
-			out[i++] = (byte) (io >> 8);
-			out[i++] = (byte) station;
-			int len = 12 + dataLen;
-			out[i++] = (byte) len;
-			out[i++] = (byte) (len >> 8);
-			out[i++] = (byte) timer;
-			out[i++] = (byte) (timer >> 8);
-			out[i++] = (byte) command;
-			out[i++] = (byte) (command >> 8);
-			out[i++] = (byte) subCommand;
-			out[i++] = (byte) (subCommand >> 8);
-			out[i++] = (byte) start;
-			out[i++] = (byte) (start >> 8);
-			out[i++] = (byte) (start >> 16);
-			out[i++] = device.binaryCode();
-			out[i++] = (byte) count;
-			out[i++] = (byte) (count >> 8);
-			if (data != null) {
-				System.arraycopy(data, 0, out, i, dataLen);
-			}
-			return out;
-		}
-
-		/** 워드 쓰기 데이터 — 리틀엔디안 바이트를 프레임 형식으로(ASCII 는 워드마다 16진 4자리) */
-		byte[] wordData(byte[] littleEndian) {
-			if (!ascii) {
-				return littleEndian;
-			}
-			StringBuilder sb = new StringBuilder();
-			for (int i = 0; i < littleEndian.length; i += 2) {
-				sb.append(String.format("%04X", (littleEndian[i] & 0xFF) | (littleEndian[i + 1] & 0xFF) << 8));
-			}
-			return sb.toString().getBytes(StandardCharsets.US_ASCII);
-		}
-
-		/** 비트 쓰기 데이터 — BINARY 는 한 바이트에 두 점(앞 점이 위 4비트), ASCII 는 점마다 '0'/'1' */
-		byte[] bitData(boolean[] bits) {
-			if (ascii) {
-				StringBuilder sb = new StringBuilder();
-				for (boolean b : bits) {
-					sb.append(b ? '1' : '0');
-				}
-				return sb.toString().getBytes(StandardCharsets.US_ASCII);
-			}
-			byte[] out = new byte[(bits.length + 1) / 2];
-			for (int k = 0; k < bits.length; k++) {
-				if (bits[k]) {
-					out[k / 2] |= (byte) (k % 2 == 0 ? 0x10 : 0x01);
-				}
-			}
-			return out;
-		}
-
-		/** 응답 프레임 검증·해석 — 서브헤더, 응답 데이터 길이 칸, 종료 코드 */
-		Reply reply(byte[] frame) throws ToolControlException {
-			if (ascii) {
-				String text = new String(frame, StandardCharsets.US_ASCII);
-				if (text.length() < 22 || !text.startsWith("D000")) {
-					throw bad("ASCII 응답 머리가 맞지 않습니다", frame);
-				}
-				int len = hex(text.substring(14, 18), frame);
-				if (len != text.length() - 18) {
-					throw bad("응답 데이터 길이 칸(" + len + ")과 실제 길이(" + (text.length() - 18) + ")가 다릅니다", frame);
-				}
-				int endCode = hex(text.substring(18, 22), frame);
-				return new Reply(endCode, text.substring(22).getBytes(StandardCharsets.US_ASCII), true);
-			}
-			if (frame.length < 11 || (frame[0] & 0xFF) != 0xD0 || frame[1] != 0x00) {
-				throw bad("BINARY 응답 머리가 맞지 않습니다", frame);
-			}
-			int len = (frame[7] & 0xFF) | (frame[8] & 0xFF) << 8;
-			if (len != frame.length - 9) {
-				throw bad("응답 데이터 길이 칸(" + len + ")과 실제 길이(" + (frame.length - 9) + ")가 다릅니다", frame);
-			}
-			int endCode = (frame[9] & 0xFF) | (frame[10] & 0xFF) << 8;
-			byte[] data = new byte[frame.length - 11];
-			System.arraycopy(frame, 11, data, 0, data.length);
-			return new Reply(endCode, data, false);
-		}
-
-		/** 읽은 워드를 리틀엔디안 바이트로 — 개수가 맞는지 본다 */
-		byte[] words(Reply reply, int words) throws ToolControlException {
-			if (!reply.ascii) {
-				if (reply.data.length != words * 2) {
-					throw bad("읽은 데이터가 " + reply.data.length + "바이트 — " + (words * 2) + "바이트여야 합니다", reply.data);
-				}
-				return reply.data;
-			}
-			String text = new String(reply.data, StandardCharsets.US_ASCII);
-			if (text.length() != words * 4) {
-				throw bad("읽은 데이터가 " + text.length() + "자 — " + (words * 4) + "자여야 합니다", reply.data);
-			}
-			byte[] out = new byte[words * 2];
-			for (int i = 0; i < words; i++) {
-				int w = hex(text.substring(i * 4, i * 4 + 4), reply.data);
-				out[i * 2] = (byte) w;
-				out[i * 2 + 1] = (byte) (w >> 8);
-			}
-			return out;
-		}
-
-		private static int hex(String s, byte[] frame) throws ToolControlException {
-			try {
-				return Integer.parseInt(s, 16);
-			} catch (NumberFormatException e) {
-				throw bad("16진 숫자가 아닙니다: " + s, frame);
-			}
-		}
-
-		private static ToolControlException bad(String why, byte[] frame) {
-			return ToolControlException.of(ToolControlException.PLC_ERROR, "MELSEC 응답을 해석할 수 없습니다 — " + why);
-		}
-	}
 }

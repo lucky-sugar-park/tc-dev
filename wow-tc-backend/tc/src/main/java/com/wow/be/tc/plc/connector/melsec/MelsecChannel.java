@@ -7,14 +7,16 @@ import com.wow.be.tc.plc.connector.Payload;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import com.wow.be.tc.plc.protocol.melsec.McFrames;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * PLC 와의 TCP 연결 하나 (docs/plc-connection-design.md §5.1).
  *
- * <p>MC 3E 프레임에는 요청과 응답을 짝지을 번호가 없으므로 연결 하나에 진행 중인 요청은 하나뿐이다. 어댑터가 유휴 채널
- * 대기열로 그것을 보장하고, 이 객체는 그 한 요청의 {@link CompletableFuture} 만 들고 있다. 진행 중인 요청이 없을 때 온
- * 응답(시간 초과 뒤 늦게 온 응답 등)은 버린다.
+ * <p>연결 하나에 진행 중인 요청은 하나뿐이다. 어댑터가 유휴 채널 대기열로 그것을 보장하고, 이 객체는 그 한 요청의
+ * {@link CompletableFuture} 만 들고 있다. 진행 중인 요청이 없을 때 온 응답(시간 초과 뒤 늦게 온 응답 등)은 버린다.
+ * 4E 요청이면 응답의 일련번호가 요청과 같을 때만 받는다 — 늦게 온 이전 응답을 연결을 끊지 않고 가려낸다(#12).
  *
  * <p>Netty 채널은 끊기고 다시 연결될 때마다 바뀐다. 이 객체는 같은 (포트, 로컬 VIP) 자리를 계속 나타낸다.
  */
@@ -30,6 +32,11 @@ final class MelsecChannel {
 	private volatile Channel channel;
 
 	private volatile CompletableFuture<byte[]> pending;
+
+	/** 진행 중인 4E 요청의 일련번호, 3E 면 -1 */
+	private volatile int expectedSerial = -1;
+
+	private int nextSerial;
 
 	/** 재연결 시도 회차(성공하면 0) */
 	private int reconnectAttempt;
@@ -75,8 +82,17 @@ final class MelsecChannel {
 		return ++reconnectAttempt;
 	}
 
-	/** 요청 하나를 시작한다. 빌린 채널에서만 부르므로 이전 요청은 이미 끝나 있다. */
-	CompletableFuture<byte[]> begin() {
+	/**
+	 * 요청 하나를 시작한다. 빌린 채널에서만 부르므로 이전 요청은 이미 끝나 있다. 4E 요청이면 이 채널의 다음 일련번호를 넣는다.
+	 */
+	CompletableFuture<byte[]> begin(byte[] request) {
+		if (McFrames.isFourERequest(request)) {
+			nextSerial = (nextSerial % 0xFFFF) + 1;
+			McFrames.setSerial(request, nextSerial);
+			this.expectedSerial = nextSerial;
+		} else {
+			this.expectedSerial = -1;
+		}
 		CompletableFuture<byte[]> f = new CompletableFuture<>();
 		this.pending = f;
 		return f;
@@ -84,6 +100,7 @@ final class MelsecChannel {
 
 	void end() {
 		this.pending = null;
+		this.expectedSerial = -1;
 	}
 
 	/** 연결이 끊겼을 때 기다리던 요청을 실패시킨다 */
@@ -95,10 +112,34 @@ final class MelsecChannel {
 	}
 
 	void onResponse(byte[] data) {
+		int expected = expectedSerial;
+		if (expected >= 0 && data != null) {
+			int serial = McFrames.serialOf(data);
+			if (serial != expected) {
+				log.warn("일련번호가 다른 PLC 응답을 버립니다(늦게 온 이전 응답): plc={}, port={}, 기다림 {}, 받음 {}", plcName, port, expected, serial);
+				return;
+			}
+		}
 		CompletableFuture<byte[]> f = pending;
 		if (f == null || !f.complete(data)) {
 			log.warn("기다리는 요청이 없는 PLC 응답을 버립니다: plc={}, port={}, {} bytes", plcName, port, data != null ? data.length : 0);
 		}
+	}
+
+	/** 왜 닫았는지(LOOPBACK_FAILED·TIMEOUT) — 끊김 이벤트와 마지막 오류에 남긴다 */
+	private volatile String closeCause;
+
+	/** 사유를 남기고 닫는다 */
+	void close(String cause) {
+		this.closeCause = cause;
+		close();
+	}
+
+	/** 닫힌 사유를 한 번 꺼낸다. 사유 없이 닫혔으면(PLC 가 끊음 등) null */
+	String takeCloseCause() {
+		String c = closeCause;
+		closeCause = null;
+		return c;
 	}
 
 	/** 닫는다. closeFuture 리스너가 재연결을 예약한다(어댑터가 멈춘 상태가 아니면). */

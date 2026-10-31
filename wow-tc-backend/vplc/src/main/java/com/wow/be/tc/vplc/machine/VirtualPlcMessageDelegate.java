@@ -57,15 +57,9 @@ public class VirtualPlcMessageDelegate implements PostboxHandler<PostboxMessage>
 		log.debug("VirtualPlcMessageDelegate.processMessage(Message message, MessageCallback callback)...");
 
 		if(vplc.getStatus()!=PlcStatus.RUNNING) {
-			// 해당 클라이언트에게 warn 메시지를 전송한다
-			MessageResponse msg=new MessageResponse();
-			msg.setErrCode1((byte)0x00);
-			msg.setErrCode2((byte)0x00);
-			msg.setData(null);
-			
-			// VPLC가 RUNNING 상태가 아니라면, Client에게 사전에 약속된 ERROR 코드와 메시지를 응답한다
-			// 에러코드와 이에 대한 세부 메시지 내용은 아직 미 구현 상태임
-			responseMessageCallback.onResponse(msg);
+			// 멈춘(PAUSED) 가상 PLC 는 답하지 않는다 — 연결은 살아 있는데 PLC 가 답하지 않는 상태를 흉내 낸다(tc 의 연결 확인·시간 초과 시험).
+			// 예전에는 머리 없는 응답을 보내 tc 가 해석하지 못했다
+			log.debug("가상 PLC 가 RUNNING 이 아니라 요청에 답하지 않습니다: {}", vplc.getStatus());
 			return;
 		}
 
@@ -82,6 +76,15 @@ public class VirtualPlcMessageDelegate implements PostboxHandler<PostboxMessage>
 	public void onMessage(PostboxMessage pboxMessage) {
 		log.debug("VirtualPlcMessageDelegate.onMessage(PostboxMessage pboxMessage)..., MSG:\n{}", pboxMessage.toJson());
 
+		if(pboxMessage instanceof McMessage mc) {
+			byte[] frame=McResponder.handle(mc.getRequest(), vplc);
+			McMessage response=new McMessage(null, frame);
+			response.setClientChannelId(mc.getClientChannelId());
+			response.setFormat(vplc.getMessageFrameFormat());
+			response.setTransactionId(mc.getTransactionId());
+			mc.getResponseMessageCallback().onResponse(response);
+			return;
+		}
 		MessageRequest request=(MessageRequest)pboxMessage;
 		try {
 			MessageResponse response=new MessageResponse();

@@ -185,7 +185,8 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 			}
 
 			vplcInfo.setStatus(status);
-			vplcManagementService.updateVirtualPlcStatus(vplcId, vplcName, status, true);
+			// 이름으로 찾은 경우에도 찾은 ID 로 갱신한다 — 예전에는 vplcId(null)를 넘겨 이름으로 하는 제어가 늘 500 이었다
+			vplcManagementService.updateVirtualPlcStatus(vplcInfo.getId(), vplcName, status, true);
 			
 			return vplcInfo;
 		} catch(NoSuchElementException e) {

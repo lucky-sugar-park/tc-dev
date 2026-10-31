@@ -5,6 +5,7 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -21,6 +22,7 @@ import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.PlcRequest;
 import com.wow.be.tc.plc.PlcResponse;
 import com.wow.be.tc.plc.connector.AdapterStatus;
+import com.wow.be.tc.plc.protocol.melsec.McFrames;
 import com.wow.be.tc.plc.connector.Payload;
 import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
 import com.wow.be.tc.plc.connector.PlcConnectorEvent;
@@ -85,6 +87,31 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 	private long fastRetryUntil;
 
 	private long fastRetryIntervalMs;
+
+	/** 정규화한 커넥터 설정(프레임·번호) — 루프백 프레임을 만든다 */
+	private Map<String, Object> settings = Map.of();
+
+	/** 쉬는 채널 루프백 주기(초). 0 이면 하지 않는다(#12) */
+	private long healthCheckIntervalSec;
+
+	/** 끊김 사유 — 이벤트 cause 로 남는다 */
+	public static final String CAUSE_LOOPBACK_FAILED = "LOOPBACK_FAILED";
+
+	public static final String CAUSE_TIMEOUT = "TIMEOUT";
+
+	/** 끊김 사유를 사람이 읽을 말로(마지막 오류) */
+	public static String describe(String cause) {
+		if (CAUSE_LOOPBACK_FAILED.equals(cause)) {
+			return " — 연결 확인(루프백)에 답이 없음";
+		}
+		if (CAUSE_TIMEOUT.equals(cause)) {
+			return " — 응답 시간 초과";
+		}
+		return "";
+	}
+
+	/** 루프백 응답을 기다리는 상한 */
+	static final long HEALTH_CHECK_TIMEOUT_MS = 3_000;
 
 	private long requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
 
@@ -152,6 +179,12 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			this.requestTimeoutMs = t;
 		}
 		this.startEvenIfDisconnected = Boolean.TRUE.equals(props.get("startEvenIfDisconnected"));
+		if (props.get("settings") instanceof Map<?, ?> s) {
+			this.settings = (Map<String, Object>) s;
+			if (s.get("healthCheckIntervalSec") instanceof Number n) {
+				this.healthCheckIntervalSec = n.longValue();
+			}
+		}
 		if (props.get("fastRetryUntil") instanceof Long until && props.get("fastRetryIntervalMs") instanceof Long interval && interval > 0) {
 			this.fastRetryUntil = until;
 			this.fastRetryIntervalMs = interval;
@@ -204,7 +237,45 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			log.warn("PLC 에 아직 연결하지 못했습니다. 뒤에서 계속 연결을 시도합니다: {}", name);
 		}
 
+		if (healthCheckIntervalSec > 0) {
+			maintenance.scheduleWithFixedDelay(this::healthCheck, healthCheckIntervalSec, healthCheckIntervalSec, TimeUnit.SECONDS);
+		}
 		emit(EventType.START, null, "START_REQUEST", connected + " EA connections are established.");
+	}
+
+	/**
+	 * 쉬는 채널마다 루프백(0619)을 보내 반쯤 죽은 연결(TCP 는 살아 있는데 PLC 가 답하지 않음)을 찾는다(#12). 답이 없거나
+	 * 틀리면 그 채널을 닫는다 — 재연결 스케줄러가 다시 잇는다. 요청 중인 채널은 건너뛴다.
+	 */
+	private void healthCheck() {
+		if (!running) {
+			return;
+		}
+		McFrames frames = new McFrames(settings);
+		List<MelsecChannel> snapshot;
+		synchronized (channels) {
+			snapshot = new ArrayList<>(channels);
+		}
+		for (MelsecChannel ch : snapshot) {
+			if (!running || !idle.remove(ch)) {
+				continue;  // 요청 중이거나 끊긴 채널
+			}
+			boolean ok = false;
+			try {
+				byte[] response = exchangeOn(ch, "loopback", frames.loopback(), System.currentTimeMillis() + HEALTH_CHECK_TIMEOUT_MS);
+				ok = frames.loopbackOk(response);
+			} catch (ToolControlException e) {
+				ok = false;
+			}
+			if (ok) {
+				if (ch.isConnected()) {
+					idle.offer(ch);
+				}
+			} else {
+				log.warn("PLC 연결 확인(루프백)에 답이 없어 연결을 닫고 다시 잇습니다: {}", ch);
+				ch.close(CAUSE_LOOPBACK_FAILED);
+			}
+		}
 	}
 
 	/** 연결을 한 번 시도한다. 성공하면 유휴 대기열에 넣는다. */
@@ -258,10 +329,11 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 		if (!running) {
 			return;
 		}
-		log.warn("PLC 연결 끊김: {} — 다시 연결합니다", ch);
-		lastError = new LastError("연결 끊김 " + ch, new Date());
+		String cause = ch.takeCloseCause();
+		log.warn("PLC 연결 끊김: {}{} — 다시 연결합니다", ch, cause != null ? " (" + cause + ")" : "");
+		lastError = new LastError("연결 끊김 " + ch + describe(cause), new Date());
 		submit(() -> {
-			emit(EventType.DISCONNECT, nc, "DISCONNECTED", activeCount() + " EA connections are available.");
+			emit(EventType.DISCONNECT, nc, cause != null ? cause : "DISCONNECTED", activeCount() + " EA connections are available.");
 			scheduleReconnect(ch);
 		});
 	}
@@ -339,10 +411,30 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 	private byte[] exchange(String reqId, byte[] reqData) throws ToolControlException {
 		long deadline = System.currentTimeMillis() + requestTimeoutMs;
 		MelsecChannel ch = borrow(deadline);
-
-		boolean healthy = false;
+		boolean returned = false;
 		try {
-			CompletableFuture<byte[]> future = ch.begin();
+			byte[] response = exchangeOn(ch, reqId, reqData, deadline);
+			returned = true;
+			return response;
+		} catch (ToolControlException e) {
+			// 4E 시간 초과는 연결을 그대로 쓴다(exchangeOn 이 닫지 않음) — 늦은 응답은 일련번호로 버린다
+			returned = ch.isConnected() && e.getErrorCode().equals(ToolControlException.PLC_TIMEOUT) && McFrames.isFourERequest(reqData);
+			throw e;
+		} finally {
+			if (returned && ch.isConnected()) {
+				idle.offer(ch);
+			}
+		}
+	}
+
+	/**
+	 * 정해진 채널로 요청 하나를 주고받는다. 3E 시간 초과면 그 연결을 닫는다(늦은 응답이 다음 요청의 결과가 되지 않게). 4E 는
+	 * 일련번호로 늦은 응답을 가려내므로 닫지 않는다. 채널을 대기열에 돌려놓는 일은 부르는 쪽이 한다.
+	 */
+	private byte[] exchangeOn(MelsecChannel ch, String reqId, byte[] reqData, long deadline) throws ToolControlException {
+		boolean fourE = McFrames.isFourERequest(reqData);
+		try {
+			CompletableFuture<byte[]> future = ch.begin(reqData);
 			Payload payload = new Payload();
 			payload.setTimestamp(System.currentTimeMillis());
 			payload.setData(reqData);
@@ -358,13 +450,15 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 				throw ToolControlException.of(ToolControlException.PLC_UNAVAILABLE, "PLC 로 요청을 보내지 못했습니다: " + ch);
 			}
 
-			byte[] response = future.get(remaining(deadline), TimeUnit.MILLISECONDS);
-			healthy = true;
-			return response;
+			return future.get(remaining(deadline), TimeUnit.MILLISECONDS);
 		} catch (TimeoutException e) {
-			// 늦게 온 응답이 다음 요청의 결과가 되지 않도록 이 연결을 버린다 — 재연결 스케줄러가 새로 잇는다
-			log.warn("PLC 응답 시간 초과로 연결을 닫습니다: {}, reqId={}", ch, reqId);
-			ch.close();
+			if (fourE) {
+				log.warn("PLC 응답 시간 초과(4E — 연결은 그대로, 늦은 응답은 일련번호로 버림): {}, reqId={}", ch, reqId);
+			} else {
+				// 늦게 온 응답이 다음 요청의 결과가 되지 않도록 이 연결을 버린다 — 재연결 스케줄러가 새로 잇는다
+				log.warn("PLC 응답 시간 초과로 연결을 닫습니다: {}, reqId={}", ch, reqId);
+				ch.close(CAUSE_TIMEOUT);
+			}
 			throw ToolControlException.of(ToolControlException.PLC_TIMEOUT,
 				"PLC 응답 시간이 초과되었습니다(" + requestTimeoutMs + "ms): " + reqId);
 		} catch (ExecutionException e) {
@@ -379,9 +473,6 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			throw ToolControlException.of(ToolControlException.PLC_UNAVAILABLE, "PLC 요청이 중단되었습니다: " + reqId);
 		} finally {
 			ch.end();
-			if (healthy && ch.isConnected()) {
-				idle.offer(ch);
-			}
 		}
 	}
 

@@ -74,6 +74,14 @@ public class Types {
 			return this.description;
 		}
 
+		/** 비트 디바이스(접점·코일·릴레이) — 비트 단위(서브 명령 0001)로 읽고 쓸 수 있다 */
+		public boolean isBitDevice() {
+			return switch (this) {
+				case SM, X, Y, M, L, F, V, B, TS, TC, SS, SC, CS, CC, SB, S, DX, DY -> true;
+				default -> false;
+			};
+		}
+
 		public static MemoryType toMemoryType(String memType) {
 			switch (memType) {
 			case "SM":

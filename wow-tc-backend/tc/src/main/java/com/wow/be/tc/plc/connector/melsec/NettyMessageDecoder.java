@@ -4,120 +4,62 @@ import java.util.Date;
 import java.util.List;
 
 import com.wow.be.tc.plc.connector.Payload;
-import com.wow.be.tc.utils.ByteUtil.Endian;
-import com.wow.be.tc.utils.ByteUtil;
+import com.wow.be.tc.plc.protocol.melsec.McFrames;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * PLC 응답 바이트를 프레임 하나씩 잘라 넘긴다. 3E·4E 는 서브헤더로 가린다({@link McFrames#responseLength}) — 같은 연결에서
+ * RAW 인터페이스(3E)와 4E 설정의 POINTS 인터페이스가 섞여도 된다.
+ *
+ * <p>예전 ASCII 해석은 버퍼 배열을 직접 읽고(직접 버퍼면 실패), 길이 문자를 거꾸로 10진으로 읽고, 길이 검사가 늘 통과해 ASCII
+ * 응답을 한 번도 제대로 자르지 못했다(결함 M5).
+ */
 @Slf4j
 public class NettyMessageDecoder extends ByteToMessageDecoder {
-	
-	private static int BINARY_FORMAT_RESP_MIN_HEADER_LEN=11;
-	
-	private static int BINARY_FORMAT_RESP_DATA_LEN_POS_FROM=7;
-	
-	private static int BINARY_FORMAT_RESP_DATA_LEN_POS_TO=8;
-	
-	private static int ASCIII_FORMAT_RESP_MIN_HEADER_LEN=22;
-	
-	private static int ASCIII_FORMAT_RESP_DATA_LEN_POS_FROM=14;
-	
-	private static int ASCIII_FORMAT_RESP_DATA_LEN_POS_TO=17;
-	
-	private static int SHORT_OF_LEN_RESP_MESSAGE_FRAME=-1;
-	
-	private String messageFrameFormat;
-	
-	public NettyMessageDecoder() {
+
+	private final boolean ascii;
+
+	private final String messageFrameFormat;
+
+	public NettyMessageDecoder(String messageFrameFormat) {
 		super();
-	}
-	
-	public NettyMessageDecoder (String messageFrameFormat) {
-		super();
-		this.messageFrameFormat=messageFrameFormat;
+		this.messageFrameFormat = messageFrameFormat;
+		this.ascii = "ASCII".equals(messageFrameFormat);
 	}
 
 	@Override
-	protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-		log.debug("MessageDecoder.decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) is called.");
-
-		int len=SHORT_OF_LEN_RESP_MESSAGE_FRAME;
-		switch(messageFrameFormat) {
-		case "BINARY":
-			len=readBinaryFormat(in);
-			break;
-		case "ASCII":
-			len=readAsciiFormat(in);
-			break;
-		default:
-			len=readBinaryFormat(in);
+	protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+		int available = in.readableBytes();
+		if (available == 0) {
+			return;
 		}
-
-		if(len!=SHORT_OF_LEN_RESP_MESSAGE_FRAME) {
-			byte[] frame=new byte[len];
-			in.readBytes(frame);
-			
-			if(messageFrameFormat.equals("BINARY")) {
-				if(frame[0]!=(byte)0xD0 || frame[1]!=(byte)0x00) {
-					log.warn("");
-					return;
-				}	
-			} else if(messageFrameFormat.equals("ASCII")) {
-				if(frame[0]!=0x44 || frame[1]!=0x30 || frame[2]!=0x30 || frame[3]!=0x30) {
-					log.warn("");
-					return;
-				}
-			}
-	
-			Payload payload=new Payload();
-			payload.setTimestamp(new Date().getTime());
-			payload.setFrameFormat(messageFrameFormat);
-			payload.setData(frame);
-
-			out.add(payload);
+		byte[] head = new byte[Math.min(available, 64)];
+		in.getBytes(in.readerIndex(), head);
+		int len = McFrames.responseLength(head, head.length, ascii);
+		if (len == 0 && head.length < available) {
+			// 길이 칸까지는 64바이트 안에 있다 — 여기 오면 프레임이 64바이트보다 길고 아직 덜 왔다
+			byte[] all = new byte[available];
+			in.getBytes(in.readerIndex(), all);
+			len = McFrames.responseLength(all, available, ascii);
 		}
-	}
-	
-	private int readBinaryFormat(ByteBuf in) {
-		if(in.readableBytes()<BINARY_FORMAT_RESP_MIN_HEADER_LEN) {
-			return SHORT_OF_LEN_RESP_MESSAGE_FRAME;
+		if (len < 0) {
+			log.warn("PLC 응답 머리가 아닌 바이트 {}개를 버립니다({}): {}", available, messageFrameFormat, ctx.channel().remoteAddress());
+			in.skipBytes(available);
+			return;
 		}
-		
-		int size=in.readableBytes();
-		byte[] arr=new byte[size];
-		in.getBytes(in.readerIndex(), arr);
-		byte[] len=new byte[2];
-		len[0]=arr[BINARY_FORMAT_RESP_DATA_LEN_POS_FROM];
-		len[1]=arr[BINARY_FORMAT_RESP_DATA_LEN_POS_TO];
-		int dataLen=ByteUtil.bytesToInt(len, Endian.LITTLE);
-		
-		if(arr.length<BINARY_FORMAT_RESP_DATA_LEN_POS_TO+1+dataLen) {
-			return SHORT_OF_LEN_RESP_MESSAGE_FRAME;
+		if (len == 0) {
+			return;  // 덜 왔다
 		}
-
-		return BINARY_FORMAT_RESP_DATA_LEN_POS_TO+1+dataLen;
-	}
-	
-	private int readAsciiFormat(ByteBuf in) {
-		if(in.readableBytes()<ASCIII_FORMAT_RESP_MIN_HEADER_LEN) {
-			return SHORT_OF_LEN_RESP_MESSAGE_FRAME;
-		}
-
-		byte[] arr=in.array();
-		byte[] len=new byte[4];
-		len[3]=arr[ASCIII_FORMAT_RESP_DATA_LEN_POS_FROM];
-		len[2]=arr[ASCIII_FORMAT_RESP_DATA_LEN_POS_FROM+1];
-		len[1]=arr[ASCIII_FORMAT_RESP_DATA_LEN_POS_FROM+2];
-		len[0]=arr[ASCIII_FORMAT_RESP_DATA_LEN_POS_TO];
-		int dataLen=Integer.parseInt(new String(len));
-
-		if(dataLen<ASCIII_FORMAT_RESP_DATA_LEN_POS_TO+1+dataLen) {
-			return SHORT_OF_LEN_RESP_MESSAGE_FRAME;
-		}
-
-		return ASCIII_FORMAT_RESP_DATA_LEN_POS_TO+1+dataLen;
+		byte[] frame = new byte[len];
+		in.readBytes(frame);
+		Payload payload = new Payload();
+		payload.setTimestamp(new Date().getTime());
+		payload.setFrameFormat(messageFrameFormat);
+		payload.setData(frame);
+		out.add(payload);
 	}
 }

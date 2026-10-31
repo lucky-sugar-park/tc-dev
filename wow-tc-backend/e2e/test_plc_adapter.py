@@ -50,7 +50,7 @@ def setup():
                      "published": False, "status1": "REGISTERED", "status2": "STOPPED"})
         s, b = call("POST", "/api/v1/plc-connector/register", info)
         print("connector register", s, b if s != 200 else "")
-        for src, name, reply in (("if-req.json", "plc.fake.read", "plc.fake.read.reply"), ("if-rep.json", "plc.fake.read.reply", None)):
+        for src, name, reply in (("fixture-if-read.json", "plc.fake.read", "plc.fake.read.reply"), ("fixture-if-read-reply.json", "plc.fake.read.reply", None)):
             d = json.load(open(os.path.join(R, src), encoding="utf-8"))
             d["name"] = name
             d["plcName"] = "plc-fake"

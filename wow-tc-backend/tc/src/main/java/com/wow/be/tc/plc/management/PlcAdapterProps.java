@@ -4,6 +4,7 @@ import java.util.Properties;
 
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
+import com.wow.be.tc.plc.protocol.PlcDrivers;
 
 /**
  * 어댑터를 올릴 때 넘기는 속성. 기동(PlcConnectorLoader)·게시 API·소유권 관리자가 같은 값을 쓰게 한 곳에서 만든다.
@@ -35,6 +36,9 @@ public final class PlcAdapterProps {
 		props.put("plcRequestTimeoutMs", plcConfig.getRequestTimeoutMs());
 		props.put("startEvenIfDisconnected", background);
 		props.put("connectionListener", listener);
+		// 프로토콜 설정(프레임·번호·루프백 주기) — 저장 때 검증했고, 설정이 없는 옛 커넥터는 여기서 기본값을 채운다
+		String legacy = info.getMessageFrameFormat() != null ? info.getMessageFrameFormat().name() : null;
+		props.put("settings", PlcDrivers.of(info.getProtocol()).normalizeSettings(info.getSettings(), legacy));
 		return props;
 	}
 }

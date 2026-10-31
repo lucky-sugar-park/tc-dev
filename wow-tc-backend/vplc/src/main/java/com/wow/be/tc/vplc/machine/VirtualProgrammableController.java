@@ -159,6 +159,11 @@ public class VirtualProgrammableController {
 		}
 	}
 	
+	/** 그 종류의 메모리. 만들지 않았으면 null — MC 요청에 0xC056 으로 답한다 */
+	public Memory memory(MemoryType memType) {
+		return memMap.get(memType.getAsciiCode());
+	}
+
 	public void clear(MemoryType memType) throws VirtualPlcException {
 		log.debug("");
 		Memory mem=memMap.get(memType.getAsciiCode());

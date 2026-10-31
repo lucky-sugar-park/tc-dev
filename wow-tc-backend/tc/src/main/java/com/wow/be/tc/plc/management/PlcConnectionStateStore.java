@@ -17,6 +17,7 @@ import com.wow.be.tc.plc.connector.AdapterStatus;
 import com.wow.be.tc.plc.connector.PlcAdapterManager;
 import com.wow.be.tc.plc.connector.PlcConnectorEvent;
 import com.wow.be.tc.plc.connector.ProgrammableControllerAdapter;
+import com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -69,7 +70,8 @@ public class PlcConnectionStateStore {
 				switch (event.getType()) {
 					case CONNECT -> fields.put("lastConnectedAt", String.valueOf(at));
 					case DISCONNECT -> {
-						fields.put("lastError", "연결 끊김 " + event.getRemoteIp() + ":" + event.getRemotePort());
+						fields.put("lastError", "연결 끊김 " + event.getRemoteIp() + ":" + event.getRemotePort()
+							+ MelsecProgrammableControllerAdapter.describe(event.getCause()));
 						fields.put("lastErrorAt", String.valueOf(at));
 					}
 					case START -> {

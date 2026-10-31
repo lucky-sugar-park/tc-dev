@@ -355,9 +355,15 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		return testConnection(plcInfo);
 	}
 	
+	/** 포트마다 동시에 연결하고 MELSEC 이면 루프백까지(#12) — 예전에는 첫 포트에 TCP 연결만 봤다 */
 	private Map<String, String> testConnection(PlcConnectorInfo pInfo) {
 		log.debug("DefaultPlcConnectorManagementService.testConnection(PlcInfo pInfo) is called.");
-		return testConnection(pInfo.getHostIp(), pInfo.getPorts().get(0), pInfo.getConnectionVips().get(0));
+		Map<String, Object> settings=null;
+		if(MelsecDriver.PROTOCOL.equals(pInfo.getProtocol())) {
+			String legacy=pInfo.getMessageFrameFormat()!=null ? pInfo.getMessageFrameFormat().name() : null;
+			settings=PlcDrivers.of(pInfo.getProtocol()).normalizeSettings(pInfo.getSettings(), legacy);
+		}
+		return PlcConnectionTester.test(pInfo.getHostIp(), pInfo.getPorts(), pInfo.getConnectionVips(), settings);
 	}
 	
 	private Map<String, String> testConnection(String ip, int port, String localIp) {
@@ -488,7 +494,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		info.setProtocol(driver.protocol());
 		info.setSettings(settings);
 		if(MelsecDriver.PROTOCOL.equals(driver.protocol())) {
-			info.setMessageFrameFormat(MelsecDriver.FRAME_3E_ASCII.equals(settings.get("frame")) ? FrameFormat.ASCII : FrameFormat.BINARY);
+			info.setMessageFrameFormat(String.valueOf(settings.get("frame")).endsWith("ASCII") ? FrameFormat.ASCII : FrameFormat.BINARY);
 		}
 	}
 }
