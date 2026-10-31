@@ -133,4 +133,14 @@ class AuditResponsesTest {
 		assertThat(AuditResponses.parseReceiver("tc")).isNull();
 		assertThat(AuditResponses.parseReceiver(null)).isNull();
 	}
+
+	@Test
+	void 요청_감사의_callback_주소() {
+		assertThat(AuditResponses.pushUrlOf(audit("REQUEST", "pushUrl: http://mes:8080/cb?a=1", Map.of())))
+			.isEqualTo("http://mes:8080/cb?a=1");
+		assertThat(AuditResponses.pushUrlOf(audit("REQUEST", "", Map.of()))).isNull();
+		assertThat(AuditResponses.pushUrlOf(audit("REQUEST", null, Map.of()))).isNull();
+		assertThat(AuditResponses.pushUrlOf(audit("REQUEST", "pushUrl: ", Map.of()))).isNull();
+		assertThat(AuditResponses.pushUrlOf(null)).isNull();
+	}
 }

@@ -140,7 +140,11 @@ public class DefaultRedeliveryService implements RedeliveryService {
 					continue;
 				}
 				if (ref.deliveryType() == DeliveryType.CALLBACK_URL) {
-					rejected.add(new Rejected(id, ref.label(), "콜백 주소는 기록되지 않아 응답 기록으로 다시 보낼 수 없습니다. 전달 기록으로 보내세요."));
+					try {
+						items.add(new Item(id, callbackTarget(info).redeliveryOf(id), response));
+					} catch (ToolControlException e) {
+						rejected.add(new Rejected(id, ref.label(), e.getMessage()));
+					}
 					continue;
 				}
 				DeliveryTarget target = candidates.stream()
@@ -166,6 +170,38 @@ public class DefaultRedeliveryService implements RedeliveryService {
 		TcMessageRequest probe = new TcMessageRequest();
 		probe.setOpcode(interfaceName);
 		return deliveryService.targetsOf(probe, false);
+	}
+
+	/**
+	 * 응답·오류 기록의 원래 요청이 남긴 callback 주소. 같은 거래 ID 를 다시 쓴 호출자가 있을 수 있어 응답 시각 이전의
+	 * 가장 가까운 요청을 고른다. 인터페이스가 지금 callback 을 보내는 설정이어야 한다(정의가 있으면 사용 중인 CALLBACK_URL 정의).
+	 */
+	private DeliveryTarget callbackTarget(ExchangedMessageAuditInfo info) throws ToolControlException {
+		long respondedAt = info.getTimestamp() != null ? info.getTimestamp().getTime() : Long.MAX_VALUE;
+		String pushUrl = info.getTransactionId() == null ? null
+			: auditService.searchByTransactionId(info.getTransactionId(), info.getName(), AuditResponses.REQUEST).stream()
+				.filter(r -> r.getTimestamp() != null && r.getTimestamp().getTime() <= respondedAt)
+				.max(Comparator.comparing(ExchangedMessageAuditInfo::getTimestamp))
+				.map(AuditResponses::pushUrlOf)
+				.orElse(null);
+		if (pushUrl == null) {
+			throw ToolControlException.of(ToolControlException.INVALID_REQUEST,
+				"원래 요청에 콜백 주소(pushUrl)가 기록되지 않았습니다(동기 요청이거나 기록 전 요청). 전달 기록으로 보내세요.");
+		}
+		TcMessageRequest probe = new TcMessageRequest();
+		probe.setOpcode(info.getName());
+		probe.setPushResult(true);
+		probe.setPushUrl(pushUrl);
+		if (deliveryService.targetsOf(probe, true).stream().noneMatch(t -> t.type() == DeliveryType.CALLBACK_URL)) {
+			throw ToolControlException.of(ToolControlException.INVALID_REQUEST,
+				"이 인터페이스(" + info.getName() + ")는 콜백 주소로 보내지 않습니다(사용 중인 CALLBACK_URL 전달 정의 없음).");
+		}
+		DeliveryTarget target = DeliveryTarget.always(DeliveryType.CALLBACK_URL, "callback", pushUrl);
+		String unusable = unusable(target);
+		if (unusable != null) {
+			throw ToolControlException.of(ToolControlException.INVALID_REQUEST, unusable);
+		}
+		return target;
 	}
 
 	/** 기록된 대상을 지금 설정으로 — WebHook 은 지금 주소로 */

@@ -13,7 +13,7 @@
 | `test_framework_046.py` | framework 0.8.46 반영 — 공개 경로 설정, 검색 조건(conjType 없음 AND, 없는 항목 400) | 8 |
 | `test_http_methods.py` | 상태를 바꾸는 API 의 메서드(#9) — 예전 GET 은 405, 삭제는 DELETE·제어·사용 변경은 POST 로 처리, 토큰 없으면 401. 없는 대상은 404(`ERR_404`) — 500 이 나오면 실패 | 71 |
 | `test_db_table.py` | DB_TABLE 결과 전달(#10) — 외부 DB 연결 등록(암호화·금지 옵션·예약 이름), 테이블 검증, 성공·실패 행 기록, 사용 중지, 삭제 보호. **`TC_SECRET_KEY` 필요** | 33 |
-| `test_redelivery.py` | 관리자 결과 재전송(#11) — 전달 기록 재전송(꺼진 연결 거절·켠 뒤 성공·중복 클릭·유니크 키 "이미 있음"·본문 없는 옛 기록), 응답·오류 기록을 고른 대상으로(전달 조건 무시, 재전송 헤더), 잘못된 요청, 지워진 WebHook. **`TC_SECRET_KEY`·18090 허용 필요** | 37 |
+| `test_redelivery.py` | 관리자 결과 재전송(#11) — 전달 기록 재전송(꺼진 연결 거절·켠 뒤 성공·중복 클릭·유니크 키 "이미 있음"·본문 없는 옛 기록), 응답·오류 기록을 고른 대상으로(전달 조건 무시, 재전송 헤더), 잘못된 요청, 지워진 WebHook, 응답 기록 → callback(원래 요청의 `pushUrl`, 동기 요청은 주소 없음). **`TC_SECRET_KEY`·18090 허용 필요** | 45 |
 | `test_vplc_http_methods.py` | vplc 의 상태를 바꾸는 API 메서드 — 예전 GET 은 405, 삭제는 DELETE·게시·해제·제어는 POST, 없는 가상 PLC 는 404(`ERR_404`). vplc 주소는 `TC_E2E_VPLC_URL` | 31 |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |

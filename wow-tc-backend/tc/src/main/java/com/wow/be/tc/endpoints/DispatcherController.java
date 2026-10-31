@@ -94,6 +94,8 @@ public class DispatcherController {
 	public ResponseEntity<TcMessageResponse> serviceWithSyncReply(@RequestBody TcMessageRequest request)
 			throws ToolControlException {
 		normalize(request);
+		// 동기 요청은 결과를 응답 본문으로 돌려주고 callback 주소로 보내지 않는다 — 감사에도 주소를 남기지 않게 지운다
+		request.setPushResult(false);
 		RequestPrincipals.stampAndAuthorize(request);
 
 		TcMessageResponse response;

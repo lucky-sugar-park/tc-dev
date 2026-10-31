@@ -30,7 +30,7 @@
 - **빈 곳**
   1. PLC 종료 코드(`resultCode`, `resultDescription`)와 `changed` 는 어디에도 없다. WebHook·CALLBACK_URL 본문에는 들어간다.
   2. 디스패치 예외로 만든 실패 응답은 ERROR 와 `MSG_ID` 가 달라, 전달과 원본을 `TRX_ID` + 인터페이스 이름으로만 잇는다. 호출자가 같은 `transactionId` 를 다시 쓰면 모호하다.
-  3. 콜백 주소는 DELIVERY 의 `RECEIVER` 에만 있다. REQUEST 에는 `pushUrl` 이 남지 않는다.
+  3. 콜백 주소는 DELIVERY 의 `RECEIVER` 에만 있다. REQUEST 에는 `pushUrl` 이 남지 않는다. → §2.2 에서 메움
 - 화면 조회용 변환(`ExchangedMessageAuditEntity.info()`)이 `MSG_JSON` 을 `Map<String, String>` 으로 읽어 숫자가 문자열이 되고, 중첩 객체는 읽지 못한다. 저장된 값은 멀쩡하다.
 
 ### 2.1 보완 — DELIVERY 에 보낸 본문을 남긴다
@@ -53,7 +53,13 @@ DELIVERY 의 `MSG_JSON` 을 `{}` 대신 아래로 채운다. 빈 곳 1·2 가 �
 - 크기: 전달 대상 수만큼 응답 data 가 더 쌓인다. 감사 보존은 §7.
 - 이 보완 전의 DELIVERY(`{}`)는 §4.2 처럼 원본 RESPONSE·ERROR 에서 응답을 다시 만든다.
 
-빈 곳 3 은 남긴다 — 처음부터 걸러져 보내지 않은 결과는 콜백 주소로 다시 보낼 수 없다. 필요해지면 REQUEST 감사에 `pushUrl` 을 남긴다.
+### 2.2 보완 — REQUEST 에 callback 주소를 남긴다 (2026-10-31)
+
+처음부터 걸러져(`deliverOn`) callback 으로 보내지 않은 결과도 응답 기록으로 callback 주소에 다시 보낼 수 있게, 비동기 요청(`/request`)이 `pushResult: true` 와 `pushUrl` 을 주면 REQUEST 감사의 `DESCRIPTION` 에 `pushUrl: {주소}` 를 남긴다(R12).
+
+- `DESCRIPTION` 은 REQUEST 에서 늘 비어 있던 칼럼이다 — 표를 바꾸지 않고, 감사 화면에서 바로 보인다. 1024자를 넘는 주소는 잘려 쓸 수 없으므로 남기지 않는다(경고 로그).
+- 동기 요청(`/request-and-reply`)은 callback 을 쓰지 않으므로 `pushResult` 를 무시하고 주소도 남기지 않는다. 예전에는 동기 요청에 허용 밖 `pushUrl` 을 주면 API 클라이언트 검사에서 400 이었는데, 이제는 무시된다.
+- 이 보완 전 요청은 주소가 없어 응답 기록으로는 callback 에 보낼 수 없다 — 전달 기록이 있으면 그것으로 보낸다.
 
 ## 3. 결정
 
@@ -70,6 +76,7 @@ DELIVERY 의 `MSG_JSON` 을 `{}` 대신 아래로 채운다. 빈 곳 1·2 가 �
 | R9 | 실행 | 검증 후 **202 로 바로 돌려주고** 전달 스레드 풀에서 보낸다. 결과는 DELIVERY 감사와 SSE 로 본다 | 대상이 느리면 500건이 HTTP 제한 시간을 넘는다 |
 | R10 | 순서 | 한 요청 안에서 **대상마다 원래 시각 순으로 하나씩** 보낸다 | 받는 쪽에서 옛 값이 새 값을 덮지 않게 |
 | R11 | 중복 클릭 | 같은 원본·같은 대상을 10초(`tc.delivery.redelivery-duplicate-window`) 안에 다시 요청하면 그 건은 건너뛴다. **인스턴스 메모리**로 본다 — 두 요청이 서로 다른 인스턴스로 가면 막지 못한다 | 실수로 두 번 누르는 것만 막는다. 일부러 다시 보내는 것은 막지 않는다. 보내기가 뒤에서 돌아 DELIVERY 감사로는 진행 중인 건을 알 수 없다 |
+| R12 | 응답 기록 → callback | 원래 요청(같은 거래 ID·인터페이스, 응답 시각 이전의 가장 가까운 REQUEST)에 남은 `pushUrl` 로 보낸다. 인터페이스가 지금 callback 을 보내는 설정이어야 한다 — 전달 정의가 있으면 사용 중인 CALLBACK_URL 정의, 없으면 레거시대로 늘. 허용 주소 목록은 다시 본다 | 걸러졌던 결과를 다른 대상과 같은 방식으로 다시 보낸다. 주소는 요청자가 정한 것이라 관리자가 고르지 않는다 |
 
 ## 4. 동작
 
@@ -90,7 +97,7 @@ DELIVERY 의 `MSG_JSON` 을 `{}` 대신 아래로 채운다. 빈 곳 1·2 가 �
    - RESPONSE: 헤더 칼럼(`TRX_ID`, `MSG_ID`, `NAME`, `SENDER`, `RECEIVER`, `TIMESTAMP`) + `MSG_JSON` 을 `data` 로. `DESCRIPTION` 이 비었으면 성공, 아니면 첫 `: ` 앞을 `errorCode`, 뒤를 `errorMessage` 로.
    - ERROR: 헤더 칼럼 + `MSG_JSON` 의 `errorCode`, `errorMessage`, `success=false`.
    - `resultCode`, `resultDescription`, `changed` 는 비운다(§2 빈 곳 1).
-3. 대상: 요청에 적은 대상(유형·이름·테이블)이 그 인터페이스의 **사용 중인 전달 정의**에 있어야 한다. 정의가 없는 인터페이스는 레거시 대상(응답 인터페이스의 WebHook 목록)에서 고른다. CALLBACK_URL 은 고를 수 없다(주소가 없다).
+3. 대상: 요청에 적은 대상(유형·이름·테이블)이 그 인터페이스의 **사용 중인 전달 정의**에 있어야 한다. 정의가 없는 인터페이스는 레거시 대상(응답 인터페이스의 WebHook 목록)에서 고른다. CALLBACK_URL 은 R12 — 원래 요청의 `pushUrl` 로, 그 요청에 주소가 없으면 거절.
 4. 감사는 §4.1 과 같고 `redeliveryOf` 는 RESPONSE·ERROR 의 감사 ID.
 
 ### 4.3 코드 위치
@@ -124,7 +131,7 @@ POST /api/v1/ifsvc/redelivery/responses
 ```
 
 - 검증에서 걸린 건은 `rejected` 로 바로 돌려주고, 나머지만 보낸다. 한 건도 보내지 못하면 400(같은 본문).
-- 사유: 감사 기록 없음, 기록 유형이 다름, 대상을 읽을 수 없음, WebHook 없음, 허용되지 않은 주소, DB 연결 없음·사용 중지, 원본 응답 없음, 그 인터페이스의 전달 대상이 아님, 콜백(응답 기록으로는 불가), 방금 같은 재전송을 요청함, 전달 대기열 포화.
+- 사유: 감사 기록 없음, 기록 유형이 다름, 대상을 읽을 수 없음, WebHook 없음, 허용되지 않은 주소, DB 연결 없음·사용 중지, 원본 응답 없음, 그 인터페이스의 전달 대상이 아님, 콜백 주소가 기록되지 않은 요청(동기·보완 전), 콜백을 보내지 않는 인터페이스, 방금 같은 재전송을 요청함, 전달 대기열 포화.
 - 건수 초과(R8)는 400.
 - 고르기는 기존 감사 검색(`POST /api/v1/ifsvc/audit/search/page`)으로 한다. 화면에 필요한 거르기 조건 — 유형(DELIVERY), 대상(`RECEIVER` 앞부분), 결과(`OK` / 실패), 기간, 인터페이스 — 이 검색 조건에 없으면 더한다.
 
@@ -145,17 +152,19 @@ POST /api/v1/ifsvc/redelivery/responses
 
 ## 8. 시험
 
-- 단위 `AuditResponsesTest`(7): 감사 저장(Gson)·읽기(Jackson)를 거친 응답 복원(성공·PLC 오류·`null` 메시지·ERROR·보낸 본문·보완 전 `{}`), `RECEIVER` 나누기(주소에 `:`). `DbTableDeliveryChannelTest`(2): 중복 키 판별(1062, 23505, 그 밖의 무결성 오류는 아님).
-- e2e `test_redelivery.py`(37):
+- 단위 `AuditResponsesTest`(8): 감사 저장(Gson)·읽기(Jackson)를 거친 응답 복원(성공·PLC 오류·`null` 메시지·ERROR·보낸 본문·보완 전 `{}`), `RECEIVER` 나누기(주소에 `:`), REQUEST 의 `pushUrl` 읽기. `DbTableDeliveryChannelTest`(2): 중복 키 판별(1062, 23505, 그 밖의 무결성 오류는 아님).
+- e2e `test_redelivery.py`(45):
   - 전달 실패(끈 DB 연결) → 끈 채 재전송 거절 → 켜고 재전송 → 표준 테이블에 행, 새 DELIVERY 에 `redeliveryOf`·요청 사용자.
   - 10초 안 같은 재전송 거절, 성공한 전달 재전송(유니크 키 테이블은 "이미 있음", 행 그대로).
   - 본문 없는 옛 기록(RESPONSE 의 MSG_ID, ERROR 의 거래 ID 로 원본 찾기).
-  - 응답 기록 → WebHook(`deliverOn: FAILURE` 인데 성공 응답도 보냄), 재전송 헤더, 원래 data. 정의에 없는 대상·콜백 거절. ERROR 기록 → DB_TABLE.
+  - 응답 기록 → WebHook(`deliverOn: FAILURE` 인데 성공 응답도 보냄), 재전송 헤더, 원래 data. 정의에 없는 대상·(동기 요청이라 주소 없는) 콜백 거절. ERROR 기록 → DB_TABLE.
+  - 비동기 요청의 REQUEST 에 `pushUrl: 주소`, 그 응답 기록 → callback(PUT, 재전송 헤더, `redeliveryOf`). 동기 요청은 `pushUrl` 을 남기지 않고 응답 기록 → callback 은 400.
   - 잘못된 요청(유형 다름·없는 ID·빈 목록·501건·대상 없음·토큰 없음), 지워진 WebHook 거절.
 - `test_users.py`: 운영자 재전송 403.
 
 ## 9. 운영 반영
 
 - 표·칼럼 변경 없음(migration 없음). 재기동은 새 버전 배포 때 함께.
+- 배포 뒤 비동기 요청부터 REQUEST 에 callback 주소가 남는다(R12).
 - 배포 뒤 처음 전달부터 DELIVERY 에 본문이 남는다. 그 전 기록은 원본 응답으로 다시 만든다(종료 코드 없음).
 - 받는 시스템 담당자에게 알린다: 재전송 헤더, DB_TABLE 중복 행과 유니크 키, 순서 역전.

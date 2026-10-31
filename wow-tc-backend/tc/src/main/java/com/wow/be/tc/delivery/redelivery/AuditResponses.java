@@ -6,6 +6,7 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wow.be.tc.delivery.DeliveryTarget.DeliveryType;
+import com.wow.be.tc.dispatch.AuditDispatchInterceptor;
 import com.wow.be.tc.dispatch.TcMessageResponse;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 
@@ -95,6 +96,20 @@ public final class AuditResponses {
 		} catch (IllegalArgumentException e) {
 			return null;
 		}
+	}
+
+	/**
+	 * REQUEST 감사에 남은 callback 주소({@code pushUrl: 주소}).
+	 *
+	 * @return 없으면(callback 을 바라지 않은 요청, 이 기능 전 기록) null
+	 */
+	public static String pushUrlOf(ExchangedMessageAuditInfo request) {
+		String description = request != null ? request.getDescription() : null;
+		if (description == null || !description.startsWith(AuditDispatchInterceptor.PUSH_URL_PREFIX)) {
+			return null;
+		}
+		String url = description.substring(AuditDispatchInterceptor.PUSH_URL_PREFIX.length()).trim();
+		return url.isEmpty() ? null : url;
 	}
 
 	/** @param destination HTTP 면 주소, DB_TABLE 이면 테이블 */

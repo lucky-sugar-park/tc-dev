@@ -111,6 +111,8 @@ class H(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
+    do_PUT = do_POST  # callback 주소(pushUrl)는 PUT
+
     def log_message(self, *a):
         pass
 
@@ -221,6 +223,42 @@ try:
           h["headers"].get("x-tc-redelivery") == "true" and h["headers"].get("x-tc-redelivery-of") == str(resp_id), h["headers"])
     check("본문: 원래 transactionId·data, success=true", sent.get("transactionId") == tx1 and sent.get("data") == original_data
           and sent.get("success") is True, sent)
+
+    # ── 7-1. callback 주소 — 비동기 요청은 REQUEST 감사에 pushUrl 을 남기고, 응답 기록으로 그 주소에 다시 보낸다 ──
+    # test_paths 가 남겨 두는 CALLBACK_URL 정의가 있으면 그것을 쓴다(처음 전달도 callback 으로 간다)
+    s, b = call("POST", "/api/v1/ifsvc/delivery", {"interfaceName": IF_READ, "deliveryType": "CALLBACK_URL", "deliverOn": "ALL"})
+    check("준비: CALLBACK_URL 정의 있음(새로 201 또는 이미 있음 409)", s in (201, 409), (s, b))
+    if s == 201:
+        created.append(b["id"])
+    cb_url = f"http://127.0.0.1:18090/cb/{RUN}"
+    tx3 = f"t-rd-{RUN}-3"
+    s, b = call("POST", "/api/v1/ifsvc/request", {"transactionId": tx3, "messageId": "m-3", "opcode": IF_READ, "sender": "e2e",
+                                                  "receiver": "tc", "data": {}, "pushResult": True, "pushUrl": cb_url})
+    check("비동기 요청 202", s == 202, (s, b))
+    resp3 = wait(lambda: sql(f"select ID from EXCHANGED_MESSAGE_AUDIT where TRX_ID='{tx3}' and MSG_TYPE='RESPONSE'"))
+    req3 = sql(f"select DESCRIPTION from EXCHANGED_MESSAGE_AUDIT where TRX_ID='{tx3}' and MSG_TYPE='REQUEST'")
+    check("REQUEST 감사 DESCRIPTION = pushUrl: 주소", req3 == f"pushUrl: {cb_url}", req3)
+    s, b = call("POST", "/api/v1/ifsvc/redelivery/responses", {"auditIds": [int(resp3 or 0)], "targets": [
+        {"deliveryType": "CALLBACK_URL", "targetName": "callback"}]})
+    check("응답 기록 → callback 202", s == 202 and b.get("accepted") == 1 and not b.get("rejected"), (s, b))
+    cb = wait(lambda: [r for r in received if r["path"] == f"/cb/{RUN}" and r["headers"].get("x-tc-redelivery-of") == str(resp3)])
+    cb0 = cb[0] if cb else {"headers": {}, "body": "{}"}
+    check("callback 주소가 재전송을 받음(PUT, 재전송 헤더), 원래 transactionId",
+          bool(cb) and json.loads(cb0["body"]).get("transactionId") == tx3, received)
+    cb_audit = wait(lambda: [d for d in deliveries(tx3, f"CALLBACK_URL:callback:{cb_url}")
+                             if json.loads(d[2]).get("redeliveryOf") == int(resp3 or 0)])
+    check("callback 재전송 감사 OK, redeliveryOf=응답 감사 ID", bool(cb_audit) and cb_audit[0][1] == "OK", cb_audit)
+    # 동기 요청은 callback 을 쓰지 않으므로 pushUrl 을 남기지 않는다
+    tx4 = f"t-rd-{RUN}-4"
+    s, b = call("POST", "/api/v1/ifsvc/request-and-reply", {"transactionId": tx4, "messageId": "m-4", "opcode": IF_READ,
+                                                           "sender": "e2e", "receiver": "tc", "data": {},
+                                                           "pushResult": True, "pushUrl": cb_url})
+    req4 = sql(f"select DESCRIPTION from EXCHANGED_MESSAGE_AUDIT where TRX_ID='{tx4}' and MSG_TYPE='REQUEST'")
+    check("동기 요청 200, REQUEST 감사에 pushUrl 없음", s == 200 and req4 == "", (s, req4))
+    resp4 = int(sql(f"select ID from EXCHANGED_MESSAGE_AUDIT where TRX_ID='{tx4}' and MSG_TYPE='RESPONSE'") or 0)
+    s, b = call("POST", "/api/v1/ifsvc/redelivery/responses", {"auditIds": [resp4], "targets": [
+        {"deliveryType": "CALLBACK_URL", "targetName": "callback"}]})
+    check("동기 요청의 응답 → callback 거절 400(주소 없음)", s == 400 and "pushUrl" in str(b.get("rejected")), (s, b))
 
     # ── 8. 디스패치 오류(ERROR) → 실패 응답으로 재전송 ──
     call("POST", "/api/v1/plc-connector/control/release/byName/plc-fake")
