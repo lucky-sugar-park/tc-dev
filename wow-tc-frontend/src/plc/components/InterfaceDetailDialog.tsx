@@ -54,7 +54,6 @@ export function InterfaceDetailDialog({ name, connectors, onClose }: {
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 1.5 }}>
               <Field label={t('i18n.tc.interface.name', '이름(opcode)')}>{info.name}</Field>
               <Field label={t('i18n.tc.interface.ifType', '타입')}>{info.interfaceType}</Field>
-              <Field label={t('i18n.tc.interface.mode', '정의')}>{info.mode ?? 'RAW'}</Field>
               <Field label={t('i18n.tc.interface.use', '사용')}>{yes(info.use)}</Field>
               <Field label={t('i18n.tc.interface.sync', '동기')}>{yes(info.sync)}</Field>
               <Field label={t('i18n.tc.interface.reply', '응답')}>{yes(info.reply)}</Field>

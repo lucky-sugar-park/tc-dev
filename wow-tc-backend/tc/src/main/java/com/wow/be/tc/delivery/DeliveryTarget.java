@@ -30,7 +30,7 @@ public record DeliveryTarget(DeliveryType type, String name, String url, Deliver
 	public enum DeliveryType {
 		/** 요청이 지정한 return url 로 PUT (레거시 pushUrl) */
 		CALLBACK_URL,
-		/** 응답 인터페이스에 등록된 WebHook 으로 POST */
+		/** 전달 정의에 지정한 WebHook 으로 POST */
 		WEBHOOK,
 		/** 등록한 DB 연결의 테이블에 한 행 INSERT (docs/db-table-delivery.md) */
 		DB_TABLE

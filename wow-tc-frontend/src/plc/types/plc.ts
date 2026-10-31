@@ -59,7 +59,6 @@ export type ProtocolDescriptor = {
   interfaceSettings: ProtocolSetting[];
   areas: ProtocolArea[];
   examples: string[];
-  rawSupported: boolean;
 };
 
 export type PointInfo = {
@@ -88,22 +87,15 @@ export type ConnectionHistory = {
   eventJson?: string;
 };
 
-export type PropInfo = { name: string; order: number; type: string; length: number; strValue?: string; description?: string };
-
 export type InterfaceInfo = {
   id?: number;
   name: string;
   plcName?: string;
-  interfaceType: 'READ' | 'WRITE' | 'REPLY' | 'PUSH';
-  mode?: 'RAW' | 'POINTS';
+  interfaceType: 'READ' | 'WRITE';
   points?: PointInfo[];
   readBack?: boolean;
   /** 인터페이스 settings — 비면 커넥터 설정 그대로 */
   settings?: Record<string, unknown>;
-  replyName?: string;
-  headerProps?: PropInfo[];
-  dataProps?: PropInfo[];
-  dataLength?: number;
   use?: boolean;
   sync?: boolean;
   reply?: boolean;
@@ -111,18 +103,6 @@ export type InterfaceInfo = {
   description?: string;
   updatedBy?: string;
   updatedDate?: string;
-};
-
-export type PointsConversionInfo = {
-  name: string;
-  dryRun: boolean;
-  applied: boolean;
-  points: PointInfo[];
-  /** 변환이 만든 인터페이스 settings — 헤더 값이 커넥터와 다를 때 */
-  settings?: Record<string, unknown>;
-  warnings: string[];
-  replyName?: string;
-  replyUsedBy: string[];
 };
 
 /** 요청 미리보기의 요청 하나 — 보내지 않고 나눠 본 것(docs/interface-detail-design.md §7) */

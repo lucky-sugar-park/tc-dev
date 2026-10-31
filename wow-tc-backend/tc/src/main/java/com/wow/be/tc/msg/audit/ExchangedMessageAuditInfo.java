@@ -27,7 +27,7 @@ public class ExchangedMessageAuditInfo extends AbstractInfo {
 	private String name;
 
 	/**
-	 * REQUEST_READ, REQUEST_WRITE, RESPONSE, PUSH
+	 * REQUEST, RESPONSE, DELIVERY
 	 */
 	private String messageType;
 

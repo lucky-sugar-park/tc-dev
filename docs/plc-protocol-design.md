@@ -4,6 +4,8 @@
 > 할 일: [backend-todo.md](backend-todo.md) #12(PLC 보강), #13(Modbus·OPC UA). 프론트 재작성 전에 끝낸다 — 커넥터·인터페이스 화면이 이 모델 위에 선다.
 > 관련: [dispatch-redesign.md](dispatch-redesign.md) §4·단계 7(값 코덱), [system-overview.md](system-overview.md) §1, [plc-ha-design.md](plc-ha-design.md) §3.1·§4(다중화 전달).
 
+> **2026-10-31 갱신**: RAW 인터페이스(헤더·데이터 바이트 정의)는 없앴다 — 운영 중인 시스템이 없어 호환을 남기지 않는다(결정 I7, [interface-detail-design.md](interface-detail-design.md) §6). 이 문서의 RAW·변환·POINTS/RAW 구분은 그때까지의 기록이다. 지금 정의는 [interfaces.md](interfaces.md).
+
 ## 1. 목표와 범위
 
 - **목표**

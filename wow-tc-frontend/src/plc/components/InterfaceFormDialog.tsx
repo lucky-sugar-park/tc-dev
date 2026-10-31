@@ -11,7 +11,7 @@ import type { InterfaceInfo, PlcConnectorInfo, PointInfo, ProtocolDescriptor } f
 type TabKey = 'basic' | 'settings' | 'points' | 'plan';
 
 /**
- * POINTS 인터페이스 등록·수정 (docs/frontend-design.md §5, docs/interface-detail-design.md §4) — 탭: 기본 · 프로토콜 설정(인터페이스 settings,
+ * 인터페이스 등록·수정 (docs/frontend-design.md §5, docs/interfaces.md) — 탭: 기본 · 프로토콜 설정(인터페이스 settings,
  * 비우면 커넥터 값) · 점 · 요청 미리보기. 헤더 바이트·데이터 길이는 없다(옛 4단계 마법사 대신) — 프레임·국 번호는 커넥터 설정과 이 인터페이스의
  * settings 에서, 명령·주소·길이는 드라이버가 점에서 만든다. 검증은 서버(커넥터의 프로토콜 드라이버).
  */
@@ -43,7 +43,7 @@ export function InterfaceFormDialog({ open, initial, connectors, protocols, webh
   useEffect(() => {
     if (!open) return;
     setV(initial ? { ...initial, points: initial.points ?? [] } : {
-      name: '', plcName: connectors[0]?.name, interfaceType: 'READ', mode: 'POINTS', use: true, sync: true, reply: true,
+      name: '', plcName: connectors[0]?.name, interfaceType: 'READ', use: true, sync: true, reply: true,
       readBack: false, webHookNameList: [], description: '', points: [emptyPoint()], settings: {},
     });
     setNameError(null);
@@ -60,7 +60,7 @@ export function InterfaceFormDialog({ open, initial, connectors, protocols, webh
   if (!v) return <Dialog open={false} />;
   const set = (patch: Partial<InterfaceInfo>) => setV({ ...v, ...patch });
   const points: PointInfo[] = (v.points ?? []).filter((p) => p.name || p.address).map((p, i) => ({ ...p, order: i }));
-  const draft: InterfaceInfo = { ...v, mode: 'POINTS', points, settings: settingsFromText(schema, settingValues) };
+  const draft: InterfaceInfo = { ...v, points, settings: settingsFromText(schema, settingValues) };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();

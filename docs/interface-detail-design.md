@@ -1,6 +1,6 @@
 # 인터페이스 세부 정의 설계 (MELSEC · Modbus TCP · OPC UA)
 
-> 상태: **설계 확정, A·B단계 구현** (2026-10-31, v0.4.0 — 사용자가 "문서화 후 A단계부터" 결정). 대상: `wow-tc-backend/tc`, `wow-tc-frontend`, (D단계) `vplc`.
+> 상태: **설계 확정, A·B단계 구현, RAW 제거(I7)** (2026-10-31, v0.4.0 — 사용자가 "문서화 후 A단계부터" 결정). 대상: `wow-tc-backend/tc`, `wow-tc-frontend`, (D단계) `vplc`.
 > 관련: [plc-protocol-design.md](plc-protocol-design.md) §4(데이터 모델)·§5(드라이버 경계), [frontend-design.md](frontend-design.md) §5·§9.
 
 ## 1. 왜
@@ -41,7 +41,7 @@
 - 화면은 **스키마로 그린다**. `/protocols` 의 설명(`ProtocolDescriptor`)에 `interfaceSettings`·`pointOptions` 를 더하고, 커넥터 폼처럼 이것을 보고 입력 칸을 만든다. 비운 칸에는 물려받는 값("커넥터 값: 1")을 보인다.
 - 저장: `INTERFACE.SETTINGS_JSON`, `INTERFACE_POINT.OPTIONS_JSON` (migration 010). 비트는 주소 문법(`D100.3`)으로 받아 칼럼을 늘리지 않는다.
 
-**RAW 편집기는 만들지 않는다.** RAW 는 MELSEC 3E 바이트 모델이라 다른 프로토콜로 이어지지 않는다(frontend-design.md §9 결정 유지). 대신 B·C 단계가 들어가면 변환기(`RawToPointsConverter`)가 지금 거절하는 경우 — 국 번호가 커넥터와 다름, 비트 디바이스 — 를 인터페이스 settings·비트 점으로 옮길 수 있어 남은 RAW 를 거의 다 POINTS 로 바꿀 수 있다.
+**RAW 는 없앴다(결정 I7, 2026-10-31).** 처음에는 레거시 운영 정의를 옮기는 동안 RAW(MELSEC 3E 헤더·데이터 바이트) 실행을 남기고 변환기로 줄이려 했으나, 운영 중인 시스템이 없어 RAW 와 변환기를 모두 지웠다. 인터페이스는 점으로만 정의한다 — [interfaces.md](interfaces.md).
 
 ## 4. 화면
 
@@ -76,6 +76,7 @@ B·C 는 tc 재기동이 필요하다(MES 요청이 끊긴다) — 한 번의 �
 | I3 | 배율·단위 변환을 tc 가 할지 | **tc 가 한다** — 점마다 scale·offset·unit, 읽을 때 곱하고 쓸 때 거꾸로 푼다. MES 는 공학 단위 값을 받는다 | 확정(2026-10-31, C단계) |
 | I4 | OPC UA SUBSCRIBE 결과를 어디로 | 스케줄 Job 과 같은 **전달 정의 경로**(WebHook·DB_TABLE·CALLBACK_URL) | 확정(2026-10-31, D단계) |
 | I5 | RAW 편집 | **만들지 않는다**(변환으로 줄인다) | 확정 |
+| I7 | RAW 를 남길지 | **없앤다** — 운영 중인 시스템이 없다. `header_prop`·`data_prop` 표, 응답 인터페이스(REPLY), 변환기, 옛 MELSEC 요청·응답 객체, 화면의 RAW 보기·변환·되돌리기, 정의 방식(POINTS/RAW) 구분을 지운다(migration 011) | 확정(2026-10-31, 사용자) |
 | I6 | 미리보기의 쓰기 값 | 요청 `data` 를 주면 그 값, 없으면 **형의 0 값**(BOOL false·문자열 빈 값)으로 — 프레임 모양을 보이는 것이 목적 | 확정(A) |
 
 ## 7. A단계 구현 명세
@@ -136,7 +137,7 @@ B·C 는 tc 재기동이 필요하다(MES 요청이 끊긴다) — 한 번의 �
 | MELSEC | 덮어쓰기 `networkNo`·`pcNo`·`ioNo`·`stationNo`·`monitoringTimer`·`maxWordsPerRequest`, 전용 `mergeGap`(0~64, 기본 8) |
 | Modbus | 덮어쓰기 `unitId`·`byteOrder`·`wordOrder`·`maxRegistersPerRequest`·`maxCoilsPerRequest`, 전용 `writeFunction`(AUTO·SINGLE·MULTIPLE — SINGLE 은 칸마다 FC5·6, MULTIPLE 은 하나여도 FC15·16)·`mergeGap`(레지스터·코일 같은 수, 비우면 8·16) |
 | 유효 설정 | `PlcDriver.effectiveSettings` = 커넥터 정규화 설정 ⊕ 인터페이스 settings. 실행(`PlcInterfaceCommand`)·미리보기가 같은 길이고, 작업(`PlcOperation.settings`)에 실려 원격 어댑터(다중화)에도 간다 |
-| 변환기 | RAW 머리의 네트워크·PC·I/O·국 번호·감시 타이머가 커넥터와 다르면 거절하던 것을 인터페이스 settings 로 옮긴다(경고에 적음). 적용하면 함께 저장 |
+| 변환기 | RAW 머리의 네트워크·PC·I/O·국 번호·감시 타이머가 커넥터와 다르면 거절하던 것을 인터페이스 settings 로 옮긴다(경고에 적음). 적용하면 함께 저장 — **이후 I7 로 변환기째 지움** |
 | 화면 | 등록·수정 대화상자 탭 — 기본 · 프로토콜 설정(비운 칸에 "커넥터 값 …") · 점 · 요청 미리보기. 상세 보기에 "이 인터페이스의 설정", RAW 변환 미리보기에 옮길 설정. 커넥터 폼과 설정 칸을 공용(`SettingsFields`)으로 |
 | 시험 | 단위 107개 통과(설정 검증·덮어쓰기 프레임·mergeGap·writeFunction 실행·변환기). e2e `test_plc_points.py` 에 settings 4개, Playwright 에 설정 탭·상세 보기 — 둘 다 시험 계정이 있는 환경에서 돌린다 |
 | 운영 반영 | migration 010(로컬은 ddl-auto 로 생김), jar 교체·재기동 |

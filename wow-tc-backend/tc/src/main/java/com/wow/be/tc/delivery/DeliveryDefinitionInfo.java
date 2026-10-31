@@ -10,8 +10,7 @@ import lombok.ToString;
 /**
  * 인터페이스 하나의 결과 전달 정의 한 줄 (INTERFACE_DELIVERY).
  *
- * <p>한 인터페이스에 정의가 하나라도 있으면 그 정의대로만 보낸다. 하나도 없으면 레거시 방식
- * (요청의 callback + 응답 인터페이스의 WebHook 목록)을 쓴다.
+ * <p>한 인터페이스에 정의가 하나라도 있으면 그 정의대로만 보낸다. 하나도 없으면 요청의 callback 주소로만 보낸다.
  */
 @Data
 @ToString(callSuper = true)

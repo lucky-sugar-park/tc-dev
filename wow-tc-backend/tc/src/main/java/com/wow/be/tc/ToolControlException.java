@@ -23,7 +23,7 @@ public class ToolControlException extends MesGeneralException {
 	/** 인터페이스를 쓰지 않음(use=false) */
 	public static final String INTERFACE_DISABLED = "ERR_409_TC_INTERFACE_DISABLED";
 
-	/** 인터페이스 설정 오류(응답 인터페이스 없음, 커맨드 클래스 미지정 등) */
+	/** 인터페이스 설정 오류(점 없음, 커넥터·인터페이스 설정 오류 등) */
 	public static final String INTERFACE_MISCONFIGURED = "ERR_409_TC_INTERFACE_CONFIG";
 
 	/** 인터페이스에 연결된 PLC 커넥터가 등록되어 있지 않음 */

@@ -2,7 +2,6 @@ package com.wow.be.tc;
 
 import java.util.Map;
 
-import com.wow.be.tc.dispatch.PlcInterfaceCommand;
 import com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter;
 import com.wow.be.tc.schedule.jobs.DataTableFlashJob;
 import com.wow.be.tc.schedule.jobs.PlcConnectorSpyScheduleJob;
@@ -11,7 +10,7 @@ import com.wow.be.tc.schedule.jobs.PlcGeneralScheduleJob;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * DB 에 저장된 클래스 이름(PLC 어댑터·커맨드·스케줄 Job)을 로드한다.
+ * DB 에 저장된 클래스 이름(PLC 어댑터·스케줄 Job)을 로드한다.
  *
  * <p>패키지 이전(레거시 패키지 → {@code com.wow.be.tc}) 전에 저장된 행은 옛 패키지 이름을 그대로 들고 있다.
  * 그 이름으로 클래스를 찾지 못하면, 단순 클래스 이름이 같은 tc 클래스로 대신 찾는다.
@@ -22,8 +21,6 @@ public final class LegacyClassNames {
 
 	private static final Map<String, Class<?>> KNOWN = Map.of(
 		MelsecProgrammableControllerAdapter.class.getSimpleName(), MelsecProgrammableControllerAdapter.class,
-		"GenericMessageCommand", PlcInterfaceCommand.class,
-		PlcInterfaceCommand.class.getSimpleName(), PlcInterfaceCommand.class,
 		DataTableFlashJob.class.getSimpleName(), DataTableFlashJob.class,
 		PlcGeneralScheduleJob.class.getSimpleName(), PlcGeneralScheduleJob.class,
 		PlcConnectorSpyScheduleJob.class.getSimpleName(), PlcConnectorSpyScheduleJob.class

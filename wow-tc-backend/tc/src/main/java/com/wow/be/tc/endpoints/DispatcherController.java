@@ -33,8 +33,8 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <ul>
  *   <li>{@code /request} — 비동기. 바로 {@code 202 Accepted} 와 transactionId 를 돌려주고, 결과(성공·실패)는
- *       요청의 callback 주소(pushResult·pushUrl)와 응답 인터페이스의 WebHook 으로 보낸다.</li>
- *   <li>{@code /request-and-reply} — 동기. 결과를 응답 본문으로 돌려주고, 응답 인터페이스의 WebHook 으로도 보낸다.</li>
+ *       요청의 callback 주소(pushResult·pushUrl)와 인터페이스의 전달 정의로 보낸다.</li>
+ *   <li>{@code /request-and-reply} — 동기. 결과를 응답 본문으로 돌려주고, 인터페이스의 전달 정의로도 보낸다.</li>
  * </ul>
  *
  * <p>HTTP 상태
@@ -60,7 +60,7 @@ public class DispatcherController {
 
 	@Operation(
 		summary = "PLC 읽기·쓰기 비동기 요청",
-		description = "바로 202 와 transactionId 를 돌려준다. 결과는 callback 주소(pushResult·pushUrl)와 응답 인터페이스의 WebHook 으로 보낸다."
+		description = "바로 202 와 transactionId 를 돌려준다. 결과는 callback 주소(pushResult·pushUrl)와 인터페이스의 전달 정의로 보낸다."
 	)
 	@ApiResponse(responseCode = "202", description = "접수됨 — {transactionId, messageId, opcode}")
 	@PostMapping(value = "/request")
@@ -87,7 +87,7 @@ public class DispatcherController {
 
 	@Operation(
 		summary = "PLC 읽기·쓰기 동기 요청",
-		description = "결과를 응답 본문(TcMessageResponse)으로 돌려준다. 응답 인터페이스의 WebHook 으로도 보낸다."
+		description = "결과를 응답 본문(TcMessageResponse)으로 돌려준다. 인터페이스의 전달 정의로도 보낸다."
 	)
 	@ApiResponse(responseCode = "200", description = "PLC 와 교환을 마침 — 본문의 success 로 성공 여부를 본다")
 	@PostMapping(value = "/request-and-reply")

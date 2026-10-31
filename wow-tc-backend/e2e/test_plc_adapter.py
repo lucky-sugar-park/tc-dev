@@ -50,14 +50,9 @@ def setup():
                      "published": False, "status1": "REGISTERED", "status2": "STOPPED"})
         s, b = call("POST", "/api/v1/plc-connector/register", info)
         print("connector register", s, b if s != 200 else "")
-        for src, name, reply in (("fixture-if-read.json", "plc.fake.read", "plc.fake.read.reply"), ("fixture-if-read-reply.json", "plc.fake.read.reply", None)):
-            d = json.load(open(os.path.join(R, src), encoding="utf-8"))
-            d["name"] = name
-            d["plcName"] = "plc-fake"
-            if reply:
-                d["replyName"] = reply
-            s, b = call("POST", "/api/v1/ifsvc/management/register", d)
-            print("interface register", name, s, "" if s == 200 else b)
+        d = common.d100_interface("plc.fake.read", plc_name="plc-fake", description="fake PLC D100..D101")
+        s, b = call("POST", "/api/v1/ifsvc/management/register", d)
+        print("interface register", d["name"], s, "" if s == 200 else b)
     # tc 가 가짜 PLC 보다 먼저 떴으면 이미 게시된 커넥터가 점점 긴 간격(최대 수십 초)으로 재연결 중이다 —
     # 해제 후 다시 게시해 지금 바로 연결한다(게시는 연결하지 못하면 실패를 알린다)
     s, b = call("POST", "/api/v1/plc-connector/control/release/byName/plc-fake")

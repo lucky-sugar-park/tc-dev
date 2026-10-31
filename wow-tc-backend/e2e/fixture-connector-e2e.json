@@ -1,7 +1,5 @@
 {
   "adapterClassName": "com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter",
-  "commProtocolHeadersReqTemplate": {},
-  "commProtocolHeadersResTemplate": {},
   "connLimitPerPort": 1,
   "connectionVips": [
     "127.0.0.1"

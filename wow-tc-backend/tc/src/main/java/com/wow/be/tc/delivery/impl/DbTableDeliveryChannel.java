@@ -27,7 +27,7 @@ import com.wow.be.tc.interfs.InterfaceService;
 /**
  * 결과 한 건을 등록한 DB 연결의 테이블에 한 행으로 넣는다(docs/db-table-delivery.md).
  *
- * <p>공통 정보는 칼럼에, 데이터 값은 {@code PAYLOAD} 에 JSON 문자열로 넣는다 — 인터페이스의 데이터 속성이 바뀌어도
+ * <p>공통 정보는 칼럼에, 데이터 값은 {@code PAYLOAD} 에 JSON 문자열로 넣는다 — 인터페이스의 점이 바뀌어도
  * 테이블을 고칠 필요가 없다. 실패 응답도 넣는다(전달 정의의 deliverOn 으로 거를 수 있다).
  *
  * <p>테이블 이름은 등록할 때 모양({@link DefaultDbConnectionService#TABLE_PATTERN})과 실제 칼럼을 확인한 값만 SQL 에 들어가고,

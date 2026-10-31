@@ -16,7 +16,7 @@ import lombok.ToString;
  *       {@code success=false}, {@code errorCode=ERR_502_TC_PLC_ERROR} 다.</li>
  *   <li>{@link #resultCode}/{@link #resultDescription} — PLC 가 돌려준 종료 코드(MELSEC end code) 그대로. 레거시와 같은 이름이다.</li>
  *   <li>{@link #plcStatus} — 프로토콜·상태 코드·설명(MELSEC 종료 코드, Modbus 예외 코드, OPC UA StatusCode). docs/plc-protocol-design.md §4.3</li>
- *   <li>{@code data} — 응답 인터페이스의 데이터 속성으로 해석한 값.</li>
+ *   <li>{@code data} — 점 이름 → 값(읽은 값, readBack 이면 다시 읽은 값).</li>
  * </ul>
  */
 @Data

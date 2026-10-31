@@ -1,7 +1,6 @@
 package com.wow.be.tc.plc.remote;
 
 import java.io.IOException;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,18 +32,15 @@ import lombok.extern.slf4j.Slf4j;
  * 주인일 때만.
  *
  * <pre>
- * POST /internal/plc/{plcName}/execute        — 작업 단위(4단계부터)
- * 본문: { "op": "READ"|"WRITE"|"RAW", "protocol": "MODBUS_TCP", "settings": {...}, "points": [...], "values": {...},
- *        "frame": "&lt;base64, RAW 만&gt;", "reqId": "...", "timeoutMs": 20000 }
- * 응답: 200 { "values": {...}, "status": { "protocol", "code", "text" } } | RAW 면 200 { "frame": "&lt;base64&gt;" }
- *
- * POST /internal/plc/{plcName}/exchange       — 프레임 바이트(3단계까지). 순차 재기동 중 옛 인스턴스가 보내므로 계속 받는다
- * 본문: { "frame": "&lt;base64&gt;", "timeoutMs": 20000, "reqId": "..." } → 200 { "frame": "&lt;base64&gt;" }
+ * POST /internal/plc/{plcName}/execute        — 작업 단위
+ * 본문: { "op": "READ"|"WRITE", "protocol": "MODBUS_TCP", "settings": {...}, "points": [...], "values": {...},
+ *        "reqId": "...", "timeoutMs": 20000 }
+ * 응답: 200 { "values": {...}, "status": { "protocol", "code", "text" } }
  *
  * 헤더: X-TC-Instance, X-TC-Timestamp, X-TC-Signature(HMAC)
  * 오류: 401 서명 | 404 소유권 관리 꺼짐 | 409 ERR_409_TC_NOT_OWNER | 400 | 409 ERR_409_TC_INTERFACE_CONFIG | 503 | 504
  * </pre>
- * 작업 단위면 점 묶기·응답 검증을 주인이 한다 — OPC UA 처럼 넘길 바이트가 없는 프로토콜도 담는다. 점 정의와 커넥터 설정은 요청을 받은
+ * 점 묶기·응답 검증을 주인이 한다 — OPC UA 처럼 넘길 바이트가 없는 프로토콜도 담는다. 점 정의와 커넥터 설정은 요청을 받은
  * 인스턴스가 보낸 것을 쓴다(인스턴스 사이 설정이 잠깐 달라도 요청을 받은 쪽 정의대로).
  *
  * <p>사용자 인증·감사·사용량 제한을 거치지 않는다 — 그것은 요청을 받은 인스턴스가 이미 했다.
@@ -61,15 +57,6 @@ public class InternalPlcExchangeController {
 
 	private final PlcOwnershipManager ownership;
 
-	@PostMapping("/internal/plc/{plcName}/exchange")
-	public ResponseEntity<Map<String, Object>> exchange(@PathVariable("plcName") String plcName,
-			@RequestHeader(value = InternalSignature.HEADER_INSTANCE, required = false) String instance,
-			@RequestHeader(value = InternalSignature.HEADER_TIMESTAMP, required = false) String timestamp,
-			@RequestHeader(value = InternalSignature.HEADER_SIGNATURE, required = false) String sig,
-			@RequestBody(required = false) byte[] body) {
-		return handle(plcName, instance, timestamp, sig, body, (adapter, request) -> raw(adapter, request));
-	}
-
 	@PostMapping("/internal/plc/{plcName}/execute")
 	public ResponseEntity<Map<String, Object>> execute(@PathVariable("plcName") String plcName,
 			@RequestHeader(value = InternalSignature.HEADER_INSTANCE, required = false) String instance,
@@ -78,14 +65,11 @@ public class InternalPlcExchangeController {
 			@RequestBody(required = false) byte[] body) {
 		return handle(plcName, instance, timestamp, sig, body, (adapter, request) -> {
 			String op = request.get("op") instanceof String o ? o : "";
-			if ("RAW".equals(op)) {
-				return raw(adapter, request);
-			}
 			PlcOperation.Kind kind;
 			try {
 				kind = PlcOperation.Kind.valueOf(op);
 			} catch (IllegalArgumentException e) {
-				return error(HttpStatus.BAD_REQUEST, ToolControlException.INVALID_REQUEST, "op 은 READ·WRITE·RAW 입니다: " + op);
+				return error(HttpStatus.BAD_REQUEST, ToolControlException.INVALID_REQUEST, "op 은 READ·WRITE 입니다: " + op);
 			}
 			List<PointInfo> points;
 			Map<String, Object> settings;
@@ -109,23 +93,6 @@ public class InternalPlcExchangeController {
 			answer.put("status", result.status());
 			return ResponseEntity.ok(answer);
 		});
-	}
-
-	/** 프레임 하나를 주고받는다 — /exchange 와 /execute 의 RAW */
-	private static ResponseEntity<Map<String, Object>> raw(ProgrammableControllerAdapter adapter, Map<String, Object> request)
-			throws ToolControlException {
-		if (!(request.get("frame") instanceof String frame)) {
-			return error(HttpStatus.BAD_REQUEST, ToolControlException.INVALID_REQUEST, "frame 이 없습니다.");
-		}
-		byte[] bytes;
-		try {
-			bytes = Base64.getDecoder().decode(frame);
-		} catch (IllegalArgumentException e) {
-			return error(HttpStatus.BAD_REQUEST, ToolControlException.INVALID_REQUEST, "frame 이 Base64 가 아닙니다.");
-		}
-		String reqId = request.get("reqId") instanceof String r ? r : "-";
-		byte[] answer = adapter.exchangeFrame(reqId, bytes);
-		return ResponseEntity.ok(Map.of("frame", Base64.getEncoder().encodeToString(answer)));
 	}
 
 	@FunctionalInterface

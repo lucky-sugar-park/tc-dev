@@ -4,7 +4,7 @@
 
 | 파일 | 내용 | 항목 |
 |---|---|---|
-| `setup_e2e.py` | vplc 를 바라보는 커넥터 `plc-e2e` 와 읽기 인터페이스를 만들고 게시(여러 번 돌려도 됨) | — |
+| `setup_e2e.py` | vplc 를 바라보는 커넥터 `plc-e2e` 와 읽기 인터페이스(`plc.e2e.d100.read` — D100·D101 점)를 만들고 게시(여러 번 돌려도 됨). 옛 RAW 정의가 DB 에 남아 있으면 `migration/011_remove_raw.sql` 을 먼저 돌린다 | — |
 | `test_plc_adapter.py` | 가짜 PLC 로 늦은 응답·연결 끊김·동시 요청·재게시, 끊김 뒤 연결 상태의 마지막 오류 (docs/plc-connection-design.md §5) | 11 |
 | `test_api_key.py` | API 키 인증·권한·사용량 제한·회전·만료·삭제 (docs/auth-and-audit-design.md §6) | 40 |
 | `test_paths.py` | WRITE·콜백과 허용 목록·스케줄 Job(멈춤·재개 포함)·커넥터 해제 (docs/dispatch-redesign.md §4.1.2) | 19 |
@@ -18,11 +18,10 @@
 | `test_webhook_cache.py` | WebHook 캐시(H7) — 다른 인스턴스가 바꾼 주소·지운 WebHook 을 DB 를 직접 고쳐 흉내 내고, 만료(10초) 뒤 따라오는지. 약 25초 걸린다. **18090 허용 필요** | 6 |
 | `test_plc_state.py` | PLC 연결 상태 분리(다중화 2단계) — 조회 응답의 `connection`(Redis), 상태 키 만료·5초 갱신, 해제·게시 때 의도(DB)와 연결 상태(Redis), 이벤트가 DB 상태를 고치지 않음 | 7 |
 | `test_plc_ownership.py` | PLC 소유권(다중화 3단계) — 임대·연장·키 사라지면 다시 잡기·남의 임대면 강등·이어받기·해제/게시·균형 규칙. **tc 를 `TC_PLC_OWNERSHIP_ENABLED=true` 로 띄웠을 때만**(아니면 건너뜀) | 17 |
-| `test_plc_remote.py` | 두 인스턴스 PLC 교환 전달(다중화 4단계) — 주인이 아닌 인스턴스로 온 요청(RAW·POINTS), 감사 한 번, 내부 엔드포인트 서명·포트, 작업 단위 `/execute`(READ·RAW·오류), 서명 시험은 `TC_E2E_INTERNAL_SECRET_FILE` 이 있을 때만, `TC_E2E_FAILOVER=graceful\|kill` 이면 이어받기 시간. **두 번째 인스턴스(`TC_E2E_BASE_URL_B`)가 있을 때만**(아니면 건너뜀) | 16(+2~3) |
-| `test_plc_points.py` | POINTS 인터페이스(PLC 일반화 1단계) — RAW 와 같은 값, 여러 형 쓰기·readBack, 값 기반 변경 감지, plcStatus, 등록·쓰기 값 검증, 커넥터 설정 정규화, RAW READ 에 쓰기 명령 거절(M2), 요청 미리보기(`/plan` — READ·WRITE·RAW·없는 커넥터·잘못된 주소), 인터페이스 settings(덮어쓰기·저장·거절), 인터페이스 삭제. 비트 디바이스는 vplc 에 M 메모리가 있을 때만 | 32(+1) |
-| `test_plc_mc.py` | MELSEC 보강(PLC 일반화 2단계) — vplc 오류 종료 코드(없는 메모리), 포트별 연결 시험(TCP+루프백), 4E 프레임(POINTS 4E·RAW 3E 같은 연결, 시간 초과에 연결 유지), 주기적 루프백(멈춘 PLC 연결 닫고 다시 잇기). **vplc 를 잠시 멈추고 plc-e2e 설정을 바꿨다가 되돌린다** | 12 |
-| `test_plc_modbus.py` | Modbus TCP(PLC 일반화 3단계) — 가짜 장치(:15200)를 띄워 커넥터 자동 설정·연결 시험, RAW 거절, 점 검증, HR·IR·DI 읽기·HR·CO 쓰기(readBack), 워드 순서 LITTLE, 예외 응답 → plcStatus, 시간 초과에 연결 유지, 쉬는 연결 확인으로 닫고 다시 잇기. 커넥터 `plc-modbus-e2e` 를 만들고 지운다 | 23 |
-| `test_plc_convert.py` | RAW → POINTS 변환(PLC 일반화 4단계) — 미리보기·적용·같은 opcode 같은 값(읽기·쓰기)·RAW 로 되돌리기·거절 사유·404. D300·D301 을 쓴다 | 14 |
+| `test_plc_remote.py` | 두 인스턴스 PLC 교환 전달(다중화 4단계) — 주인이 아닌 인스턴스로 온 요청(기존·새 인터페이스), 감사 한 번, 내부 엔드포인트 서명·포트, 작업 단위 `/execute`(READ·오류), 서명 시험은 `TC_E2E_INTERNAL_SECRET_FILE` 이 있을 때만, `TC_E2E_FAILOVER=graceful\|kill` 이면 이어받기 시간. **두 번째 인스턴스(`TC_E2E_BASE_URL_B`)가 있을 때만**(아니면 건너뜀) | 13(+2~3) |
+| `test_plc_points.py` | 점 인터페이스(PLC 일반화 1단계) — 같은 주소를 읽는 인터페이스와 같은 값, 여러 형 쓰기·readBack, 값 기반 변경 감지, plcStatus, 등록 검증(주소·형·커넥터·plcName·points·형식)·쓰기 값 검증, 커넥터 설정 정규화, 요청 미리보기(`/plan` — READ·WRITE·없는 커넥터·잘못된 주소), 인터페이스 settings(덮어쓰기·저장·거절), 인터페이스 삭제. 비트 디바이스는 vplc 에 M 메모리가 있을 때만 | 33(+1) |
+| `test_plc_mc.py` | MELSEC 보강(PLC 일반화 2단계) — vplc 오류 종료 코드(없는 메모리), 포트별 연결 시험(TCP+루프백), 4E 프레임(두 인터페이스 같은 값, 시간 초과에 연결 유지), 주기적 루프백(멈춘 PLC 연결 닫고 다시 잇기). **vplc 를 잠시 멈추고 plc-e2e 설정을 바꿨다가 되돌린다** | 12 |
+| `test_plc_modbus.py` | Modbus TCP(PLC 일반화 3단계) — 가짜 장치(:15200)를 띄워 커넥터 자동 설정·연결 시험, 점 없음 거절, 점 검증, HR·IR·DI 읽기·HR·CO 쓰기(readBack), 워드 순서 LITTLE, 예외 응답 → plcStatus, 시간 초과에 연결 유지, 쉬는 연결 확인으로 닫고 다시 잇기. 커넥터 `plc-modbus-e2e` 를 만들고 지운다 | 23 |
 | `test_ui_api.py` | 새 화면 백엔드 계약(5단계 5-1) — 로그인 본문 토큰·재발급, 내 권한(역할별·화면 권한), 셸 빈 응답, 다국어(공개·4개 언어·관리), 공통 코드, 북마크, SSE(공개 연결·구독 권한·audit_message 수신), 홈 요약, 감사 조회(기간·실패만·쪽), 사용 이력·로그인 제한 풀기, 시험 읽기, 프로토콜 설명, 화면 서빙(`TC_E2E_UI_DIR` 이 tc 의 `TC_UI_DIR` 과 같을 때만). 시험 사용자를 만들고 지운다 | 38 |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |

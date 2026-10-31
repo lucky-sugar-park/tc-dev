@@ -14,8 +14,8 @@ const PERIODS: { hours: number; key: string; label: string }[] = [
 ];
 
 /**
- * 인터페이스 하나의 송수신 이력 — 송수신 기록 화면과 같은 조회(`audit/search/query`)를 opcode 로. opcode 는 서버가 부분 일치로 찾으므로
- * RAW 의 응답 인터페이스(`….reply`) 기록도 함께 나온다. 행을 누르면 그 거래의 기록 전부.
+ * 인터페이스 하나의 송수신 이력 — 송수신 기록 화면과 같은 조회(`audit/search/query`)를 opcode 로(서버는 부분 일치).
+ * 행을 누르면 그 거래의 기록 전부.
  */
 export function InterfaceAuditDialog({ name, onClose }: { name: string | null; onClose: () => void }): ReactElement {
   const { t } = useI18n();

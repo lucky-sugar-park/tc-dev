@@ -1,8 +1,8 @@
-"""PLC 프로토콜 일반화 1단계 — POINTS 인터페이스(docs/plc-protocol-design.md §4·§11).
+"""점(이름·주소·형)으로 정의한 인터페이스(docs/plc-protocol-design.md §4·§11).
 
-- 점(이름·주소·형)으로 정의한 READ 가 같은 주소의 RAW 인터페이스와 같은 값을 돌려준다.
+- READ 가 같은 주소를 읽는 다른 인터페이스(plc.e2e.d100.read)와 같은 값을 돌려준다(배열 점 포함).
 - WRITE(정수·32비트·실수·문자열·배열, readBack), 비트 디바이스 읽기, plcStatus, 값 기반 변경 감지.
-- 등록 검증(주소·형·커넥터 설정), 쓰기 값 검증, RAW 결함 M2(READ 에 쓰기 명령) 거절.
+- 등록 검증(주소·형·커넥터·형식 READ·WRITE), 쓰기 값 검증, 요청 미리보기, 인터페이스 settings.
 전제: vplc plc-e2e(MC 3E BINARY) 게시됨(setup_e2e.py)."""
 import json
 import os
@@ -56,7 +56,7 @@ def plc(opcode, data=None):
 
 def register(name, if_type, points, read_back=False):
     return call("POST", "/api/v1/ifsvc/management/register", {
-        "name": name, "plcName": PLC, "interfaceType": if_type, "mode": "POINTS", "points": points,
+        "name": name, "plcName": PLC, "interfaceType": if_type, "points": points,
         "readBack": read_back, "use": True, "sync": True, "reply": True, "description": "e2e points"})
 
 
@@ -79,23 +79,23 @@ READ = f"e2e.pts.read.{RUN}"
 WRITE = f"e2e.pts.write.{RUN}"
 BITS = f"e2e.pts.bits.{RUN}"
 try:
-    # 1. READ — 같은 주소의 RAW 인터페이스(plc.e2e.d100.read)와 같은 값
+    # 1. READ — 같은 주소를 읽는 인터페이스(plc.e2e.d100.read)와 같은 값
     s, b = register(READ, "READ", [{"name": "d100", "address": "D100", "type": "INT16"},
                                    {"name": "d101", "address": "D101", "type": "INT16"},
                                    {"name": "pair", "address": "D100", "type": "INT16", "count": 2}])
-    check("POINTS READ 등록 200", s == 200, (s, b))
+    check("READ 등록 200", s == 200, (s, b))
     created.append(READ)
     info = find(READ)
-    check("조회: mode POINTS, 점 3개 순서대로", isinstance(info, dict) and info.get("mode") == "POINTS"
+    check("조회: 점 3개 순서대로, mode 없음", isinstance(info, dict) and "mode" not in info
           and [p["name"] for p in info.get("points", [])] == ["d100", "d101", "pair"], info)
-    s, raw = plc("plc.e2e.d100.read")
+    s, base = plc("plc.e2e.d100.read")
     s2, pts = plc(READ)
-    check("POINTS 읽기 200, success", s2 == 200 and pts.get("success") is True, (s2, pts))
-    check("RAW 와 같은 값(d100·d101), 배열 점", pts.get("data", {}).get("d100") == raw.get("data", {}).get("d100")
-          and pts["data"].get("d101") == raw["data"].get("d101") and pts["data"].get("pair") == [raw["data"]["d100"], raw["data"]["d101"]],
-          (raw.get("data"), pts.get("data")))
-    check("plcStatus: MELSEC_MC, code 0 (POINTS·RAW 모두)", pts.get("plcStatus") == {"protocol": "MELSEC_MC", "code": 0, "text": "OK"}
-          and raw.get("plcStatus", {}).get("code") == 0, (pts.get("plcStatus"), raw.get("plcStatus")))
+    check("읽기 200, success", s2 == 200 and pts.get("success") is True, (s2, pts))
+    check("plc.e2e.d100.read 와 같은 값(d100·d101), 배열 점", pts.get("data", {}).get("d100") == base.get("data", {}).get("d100")
+          and pts["data"].get("d101") == base["data"].get("d101") and pts["data"].get("pair") == [base["data"]["d100"], base["data"]["d101"]],
+          (base.get("data"), pts.get("data")))
+    check("plcStatus: MELSEC_MC, code 0 (두 인터페이스 모두)", pts.get("plcStatus") == {"protocol": "MELSEC_MC", "code": 0, "text": "OK"}
+          and base.get("plcStatus", {}).get("code") == 0, (pts.get("plcStatus"), base.get("plcStatus")))
     s3, again = plc(READ)
     check("값이 같으면 changed=false(값 비교)", again.get("changed") is False, again)
 
@@ -106,7 +106,7 @@ try:
               {"name": "txt", "address": "D3005", "type": "STRING", "length": 6},
               {"name": "arr", "address": "D3010", "type": "UINT16", "count": 3}]
     s, b = register(WRITE, "WRITE", points, read_back=True)
-    check("POINTS WRITE 등록 200(readBack)", s == 200, (s, b))
+    check("WRITE 등록 200(readBack)", s == 200, (s, b))
     created.append(WRITE)
     values = {"i16": -123, "i32": 123456789, "f32": 1.5, "txt": "AB12", "arr": [1, 65535, 7]}
     s, w = plc(WRITE, values)
@@ -144,9 +144,17 @@ try:
                        ("점 없음", [])):
         s, b = register(f"e2e.pts.bad.{RUN}", "READ", pts)
         check(f"등록 거절 400 — {label}", s == 400, (s, b))
+    one = [{"name": "x", "address": "D0", "type": "INT16"}]
     s, b = call("POST", "/api/v1/ifsvc/management/register", {"name": f"e2e.pts.nocon.{RUN}", "plcName": "no-such-plc", "interfaceType": "READ",
-                                                              "mode": "POINTS", "points": [{"name": "x", "address": "D0", "type": "INT16"}]})
+                                                              "points": one})
     check("등록 거절 400 — 커넥터 없음", s == 400 and "커넥터" in str(b), (s, b))
+    s, b = call("POST", "/api/v1/ifsvc/management/register", {"name": f"e2e.pts.noplc.{RUN}", "interfaceType": "READ", "points": one})
+    check("등록 거절 400 — plcName 없음", s == 400 and "plcName" in str(b), (s, b))
+    s, b = call("POST", "/api/v1/ifsvc/management/register", {"name": f"e2e.pts.nopts.{RUN}", "plcName": PLC, "interfaceType": "READ"})
+    check("등록 거절 400 — points 없음", s == 400, (s, b))
+    s, b = call("POST", "/api/v1/ifsvc/management/register", {"name": f"e2e.pts.type.{RUN}", "plcName": PLC, "interfaceType": "NOTIFY",
+                                                              "points": one})
+    check("등록 거절 4xx — READ·WRITE 가 아닌 형식", 400 <= s < 500, (s, b))
 
     # 6. 커넥터 프로토콜·설정 — 드라이버가 검증하고 기본값을 채운다
     base = find("plc-e2e") if False else call("GET", f"/api/v1/plc-connector/find/byName/{PLC}")[1]
@@ -167,7 +175,7 @@ try:
     # 8. 요청 미리보기(docs/interface-detail-design.md §7) — 보내지 않고 요청으로 나눈다. 저장 전 정의도 된다
     pts = [{"name": "a", "address": "D100", "type": "INT16"}, {"name": "b", "address": "D101", "type": "INT16"},
            {"name": "m", "address": "M10", "type": "BOOL", "count": 3}]
-    draft = {"name": f"e2e.plan.{RUN}", "plcName": PLC, "interfaceType": "READ", "mode": "POINTS", "points": pts}
+    draft = {"name": f"e2e.plan.{RUN}", "plcName": PLC, "interfaceType": "READ", "points": pts}
     s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": draft})
     reqs = b.get("requests", []) if isinstance(b, dict) else []
     check("미리보기 READ 200 — M0 1워드, D100 2워드(a·b 묶음), 프레임 16진", s == 200 and b.get("protocol") == "MELSEC_MC"
@@ -179,8 +187,6 @@ try:
     check("미리보기 WRITE 200 — 이어진 워드 한 번(1401), 빠진 값은 0 으로 채웠다고 알림", s == 200 and len(reqs) == 1
           and reqs[0].get("function", "").startswith("1401/0000") and reqs[0].get("frameHex", "").endsWith("07000000")
           and any("b" in n for n in b.get("notes", [])), (s, b))
-    s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, mode="RAW")})
-    check("미리보기 RAW 는 400", s == 400 and "RAW" in str(b), (s, b))
     s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, plcName=f"no-such-{RUN}")})
     check("미리보기 없는 커넥터 400", s == 400 and "커넥터" in str(b), (s, b))
     s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, points=[{"name": "x", "address": "Q1", "type": "INT16"}])})
@@ -203,21 +209,11 @@ try:
     s, r = plc(name)
     check("settings 인터페이스 읽기 200(감시 타이머만 바뀜)", s == 200 and r.get("success") is True, (s, r))
 
-    # 7. RAW 결함 M2 — READ 인터페이스에 쓰기 명령(1401)이면 PLC 로 보내지 않고 409
-    bad = json.load(open(os.path.join(HERE, "fixture-if-read.json"), encoding="utf-8"))
-    bad["name"] = f"e2e.raw.badcmd.{RUN}"
-    for h in bad["headerProps"]:
-        if h["name"] == "command":
-            h["strValue"] = "0114"
-    s, b = call("POST", "/api/v1/ifsvc/management/register", bad)
-    created.append(bad["name"])
-    s, b = plc(bad["name"])
-    check("RAW READ 에 쓰기 명령 → 409 ERR_409_TC_INTERFACE_CONFIG", s == 409 and b.get("errorCode") == "ERR_409_TC_INTERFACE_CONFIG", (s, b))
 finally:
     for name in created:
         call("DELETE", f"/api/v1/ifsvc/management/delete/byName/{name}")
     left = [n for n in created if isinstance(find(n), dict) and find(n).get("name")]
-    check("정리: POINTS 인터페이스 삭제(점도 함께)", not left, left)
+    check("정리: 인터페이스 삭제(점도 함께)", not left, left)
 
 print(f"\n{sum(results)}/{len(results)} PASS")
 sys.exit(0 if all(results) else 1)

@@ -1,6 +1,5 @@
 package com.wow.be.tc.plc.management.impl;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -78,14 +77,6 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 
 	@Column(name="FRAME_FORMAT")
 	private String messageFrameFormat;
-	
-	@Lob
-	@Column(name="REQ_HEADER_TEMPLATE", columnDefinition="LONGTEXT")
-	private String commProtocolHeadersReqTemplate;
-	
-	@Lob
-	@Column(name="RES_HEADER_TEMPLATE", columnDefinition="LONGTEXT")
-	private String commProtocolHeadersResTemplate;
 
 	@Column(name="MEM_TYPES")
 	private String memTypes;
@@ -131,22 +122,6 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 		
 		info.setMessageFrameFormat(FrameFormat.toFrameFormat(messageFrameFormat));
 		ObjectMapper om=new ObjectMapper();
-		// 게시할 때 Properties 에 그대로 넣으므로(null 불가) 템플릿이 없으면 빈 Map 으로 둔다.
-		Map<String, String> reqHeaderTemplate=new HashMap<>();
-		Map<String, String> resHeaderTemplate=new HashMap<>();
-		try {
-			// 템플릿 없이 등록하면 칼럼이 NULL 이다. readValue(null) 은 IllegalArgumentException 이라 조회·게시가 모두 실패하므로 건너뛴다.
-			if(this.commProtocolHeadersReqTemplate!=null) {
-				reqHeaderTemplate = om.readValue(this.commProtocolHeadersReqTemplate, Map.class);
-			}
-			if(this.commProtocolHeadersResTemplate!=null) {
-				resHeaderTemplate = om.readValue(this.commProtocolHeadersResTemplate, Map.class);
-			}
-		} catch (JsonProcessingException e) {
-			log.warn("");
-		}
-		info.setCommProtocolHeadersReqTemplate(reqHeaderTemplate);
-		info.setCommProtocolHeadersResTemplate(resHeaderTemplate);
 		
 		// Modbus 커넥터처럼 메모리 종류를 적지 않은 행은 NULL 이다
 		for(String memType: split(this.memTypes)) {
@@ -237,21 +212,6 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 		}
 		
 		ObjectMapper om=new ObjectMapper();
-		if(info.getCommProtocolHeadersReqTemplate()!=null && info.getCommProtocolHeadersReqTemplate().size()>0) {
-			try {
-				this.setCommProtocolHeadersReqTemplate(om.writeValueAsString(info.getCommProtocolHeadersReqTemplate()));
-			} catch (JsonProcessingException e) {
-				log.warn("");
-			}
-		}
-		
-		if(info.getCommProtocolHeadersResTemplate()!=null && info.getCommProtocolHeadersResTemplate().size()>0) {
-			try {
-				this.setCommProtocolHeadersResTemplate(om.writeValueAsString(info.getCommProtocolHeadersResTemplate()));
-			} catch (JsonProcessingException e) {
-				log.warn("");
-			}
-		}
 		
 		if(info.getMemTypes()!=null && info.getMemTypes().size()>0) {
 			sb=new StringBuilder();

@@ -431,7 +431,7 @@ public class ModbusDriver implements PlcDriver {
 				new ProtocolDescriptor.Area("IR", "입력 레지스터(읽기만)", false, false, true, register),
 				new ProtocolDescriptor.Area("CO", "코일", true, false, false, List.of(PointType.BOOL)),
 				new ProtocolDescriptor.Area("DI", "이산 입력(읽기만)", true, false, true, List.of(PointType.BOOL))),
-			List.of("HR1", "40001", "IR10", "300010", "CO1", "DI5"), false);
+			List.of("HR1", "40001", "IR10", "300010", "CO1", "DI5"));
 	}
 
 	@Override

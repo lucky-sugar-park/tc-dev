@@ -4,6 +4,8 @@
 > 선행 문서: [plc-connection-design.md](plc-connection-design.md) §6(방향), §5(어댑터 결함 수정 — 이 설계의 기반)
 > 대상: `wow-tc-backend/tc`
 
+> **2026-10-31 갱신**: RAW 인터페이스(헤더·데이터 바이트 정의)는 없앴다 — 운영 중인 시스템이 없어 호환을 남기지 않는다(결정 I7, [interface-detail-design.md](interface-detail-design.md) §6). 이 문서의 RAW·변환·POINTS/RAW 구분은 그때까지의 기록이다. 지금 정의는 [interfaces.md](interfaces.md).
+
 ## 1. 목표와 범위
 
 - **목표**

@@ -1,8 +1,8 @@
 """Modbus TCP (PLC 일반화 3단계) — docs/plc-protocol-design.md §6.2·§14.
 
 가짜 Modbus 장치(fake_modbus.py, :15200)를 이 시험이 띄우고 내린다. 커넥터 plc-modbus-e2e 를 만들어 시험한 뒤 지운다.
-- 커넥터: protocol MODBUS_TCP → 어댑터 클래스·설정 기본값 자동, 연결 시험(TCP + 레지스터 읽기), RAW 인터페이스 거절.
-- POINTS 읽기(HR·IR·DI, 정수·32비트·문자열·비트), 쓰기(HR·CO, readBack), 워드 순서 LITTLE(CDAB).
+- 커넥터: protocol MODBUS_TCP → 어댑터 클래스·설정 기본값 자동, 연결 시험(TCP + 레지스터 읽기), 점 없는 인터페이스 거절.
+- 점 읽기(HR·IR·DI, 정수·32비트·문자열·비트), 쓰기(HR·CO, readBack), 워드 순서 LITTLE(CDAB).
 - 예외 응답 → success=false + plcStatus(MODBUS_TCP, 예외 코드), 연결은 그대로.
 - 시간 초과에도 연결을 끊지 않는다(트랜잭션 ID 로 늦은 응답을 버림). 쉬는 연결 확인으로 답하지 않는 장치의 연결을 닫고 다시 잇는다.
 전제: tc 는 PLC_REQUEST_TIMEOUT_MS=3000."""
@@ -91,8 +91,8 @@ def wait(fn, seconds):
 created = []
 
 
-def register(name, if_type, points, read_back=False, mode="POINTS"):
-    body = {"name": name, "plcName": PLC, "interfaceType": if_type, "mode": mode, "use": True, "sync": True, "reply": True,
+def register(name, if_type, points, read_back=False):
+    body = {"name": name, "plcName": PLC, "interfaceType": if_type, "use": True, "sync": True, "reply": True,
             "readBack": read_back, "description": "e2e modbus"}
     if points is not None:
         body["points"] = points
@@ -130,8 +130,8 @@ try:
     check("연결 시험(TCP + 레지스터 읽기) OK", s == 200 and b.get(f"port:{PORT}") == "OK" and b.get("result") == "CONNECTION_TEST_OK", (s, b))
 
     # 2. 등록 검증
-    s, b = register(f"e2e.mb.raw.{RUN}", "READ", None, mode="RAW")
-    check("Modbus 커넥터에 RAW 인터페이스 → 400", s == 400, (s, b))
+    s, b = register(f"e2e.mb.nopts.{RUN}", "READ", None)
+    check("점 없는 인터페이스 → 400", s == 400, (s, b))
     s, b = register(f"e2e.mb.bad1.{RUN}", "READ", [{"name": "c", "address": "CO1", "type": "INT16"}])
     check("코일에 INT16 → 400", s == 400, (s, b))
     s, b = register(f"e2e.mb.bad2.{RUN}", "WRITE", [{"name": "i", "address": "IR1", "type": "INT16"}])
@@ -144,7 +144,7 @@ try:
         {"name": "b", "address": "40002", "type": "INT32"},
         {"name": "s", "address": "IR1", "type": "STRING", "length": 3},
         {"name": "d", "address": "DI1", "type": "BOOL", "count": 3}])
-    check("POINTS READ 등록 200", s == 200, (s, b))
+    check("READ 등록 200", s == 200, (s, b))
     s, b, _ = plc(READ)
     check("읽기: HR INT16·INT32(BIG), IR 문자열, DI 비트", s == 200 and b.get("success") is True
           and b.get("data") == {"a": 100, "b": 65538, "s": "ABC", "d": [True, False, True]}, (s, b))
@@ -157,7 +157,7 @@ try:
               {"name": "c", "address": "CO1", "type": "BOOL", "count": 2},
               {"name": "one", "address": "CO5", "type": "BOOL"}]
     s, b = register(WRITE, "WRITE", points, read_back=True)
-    check("POINTS WRITE 등록 200(readBack)", s == 200, (s, b))
+    check("WRITE 등록 200(readBack)", s == 200, (s, b))
     values = {"f": 1.5, "n": -5, "c": [True, False], "one": True}
     s, b, _ = plc(WRITE, values)
     check("쓰기 200, readBack 값이 쓴 값과 같다", s == 200 and b.get("success") is True and b.get("data") == values, (s, b))

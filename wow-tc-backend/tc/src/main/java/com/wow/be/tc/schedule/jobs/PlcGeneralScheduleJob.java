@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <ul>
  *   <li>JobDataMap 의 {@code interfaceName} 이 opcode 다. JobDataMap 의 나머지 값도 요청 data 에 넣는다(레거시와 같음).</li>
- *   <li>결과(성공·실패)는 응답 인터페이스의 WebHook 으로 보낸다. 레거시처럼 이 Job 이 직접 WebHook 을 부르지 않는다.</li>
+ *   <li>결과(성공·실패)는 인터페이스의 전달 정의대로 보낸다. 레거시처럼 이 Job 이 직접 WebHook 을 부르지 않는다.</li>
  *   <li>디스패치가 실패하거나 PLC 가 오류 종료 코드를 돌려주면, 결과를 전달한 뒤 ToolControlException 을 던져
  *       실행 이력이 FAIL 로 남는다.</li>
  *   <li>같은 Job 은 클러스터 전체에서 한 번에 하나만 돈다. PLC 가 느려 실행이 주기보다 길어지면 다음 실행은 앞 실행이 끝날 때까지

@@ -1,5 +1,7 @@
 # tc 프론트 재작성 설계 (PLC 일반화 5단계)
 
+> **2026-10-31 갱신**: RAW 인터페이스(헤더·데이터 바이트 정의)는 없앴다 — 운영 중인 시스템이 없어 호환을 남기지 않는다(결정 I7, [interface-detail-design.md](interface-detail-design.md) §6). 이 문서의 RAW·변환·POINTS/RAW 구분은 그때까지의 기록이다. 지금 정의는 [interfaces.md](interfaces.md).
+
 작성 2026-10-31. 관련: [plc-protocol-design.md](plc-protocol-design.md) §11 5단계, [auth-and-audit-design.md](auth-and-audit-design.md) §4(권한), 옛 화면 목록은 §9.
 
 ## 1. 정한 것 (2026-10-31, 사용자)

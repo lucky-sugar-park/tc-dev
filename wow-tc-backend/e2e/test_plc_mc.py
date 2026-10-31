@@ -2,7 +2,7 @@
 
 - vplc 가 실제 PLC 처럼 오류 종료 코드로 답한다(없는 메모리) — tc 는 시간 초과가 아니라 502 + plcStatus, 연결은 그대로.
 - 연결 시험: 포트마다 TCP + 루프백(0619).
-- 4E 프레임: POINTS(4E)와 RAW(3E)가 같은 연결에서, 시간 초과에도 연결을 끊지 않는다(일련번호로 늦은 응답을 버림).
+- 4E 프레임: 커넥터를 4E 로 바꿔 읽고, 시간 초과에도 연결을 끊지 않는다(일련번호로 늦은 응답을 버림).
 - 주기적 루프백: 답하지 않는 PLC(vplc 멈춤)를 찾아 연결을 닫고, 다시 답하면 다시 잇는다.
 전제: vplc vplc-e2e(15000, 포트당 연결 1) 와 plc-e2e 게시됨, tc 는 PLC_REQUEST_TIMEOUT_MS=3000. 끝나면 plc-e2e 설정을 되돌린다."""
 import json
@@ -90,11 +90,11 @@ def wait(fn, seconds):
 
 
 created = []
-POINTS = f"e2e.mc.pts.{RUN}"
+PTS = f"e2e.mc.pts.{RUN}"
 MISSING = f"e2e.mc.missing.{RUN}"
 try:
-    for name, address in ((POINTS, "D100"), (MISSING, "W0")):
-        s, b = call("POST", "/api/v1/ifsvc/management/register", {"name": name, "plcName": PLC, "interfaceType": "READ", "mode": "POINTS",
+    for name, address in ((PTS, "D100"), (MISSING, "W0")):
+        s, b = call("POST", "/api/v1/ifsvc/management/register", {"name": name, "plcName": PLC, "interfaceType": "READ",
                                                                   "use": True, "sync": True, "reply": True,
                                                                   "points": [{"name": "v", "address": address, "type": "INT16"}]})
         created.append(name)
@@ -105,7 +105,7 @@ try:
           s == 200 and b.get("success") is False and b.get("errorCode") == "ERR_502_TC_PLC_ERROR" and (b.get("plcStatus") or {}).get("code") == 0xC056 and dt < 2,
           (s, dt, b))
     s, b, _ = plc("plc.e2e.d100.read")
-    check("오류 응답 뒤에도 같은 연결로 RAW 읽기 200", s == 200 and b.get("success") is True, (s, b))
+    check("오류 응답 뒤에도 같은 연결로 plc.e2e.d100.read 읽기 200", s == 200 and b.get("success") is True, (s, b))
 
     # 2. 연결 시험 — 포트마다 TCP + 루프백
     s, b = call("POST", f"/api/v1/plc-connector/test-connection/byName/{PLC}")
@@ -115,24 +115,24 @@ try:
     check("해제한 뒤(슬롯 빔) 연결 시험 → OK(TCP + 루프백)", s == 200 and b.get("port:15000") == "OK" and b.get("result") == "CONNECTION_TEST_OK", (s, b))
     call("POST", f"/api/v1/plc-connector/control/publish/byName/{PLC}")
 
-    # 3. 4E — POINTS(4E)와 RAW(3E)가 같은 연결에서
+    # 3. 4E — 커넥터 프레임을 바꾸면 모든 인터페이스가 4E 로 읽는다
     s = set_settings({"frame": "4E_BINARY", "healthCheckIntervalSec": 0})
     got = connector()
     check("커넥터 설정을 4E 로(정규화)", s == 200 and got.get("settings", {}).get("frame") == "4E_BINARY", got.get("settings"))
-    s, b, _ = plc(POINTS)
+    s, b, _ = plc(PTS)
     s2, b2, _ = plc("plc.e2e.d100.read")
-    check("4E POINTS 읽기와 3E RAW 읽기가 같은 값", s == 200 and s2 == 200 and b["data"]["v"] == b2["data"]["d100"], (s, b, s2, b2))
+    check("4E 로 두 인터페이스(D100) 읽기가 같은 값", s == 200 and s2 == 200 and b["data"]["v"] == b2["data"]["d100"], (s, b, s2, b2))
 
     # 4. 4E 시간 초과 — 연결을 끊지 않는다
     connected_at = (connector().get("connection") or {}).get("lastConnectedAt")
     vplc("pause")
-    s, b, dt = plc(POINTS)
+    s, b, dt = plc(PTS)
     check("vplc 멈춤 → 4E 읽기 504(약 3초)", s == 504 and 2.5 < dt < 5, (s, dt, b))
     conn = connector().get("connection") or {}
     check("4E 시간 초과 뒤에도 연결은 그대로(채널 1, 다시 잇지 않음)", conn.get("activeChannels") == 1
           and conn.get("lastConnectedAt") == connected_at and conn.get("lastEvent") != "DISCONNECT", conn)
     vplc("resume")
-    s, b, _ = plc(POINTS)
+    s, b, _ = plc(PTS)
     check("vplc 재개 → 같은 연결로 200", s == 200 and b.get("success") is True, (s, b))
 
     # 5. 주기적 루프백 — 답하지 않는 PLC 의 연결을 닫고, 다시 답하면 다시 잇는다
@@ -142,7 +142,7 @@ try:
     err = wait(lambda: "루프백" in str((connector().get("connection") or {}).get("lastError")), 12)
     check("vplc 멈춤 → 루프백 실패로 연결을 닫음(마지막 오류에 남음)", err, connector().get("connection"))
     vplc("resume")
-    ok = wait(lambda: plc(POINTS)[0] == 200, 20)
+    ok = wait(lambda: plc(PTS)[0] == 200, 20)
     check("vplc 재개 → 다시 연결해 요청 200", ok)
 finally:
     vplc("resume")
@@ -150,7 +150,7 @@ finally:
     for name in created:
         call("DELETE", f"/api/v1/ifsvc/management/delete/byName/{name}")
     s, b, _ = plc("plc.e2e.d100.read")
-    check("정리: 기본 설정(3E, 루프백 30초)으로 되돌리고 RAW 읽기 200",
+    check("정리: 기본 설정(3E, 루프백 30초)으로 되돌리고 plc.e2e.d100.read 읽기 200",
           s == 200 and connector().get("settings", {}).get("frame") == "3E_BINARY", (s, b, connector().get("settings")))
 
 print(f"\n{sum(results)}/{len(results)} PASS")

@@ -26,8 +26,6 @@ public final class PlcAdapterProps {
 		props.put("targetPorts", info.getPorts());
 		props.put("localVips", info.getConnectionVips());
 		props.put("messageFrameFormat", info.getMessageFrameFormat().getName());
-		props.put("headerReqTemplate", info.getCommProtocolHeadersReqTemplate());
-		props.put("headerResTemplate", info.getCommProtocolHeadersResTemplate());
 		// 운영자 의도(STATUS1=PUBLISHED)로 올린다 — STATUS2 는 마지막 제어 결과일 뿐 실제 연결 상태가 아니다(docs/plc-ha-design.md §3.4)
 		props.put("operStatus", PlcConnectorOperStatus.RUNNING.name());
 		props.put("plcRetryCount", plcConfig.getRetryCount());

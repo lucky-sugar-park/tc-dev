@@ -1,7 +1,6 @@
 package com.wow.be.tc.plc.management;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,10 +48,6 @@ public class PlcConnectorInfo extends AbstractInfo {
 
 	private FrameFormat messageFrameFormat;
 
-	private Map<String, String> commProtocolHeadersReqTemplate;
-	
-	private Map<String, String> commProtocolHeadersResTemplate;
-	
 	private List<String> memTypes;
 
 	/** {@code MELSEC_MC}(기본), {@code MODBUS_TCP}, {@code OPC_UA} — docs/plc-protocol-design.md §4.1 */
@@ -66,7 +61,6 @@ public class PlcConnectorInfo extends AbstractInfo {
 	public PlcConnectorInfo() {
 		this.ports=new ArrayList<>();
 		connectionVips=new ArrayList<>();
-		commProtocolHeadersReqTemplate=new HashMap<>();
 		memTypes=new ArrayList<>();
 	}
 
@@ -84,14 +78,6 @@ public class PlcConnectorInfo extends AbstractInfo {
 		connectionVips.add(vip);
 	}
 
-	public void addHeader(String name, String value) {
-		commProtocolHeadersReqTemplate.put(name, value);
-	}
-	
-	public String getHeader(String name) {
-		return commProtocolHeadersReqTemplate.get(name);
-	}
-	
 	public void addMemType(String memType) {
 		memTypes.add(memType);
 	}

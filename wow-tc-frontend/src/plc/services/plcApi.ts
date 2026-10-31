@@ -1,7 +1,7 @@
 import { apiClient } from 'wow-mes-frontend-shared';
 import { pageCondition } from '../../shared/format';
 import type {
-  ConnectionHistory, InterfaceInfo, PlcConnectionState, PlcConnectorInfo, PointInfo, PointsConversionInfo, ProtocolDescriptor, RequestPlan, TestReadResult,
+  ConnectionHistory, InterfaceInfo, PlcConnectionState, PlcConnectorInfo, PointInfo, ProtocolDescriptor, RequestPlan, TestReadResult,
 } from '../types/plc';
 
 const C = '/v1/plc-connector';
@@ -74,9 +74,6 @@ export const interfaceApi = {
   async setUse(id: number, use: boolean): Promise<void> {
     await apiClient.post(`${M}/update/apply-use/${id}/${use}`);
   },
-  async convert(name: string, dryRun: boolean): Promise<PointsConversionInfo> {
-    return (await apiClient.post<PointsConversionInfo>(`${M}/convert-to-points/byName/${enc(name)}?dryRun=${dryRun}`)).data;
-  },
   /** 요청 미리보기 — 저장 전 정의도 된다. data 는 쓰기 값(없는 점은 0) */
   async plan(interfaceInfo: InterfaceInfo, data?: Record<string, unknown>): Promise<RequestPlan> {
     return (await apiClient.post<RequestPlan>(`${M}/plan`, { interfaceInfo, data })).data;
@@ -102,13 +99,16 @@ export type TcResponse = {
   [k: string]: unknown;
 };
 
-/** POST /api/v1/ifsvc/request-and-reply(동기) 또는 /request(접수만). 실패도 본문을 돌려준다(HTTP 상태와 함께) */
+/**
+ * POST /api/v1/ifsvc/request-and-reply(동기) 또는 /request(접수만). 실패도 본문을 돌려준다(HTTP 상태와 함께) — 401 만 빼고:
+ * 401 은 실패로 넘겨야 shared apiClient 가 토큰을 다시 받아 같은 요청을 한 번 더 보낸다(access 토큰 30분이 지난 뒤 첫 요청).
+ */
 export async function sendPlcRequest(opcode: string, data: Record<string, unknown>, reply: boolean):
     Promise<{ status: number; body: TcResponse; elapsedMs: number; transactionId: string }> {
   const transactionId = `ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const t0 = performance.now();
   const res = await apiClient.post<TcResponse>(reply ? '/v1/ifsvc/request-and-reply' : '/v1/ifsvc/request', {
     transactionId, messageId: transactionId, opcode, sender: 'tc-ui', receiver: 'tc', data,
-  }, { validateStatus: () => true });
+  }, { validateStatus: (s) => s !== 401 });
   return { status: res.status, body: res.data, elapsedMs: Math.round(performance.now() - t0), transactionId };
 }

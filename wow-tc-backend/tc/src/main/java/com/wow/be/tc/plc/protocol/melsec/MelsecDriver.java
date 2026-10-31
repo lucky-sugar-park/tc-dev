@@ -307,7 +307,7 @@ public class MelsecDriver implements PlcDriver {
 				new ProtocolDescriptor.Setting("maxWordsPerRequest", "NUMBER", null, 1, MAX_WORDS, null, false, "요청 한 번의 최대 워드 수"),
 				new ProtocolDescriptor.Setting("mergeGap", "NUMBER", MERGE_GAP, 0, 64, null, false,
 					"읽기를 묶을 때 끼어도 되는 빈 워드 수 — 0 이면 바로 이어진 점만 묶는다(빈 칸을 읽으면 안 되는 장비)")),
-			areas, List.of("D100", "M10", "X1F", "W1A", "ZR20000"), true);
+			areas, List.of("D100", "M10", "X1F", "W1A", "ZR20000"));
 	}
 
 	@Override

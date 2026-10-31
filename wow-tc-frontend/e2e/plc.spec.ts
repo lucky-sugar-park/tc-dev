@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { login, openScreen, searchFor } from './helpers';
 
 /**
- * PLC 화면(5-3) — 실제 tc·vplc(plc-e2e, D 메모리, RAW 인터페이스 plc.e2e.d100.read)가 있어야 한다(백엔드 e2e setup_e2e.py).
+ * PLC 화면(5-3) — 실제 tc·vplc(plc-e2e, D 메모리, 인터페이스 plc.e2e.d100.read — 점 d100·d101)가 있어야 한다(백엔드 e2e setup_e2e.py).
  * 바꾸는 것은 없다 — 미리보기·읽기·시험 요청(읽기)만.
  */
 test.beforeEach(async ({ page }) => {
@@ -44,18 +44,18 @@ test('커넥터 — 목록, 등록 폼(프로토콜별 설정), 시험 읽기', 
   await expect(tr.getByRole('cell', { name: 'd100', exact: true }).last()).toBeVisible();
 });
 
-test('인터페이스 — 목록 필터, RAW 보기와 POINTS 변환 미리보기', async ({ page }) => {
+test('인터페이스 — 목록(점 칸)과 상세 보기의 요청 미리보기', async ({ page }) => {
   await openScreen(page, 'PLC', '인터페이스');
   await searchFor(page, 'plc.e2e.d100.read');
   const row = page.getByRole('row').filter({ hasText: 'plc.e2e.d100.read' }).first();
-  await expect(row).toBeVisible();
-  await row.getByRole('menuitem', { name: 'RAW 보기·변환' }).or(row.getByLabel('RAW 보기·변환')).first().click();
+  await expect(row.getByText('d100=D100, d101=D101')).toBeVisible();
+  await row.locator('button[aria-haspopup="menu"]').click();
+  await page.getByRole('menuitem', { name: '상세 보기' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByText('RAW 인터페이스')).toBeVisible();
-  await expect(dialog.getByRole('cell', { name: 'command', exact: true }).first()).toBeVisible();
-  await dialog.getByRole('button', { name: 'POINTS 변환 미리보기' }).click();
-  await expect(dialog.getByRole('cell', { name: 'D100', exact: true })).toBeVisible();
-  await expect(dialog.getByRole('cell', { name: 'D101', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('cell', { name: 'D100', exact: true }).first()).toBeVisible();
+  const plan = dialog.getByRole('table', { name: 'request-plan' });
+  await expect(plan.getByRole('cell', { name: '0401/0000 일괄 읽기(워드)' })).toBeVisible();
+  await dialog.getByRole('button', { name: /close|닫기/i }).first().click();
 });
 
 test('인터페이스 시험 — 읽기 요청 응답', async ({ page }) => {
@@ -74,7 +74,7 @@ test('연결 모니터 — 커넥터 카드', async ({ page }) => {
   await expect(page.getByText('plc-e2e', { exact: true }).last()).toBeVisible();
 });
 
-test('인터페이스 — POINTS 등록(설정·점 표)·상세 보기·삭제', async ({ page }) => {
+test('인터페이스 — 등록(설정·점 표)·상세 보기·삭제', async ({ page }) => {
   const name = `e2e.ui.${Date.now()}`;
   await openScreen(page, 'PLC', '인터페이스');
   await page.getByRole('button', { name: '추가' }).click();
@@ -92,7 +92,7 @@ test('인터페이스 — POINTS 등록(설정·점 표)·상세 보기·삭제'
 
   await searchFor(page, name);
   const row = page.getByRole('row').filter({ hasText: name }).first();
-  await expect(row.getByText('POINTS')).toBeVisible();
+  await expect(row.getByText('d100=D100')).toBeVisible();
 
   // 상세 보기 — 점, 이 인터페이스의 설정, 요청 미리보기
   await row.locator('button[aria-haspopup="menu"]').click();

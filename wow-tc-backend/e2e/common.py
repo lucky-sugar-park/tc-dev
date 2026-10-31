@@ -57,6 +57,14 @@ def admin_token():
     return _token
 
 
+def d100_interface(name, interface_type="READ", plc_name="plc-e2e", description="e2e D100..D101"):
+    """D100·D101(INT16) 두 점 인터페이스 정의 — setup_e2e·test_paths·test_plc_adapter 가 같이 쓴다."""
+    return {"name": name, "plcName": plc_name, "interfaceType": interface_type,
+            "points": [{"name": "d100", "address": "D100", "type": "INT16", "description": "D100"},
+                       {"name": "d101", "address": "D101", "type": "INT16", "description": "D101"}],
+            "use": True, "sync": True, "reply": True, "webHookNameList": [], "description": description}
+
+
 def tc_pid():
     v = os.environ.get("TC_E2E_TC_PID", "")
     if os.path.isfile(v):

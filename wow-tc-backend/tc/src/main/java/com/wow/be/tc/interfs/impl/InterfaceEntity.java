@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wow.be.framework.persist.PersistentEntity;
 import com.wow.be.tc.Types.InterfaceType;
 import com.wow.be.tc.interfs.InterfaceInfo;
-import com.wow.be.tc.interfs.InterfaceMode;
 import com.wow.be.tc.interfs.PointInfo;
 
 import jakarta.persistence.CascadeType;
@@ -50,31 +49,11 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 	@Column(name="NAME", unique=true)
 	private String name;
 	
-	@Column(name="CMD_CLASS_NAME")
-	private String commandClassName;
-	
-	@Column(name="USE_GENERIC_CMD_CLASS")
-	private Boolean useGenericCommandClass;
-	
-	@Column(name="REPLY_NAME")
-	private String replyName;
-	
 	@Column(name="PLC_NAME")
 	private String plcName;
 	
 	@Column(name="IF_TYPE")
 	private String interfaceType;
-	
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="interfs", cascade={ CascadeType.ALL } )
-//	@JoinColumn(name="INTERFACE_ID")
-	private List<HeaderPropEntity> headerProps;
-	
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="interfs", cascade={ CascadeType.ALL } )
-//	@JoinColumn(name="INTERFACE_ID")
-	private List<DataPropEntity> dataProps;
-	
-	@Column(name="DATA_LEN")
-	private Integer dataLength;
 	
 	@Column(name="IN_USE")
 	private Boolean use;
@@ -91,10 +70,6 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 	@Column(name="DESCRIPTION", length=2048)
 	private String description;
 
-	/** RAW·POINTS — 비면 RAW(이 칼럼 전에 등록한 인터페이스) */
-	@Column(name="MODE", length=16)
-	private String mode;
-
 	@Column(name="READ_BACK")
 	private Boolean readBack;
 
@@ -107,8 +82,6 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 	
 	public InterfaceEntity() {
 		super();
-		headerProps=new ArrayList<>();
-		dataProps=new ArrayList<>();
 		points=new ArrayList<>();
 	}
 
@@ -117,13 +90,9 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		InterfaceInfo info=new InterfaceInfo();
 		info.setId(this.getId()!=null && this.getId()>0?this.getId():-1);
 		info.setName(this.getName());
-		info.setCommandClassName(this.getCommandClassName());
-		info.setUseGenericCommandClass(this.getUseGenericCommandClass()==null?false:this.getUseGenericCommandClass());
 		info.setReply(this.getReply()==null?false:this.getReply());
-		info.setReplyName(this.getReplyName());
 		info.setPlcName(this.getPlcName());
 		info.setInterfaceType(InterfaceType.valueOf(this.getInterfaceType()));
-		info.setDataLength(this.getDataLength()==null?0:this.getDataLength());
 		info.setSync(this.getSync()==null?false:this.getSync());
 		info.setUse(this.getUse()==null?false:this.getUse());
 		if(webHookNameList!=null) {
@@ -133,7 +102,6 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 			}			
 		}
 		info.setDescription(this.getDescription());
-		info.setMode(this.mode!=null?InterfaceMode.valueOf(this.mode):InterfaceMode.RAW);
 		info.setReadBack(this.readBack!=null && this.readBack);
 		Map<String, Object> settings=new LinkedHashMap<>();
 		try {
@@ -144,28 +112,12 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 			log.warn("인터페이스 설정 JSON 을 읽지 못했습니다: {}", this.name);
 		}
 		info.setSettings(settings);
-		if(info.getMode()==InterfaceMode.POINTS) {
-			List<PointInfo> pointInfos=new ArrayList<>();
-			for(InterfacePointEntity pentity:points) {
-				pointInfos.add(pentity.info());
-			}
-			pointInfos.sort((a,b)->Integer.compare(a.getOrder(), b.getOrder()));
-			info.setPoints(pointInfos);
+		List<PointInfo> pointInfos=new ArrayList<>();
+		for(InterfacePointEntity pentity:points) {
+			pointInfos.add(pentity.info());
 		}
-		
-//		headerProps.sort((a,b)->{
-//			return a.getOrder()-b.getOrder();
-//		});
-		for(HeaderPropEntity hentity:headerProps) {
-			info.addHeaderProp(hentity.info());
-		}
-
-//		dataProps.sort((a,b)->{
-//			return a.getOrder()-b.getOrder();
-//		});
-		for(DataPropEntity dentity:dataProps) {
-			info.addDataProp(dentity.info());
-		}
+		pointInfos.sort((a,b)->Integer.compare(a.getOrder(), b.getOrder()));
+		info.setPoints(pointInfos);
 		
 		info.setCreatedBy(super.getCreatedBy());
 		info.setCreatedDate(super.getCreatedDate());
@@ -182,16 +134,8 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		if(info.getName()!=null && !"".equals(info.getName())) {
 			this.setName(info.getName());
 		}
-		if(info.getCommandClassName()!=null && !"".equals(info.getCommandClassName())) {
-			this.setCommandClassName(info.getCommandClassName());
-		}
-		
-		this.setUseGenericCommandClass(info.isUseGenericCommandClass());
 		this.setReply(info.isReply());
 		
-		if(info.getReplyName()!=null && !"".equals(info.getReplyName())) {
-			this.setReplyName(info.getReplyName());
-		}
 		if(info.getPlcName()!=null && !"".equals(info.getPlcName())) {
 			this.setPlcName(info.getPlcName());
 		}
@@ -199,7 +143,6 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 			this.setInterfaceType(info.getInterfaceType().name());
 		}
 
-		this.setDataLength(info.getDataLength());
 		this.setUse(info.isUse());
 		this.setSync(info.isSync());
 
@@ -217,7 +160,6 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		if(info.getDescription()!=null && !"".equals(info.getDescription())) {
 			this.setDescription(info.getDescription());
 		}
-		this.setMode((info.getMode()!=null?info.getMode():InterfaceMode.RAW).name());
 		this.setReadBack(info.isReadBack());
 		try {
 			this.setSettingsJson(info.getSettings()!=null && !info.getSettings().isEmpty()
@@ -225,22 +167,6 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		} catch (JsonProcessingException e) {
 			throw new IllegalArgumentException("인터페이스 설정을 저장할 수 없습니다: " + e.getMessage());
 		}
-		
-//		for(PropInfo pInfo : info.getHeaderProps()) {
-//			HeaderPropEntity entity=new HeaderPropEntity();
-//			entity.setPropId(null);
-//			entity.from(pInfo);
-////			entity.setInterfs(this);
-//			headerProps.add(entity);
-//		}
-//		
-//		for(PropInfo pInfo : info.getDataProps()) {
-//			DataPropEntity entity=new DataPropEntity();
-//			entity.setPropId(null);
-//			entity.from(pInfo);
-////			entity.setInterfs(this);
-//			dataProps.add(entity);
-//		}
 		
 		this.setCreatedBy(info.getCreatedBy());
 		this.setCreatedDate(info.getCreatedDate());

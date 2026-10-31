@@ -26,8 +26,7 @@ import lombok.RequiredArgsConstructor;
 /**
  * 인터페이스별 결과 전달 정의(INTERFACE_DELIVERY) 관리 API.
  *
- * <p>한 인터페이스에 정의가 하나라도 있으면 그 정의대로만 결과를 보낸다. 하나도 없으면 레거시 방식
- * (요청의 callback 주소 + 응답 인터페이스의 WebHook 목록)으로 보낸다.
+ * <p>한 인터페이스에 정의가 하나라도 있으면 그 정의대로만 결과를 보낸다. 하나도 없으면 요청의 callback 주소로만 보낸다.
  */
 @Tag(name = "Interface Delivery", description = "인터페이스별 결과 전달 정의 관리")
 @RestController

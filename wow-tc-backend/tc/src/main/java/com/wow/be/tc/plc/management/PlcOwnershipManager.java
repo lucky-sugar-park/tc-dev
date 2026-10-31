@@ -345,15 +345,9 @@ public class PlcOwnershipManager {
 				&& owner.equals(current.ownerInstance()) && url.equals(current.ownerUrl())) {
 			return;
 		}
-		try {
-			ProgrammableControllerAdapter prototype = PlcAdapterManager.getPlcManager().newUnconnectedAdapter(info.getAdapterClassName());
-			PlcAdapterManager.getPlcManager().putRemote(name, new RemotePlcAdapter(info.getId(), name, owner, url, prototype,
-				signature, identity.id(), plcConfig.getRequestTimeoutMs(), this::ownerUrlOf));
-			log.info("PLC {} 는 인스턴스 {}({}) 가 연결합니다 — 요청을 그쪽으로 넘깁니다.", name, owner, url);
-		} catch (ToolControlException e) {
-			log.warn("PLC {} 의 원격 어댑터를 만들지 못했습니다: {}", name, e.getMessage());
-			PlcAdapterManager.getPlcManager().removeRemote(name);
-		}
+		PlcAdapterManager.getPlcManager().putRemote(name, new RemotePlcAdapter(info.getId(), name, owner, url,
+			signature, identity.id(), plcConfig.getRequestTimeoutMs(), this::ownerUrlOf));
+		log.info("PLC {} 는 인스턴스 {}({}) 가 연결합니다 — 요청을 그쪽으로 넘깁니다.", name, owner, url);
 	}
 
 	/** 지금 주인의 내부 주소 — 원격 어댑터가 409(주인 아님) 뒤에 다시 찾을 때. 주인이 없거나 이 인스턴스면 null */

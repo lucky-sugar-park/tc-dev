@@ -73,8 +73,6 @@ i18n.tc.interface.auditTitle	송수신 이력	Message history	送受信履歴	�
 i18n.tc.interface.add	인터페이스 등록	Add interface	インターフェース登録	添加接口
 i18n.tc.interface.edit	인터페이스 수정	Edit interface	インターフェース編集	编辑接口
 i18n.tc.interface.confirmDelete	{name} 을(를) 지울까요? 이 opcode 로 오는 요청이 실패합니다.	Delete {name}? Requests with this opcode will fail.	{name} を削除しますか？このopcodeの要求は失敗します。	删除 {name}？使用此 opcode 的请求将失败。
-i18n.tc.interface.replyIf	응답 IF	Reply IF	応答IF	应答IF
-i18n.tc.interface.mode	정의	Definition	定義	定义
 i18n.tc.interface.name	이름(opcode)	Name (opcode)	名前(opcode)	名称(opcode)
 i18n.tc.interface.nameRule	영숫자·_ . - (opcode 로 쓰인다)	Letters, digits, _ . - (used as opcode)	英数字・_ . -（opcodeとして使用）	字母、数字、_ . -（用作 opcode）
 i18n.tc.interface.plc	PLC 커넥터	PLC connector	PLCコネクタ	PLC连接器
@@ -104,23 +102,6 @@ i18n.tc.interface.connectorValue	커넥터 값	Connector value	コネクタ値	�
 i18n.tc.interface.settingsHelp	이 인터페이스에만 쓸 값. 비우면 커넥터 값을 씁니다(중계할 국 번호, 게이트웨이 뒤 장치 번호, 쓰기 함수, 묶기 등)	Values for this interface only. Leave empty to use the connector value (relay station, device behind a gateway, write function, grouping, etc.)	このインターフェース専用の値。空欄ならコネクタの値を使います(中継局番、ゲートウェイ配下の機器番号、書き込み関数、まとめ読みなど)	仅用于此接口的值。留空则使用连接器的值(中继站号、网关后的设备号、写功能码、合并等)
 i18n.tc.interface.ownSettings	이 인터페이스의 설정	This interface's settings	このインターフェースの設定	此接口的设置
 i18n.tc.interface.noOwnSettings	없음 — 커넥터 설정 그대로	None — connector settings as is	なし — コネクタ設定のまま	无 — 沿用连接器设置
-i18n.tc.convert.settings	인터페이스 설정으로 둘 값	Values kept as interface settings	インターフェース設定に置く値	保留为接口设置的值
-i18n.tc.raw.title	RAW 인터페이스	RAW interface	RAWインターフェース	RAW接口
-i18n.tc.raw.view	RAW 보기·변환	View RAW / convert	RAW表示・変換	查看RAW/转换
-i18n.tc.raw.help	MC 3E 프레임 바이트로 정의한 옛 인터페이스 — 여기서는 볼 수만 있다. POINTS 로 바꾸면 점 표로 고친다.	Legacy interface defined as MC 3E frame bytes — view only here. Convert to POINTS to edit it as points.	MC 3Eフレームのバイトで定義した旧インターフェース — ここでは表示のみ。POINTSに変換するとポイント表で編集できる。	用 MC 3E 帧字节定义的旧接口 — 此处只能查看。转换为 POINTS 后可按点表编辑。
-i18n.tc.raw.header	헤더	Header	ヘッダー	报头
-i18n.tc.raw.data	데이터	Data	データ	数据
-i18n.tc.raw.reply	응답 인터페이스	Reply interface	応答インターフェース	应答接口
-i18n.tc.raw.order	순서	Order	順序	顺序
-i18n.tc.raw.value	값	Value	値	值
-i18n.tc.convert.preview	변환 미리보기	Conversion preview	変換プレビュー	转换预览
-i18n.tc.convert.dryRun	POINTS 변환 미리보기	Preview POINTS conversion	POINTS変換プレビュー	预览 POINTS 转换
-i18n.tc.convert.apply	변환 적용	Apply conversion	変換を適用	应用转换
-i18n.tc.convert.confirm	{name} 을(를) POINTS 로 바꿀까요? 같은 opcode·같은 data 키로 돈다. 되돌리려면 수정에서 mode 를 RAW 로.	Convert {name} to POINTS? It keeps the same opcode and data keys. To revert, set mode back to RAW.	{name} をPOINTSに変換しますか？同じopcode・同じdataキーで動作します。戻すにはmodeをRAWに。	将 {name} 转换为 POINTS？opcode 与 data 键不变。如需还原，将 mode 改回 RAW。
-i18n.tc.convert.done	POINTS 로 바꿨습니다	Converted to POINTS	POINTSに変換しました	已转换为 POINTS
-i18n.tc.convert.reply	옛 응답 인터페이스 {reply} 는 POINTS 가 쓰지 않는다.	The old reply interface {reply} is not used by POINTS.	旧応答インターフェース {reply} はPOINTSでは使わない。	POINTS 不使用旧应答接口 {reply}。
-i18n.tc.convert.replyUsed	아직 쓰는 인터페이스	Still used by	まだ使っているインターフェース	仍在使用的接口
-i18n.tc.convert.replyFree	쓰는 곳이 없어 지워도 된다.	Nothing else uses it; it can be deleted.	他に使う所がないので削除してよい。	没有其他接口使用，可以删除。
 # 인터페이스 시험
 i18n.tc.interfaceTest.pick	인터페이스(opcode)	Interface (opcode)	インターフェース(opcode)	接口(opcode)
 i18n.tc.interfaceTest.data	요청 data (JSON)	Request data (JSON)	要求data (JSON)	请求 data (JSON)

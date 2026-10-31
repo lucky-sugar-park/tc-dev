@@ -9,7 +9,6 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -19,11 +18,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
-import com.wow.be.tc.plc.PlcRequest;
-import com.wow.be.tc.plc.PlcResponse;
 import com.wow.be.tc.plc.connector.AdapterStatus;
 import com.wow.be.tc.plc.connector.ProgrammableControllerAdapter;
-import com.wow.be.tc.plc.protocol.PlcDrivers;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PlcStatus;
@@ -35,10 +31,9 @@ import lombok.extern.slf4j.Slf4j;
  * docs/plc-protocol-design.md §7·§15). 디스패치·감사·결과 전달은 요청을 받은 이 인스턴스가 그대로 한다.
  *
  * <ul>
- *   <li>POINTS 는 작업 단위({@code /execute} — 점·값·설정)로 넘기고 값과 PLC 상태를 받는다. 점 묶기·응답 검증은 주인이 한다.</li>
- *   <li>RAW 는 요청 프레임을 넘기고 응답 프레임을 받는다({@code /execute} op RAW). 요청·응답 객체는 그 PLC 종류의 어댑터
- *       ({@code prototype}, 연결하지 않음)가 만들고 해석한다.</li>
- *   <li>주인이 옛 버전이라 {@code /execute} 가 없으면(404) 3단계까지의 {@code /exchange}(프레임 바이트)로 넘긴다 — 순차 재기동 중.</li>
+ *   <li>점 작업을 작업 단위({@code /execute} — 점·값·설정)로 넘기고 값과 PLC 상태를 받는다. 점 묶기·응답 검증은 주인이 한다.
+ *       프레임은 넘기지 않는다({@link #exchangeFrame} 은 쓰지 않는다).</li>
+ *   <li>주인이 404 면(소유권 관리를 끈 인스턴스) PLC 에 보내기 전이라 넘기지 못했다고 알린다.</li>
  *   <li>소유 인스턴스가 409(주인 아님)면 PLC 에 보내기 전이라 주인을 다시 찾아 <b>한 번만</b> 다시 보낸다. 504·연결 오류는 PLC 에 이미
  *       갔을 수 있으므로 다시 보내지 않는다(WRITE 중복 방지, §4.2).</li>
  *   <li>기다리는 시간은 PLC 시간 초과 + 2초 — 소유 인스턴스의 504 가 그대로 전해지게.</li>
@@ -61,8 +56,6 @@ public class RemotePlcAdapter implements ProgrammableControllerAdapter {
 
 	private final String ownerUrl;
 
-	private final ProgrammableControllerAdapter prototype;
-
 	private final InternalSignature signature;
 
 	private final String myInstance;
@@ -72,13 +65,12 @@ public class RemotePlcAdapter implements ProgrammableControllerAdapter {
 	/** 주인을 다시 찾는다(409 뒤) — PLC 이름 → 지금 주인의 내부 주소(없으면 null) */
 	private final Function<String, String> ownerUrlLookup;
 
-	public RemotePlcAdapter(long id, String name, String ownerInstance, String ownerUrl, ProgrammableControllerAdapter prototype,
+	public RemotePlcAdapter(long id, String name, String ownerInstance, String ownerUrl,
 			InternalSignature signature, String myInstance, long requestTimeoutMs, Function<String, String> ownerUrlLookup) {
 		this.id = id;
 		this.name = name;
 		this.ownerInstance = ownerInstance;
 		this.ownerUrl = ownerUrl;
-		this.prototype = prototype;
 		this.signature = signature;
 		this.myInstance = myInstance;
 		this.requestTimeoutMs = requestTimeoutMs;
@@ -98,14 +90,8 @@ public class RemotePlcAdapter implements ProgrammableControllerAdapter {
 		return false;
 	}
 
-	@Override
-	public void request(PlcRequest req, PlcResponse res) throws ToolControlException {
-		prototype.completeResponse(res, exchangeFrame(req.getReqId(), req.convertRequest()));
-	}
-
 	/**
-	 * 점 작업을 주인에게 작업 단위로 넘긴다({@code /execute}) — 점 묶기·응답 검증은 주인이 한다. 주인이 옛 버전이라 {@code /execute} 가
-	 * 없으면(404, 순차 재기동 중) 여기서 드라이버로 프레임을 만들어 프레임마다 {@code /exchange} 로 넘긴다.
+	 * 점 작업을 주인에게 작업 단위로 넘긴다({@code /execute}) — 점 묶기·응답 검증은 주인이 한다.
 	 */
 	@Override
 	public PlcResult execute(PlcOperation op) throws ToolControlException {
@@ -123,7 +109,8 @@ public class RemotePlcAdapter implements ProgrammableControllerAdapter {
 		try {
 			answer = send("execute", body, wait);
 		} catch (NoExecute e) {
-			return PlcDrivers.of(op.protocol()).execute(op, this::exchangeLegacy);
+			throw ToolControlException.of(ToolControlException.PLC_UNAVAILABLE,
+				"PLC 를 연결한 인스턴스가 내부 요청을 받지 않습니다(소유권 관리 꺼짐?): " + name);
 		}
 		Map<String, Object> values = JSON.convertValue(answer.get("values"), new TypeReference<Map<String, Object>>() { });
 		PlcStatus status = JSON.convertValue(answer.get("status"), PlcStatus.class);
@@ -133,40 +120,11 @@ public class RemotePlcAdapter implements ProgrammableControllerAdapter {
 		return new PlcResult(values != null ? values : Map.of(), status);
 	}
 
-	/** RAW 프레임 하나 — {@code /execute}(op RAW), 주인이 옛 버전이면 {@code /exchange} */
+	/** 프레임은 넘기지 않는다 — 점 작업은 {@link #execute} 가 작업 단위로 넘긴다 */
 	@Override
 	public byte[] exchangeFrame(String reqId, byte[] frame) throws ToolControlException {
-		Map<String, Object> body = new LinkedHashMap<>();
-		body.put("op", "RAW");
-		body.put("frame", Base64.getEncoder().encodeToString(frame));
-		body.put("reqId", reqId);
-		body.put("timeoutMs", requestTimeoutMs);
-		try {
-			return frameOf(send("execute", body, requestTimeoutMs + 2_000));
-		} catch (NoExecute e) {
-			return exchangeLegacy(reqId, frame);
-		}
-	}
-
-	/** 3단계까지의 계약 — 프레임 바이트 */
-	private byte[] exchangeLegacy(String reqId, byte[] frame) throws ToolControlException {
-		Map<String, Object> body = new LinkedHashMap<>();
-		body.put("frame", Base64.getEncoder().encodeToString(frame));
-		body.put("timeoutMs", requestTimeoutMs);
-		body.put("reqId", reqId);
-		try {
-			return frameOf(send("exchange", body, requestTimeoutMs + 2_000));
-		} catch (NoExecute e) {
-			throw ToolControlException.of(ToolControlException.PLC_UNAVAILABLE,
-				"PLC 를 연결한 인스턴스가 내부 요청을 받지 않습니다(소유권 관리 꺼짐?): " + name);
-		}
-	}
-
-	private byte[] frameOf(Map<String, Object> answer) throws ToolControlException {
-		if (answer.get("frame") instanceof String f) {
-			return Base64.getDecoder().decode(f);
-		}
-		throw ToolControlException.of(ToolControlException.PLC_UNAVAILABLE, "PLC 를 연결한 인스턴스의 답에 frame 이 없습니다: " + name);
+		throw ToolControlException.of(ToolControlException.PLC_UNAVAILABLE,
+			"원격 PLC 어댑터는 프레임을 넘기지 않습니다 — 점 작업(execute)으로 요청하세요: " + name);
 	}
 
 	/** 주인에게 보낸다. 409(주인 아님)면 주인을 다시 찾아 한 번만 다시 보낸다 — PLC 로 보내기 전에 거절된 것이라 WRITE 도 안전하다 */
@@ -237,7 +195,7 @@ public class RemotePlcAdapter implements ProgrammableControllerAdapter {
 			throw new NotOwner();
 		}
 		if (response.statusCode() == 404) {
-			// /execute 가 없는 옛 인스턴스(순차 재기동 중) 또는 소유권 관리를 끈 인스턴스 — PLC 에 보내기 전이다
+			// 소유권 관리를 끈 인스턴스 — PLC 에 보내기 전이다
 			throw new NoExecute();
 		}
 		if (response.statusCode() == 401) {
@@ -266,7 +224,7 @@ public class RemotePlcAdapter implements ProgrammableControllerAdapter {
 		}
 	}
 
-	/** 404 — 받는 쪽에 그 엔드포인트가 없다(옛 버전) 또는 소유권 관리가 꺼졌다. PLC 로 보내기 전이다 */
+	/** 404 — 받는 쪽의 소유권 관리가 꺼졌다. PLC 로 보내기 전이다 */
 	private static final class NoExecute extends Exception {
 
 		private static final long serialVersionUID = 1L;
@@ -274,21 +232,6 @@ public class RemotePlcAdapter implements ProgrammableControllerAdapter {
 		NoExecute() {
 			super(null, null, false, false);
 		}
-	}
-
-	@Override
-	public void completeResponse(PlcResponse res, byte[] frame) throws ToolControlException {
-		prototype.completeResponse(res, frame);
-	}
-
-	@Override
-	public PlcRequest newPlcRequestInstance() {
-		return prototype.newPlcRequestInstance();
-	}
-
-	@Override
-	public PlcResponse newPlcResponseInstance() {
-		return prototype.newPlcResponseInstance();
 	}
 
 	@Override

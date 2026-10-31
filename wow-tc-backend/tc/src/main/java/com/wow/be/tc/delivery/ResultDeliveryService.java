@@ -12,7 +12,7 @@ import com.wow.be.tc.dispatch.TcMessageResponse;
  * <p>대상은 두 곳에서 정해진다.
  * <ul>
  *   <li>요청: {@code pushResult=true} 와 {@code pushUrl} — callback 주소 (비동기 요청만)</li>
- *   <li>인터페이스: 응답 인터페이스의 WebHook 목록</li>
+ *   <li>인터페이스: 전달 정의(INTERFACE_DELIVERY — CALLBACK_URL·WEBHOOK·DB_TABLE)</li>
  * </ul>
  * 대상마다 서로 독립적으로 전용 스레드 풀에서 보낸다. 한 대상의 실패가 다른 대상을 막지 않는다.
  */

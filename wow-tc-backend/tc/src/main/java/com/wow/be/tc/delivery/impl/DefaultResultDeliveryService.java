@@ -27,8 +27,6 @@ import com.wow.be.tc.delivery.ResultDeliveryChannel;
 import com.wow.be.tc.delivery.ResultDeliveryService;
 import com.wow.be.tc.dispatch.TcMessageRequest;
 import com.wow.be.tc.dispatch.TcMessageResponse;
-import com.wow.be.tc.interfs.InterfaceInfo;
-import com.wow.be.tc.interfs.InterfaceService;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditService;
 import com.wow.be.tc.security.RequestPrincipals;
@@ -44,7 +42,7 @@ import lombok.extern.slf4j.Slf4j;
  * <ul>
  *   <li>요청 인터페이스에 사용 중인 전달 정의(INTERFACE_DELIVERY)가 있으면 그 정의만 쓴다. CALLBACK_URL 정의가 있어야
  *       요청의 callback 주소로 보낸다.</li>
- *   <li>정의가 하나도 없으면 레거시 방식 — 요청의 callback 주소 + (reply=true 일 때) 응답 인터페이스의 WebHook 목록.</li>
+ *   <li>정의가 하나도 없으면 요청의 callback 주소로만 보낸다.</li>
  * </ul>
  * 정의의 조건(성공·실패, 값이 바뀔 때만)은 응답을 보고 {@link #deliver} 에서 거른다.
  *
@@ -69,8 +67,6 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 
 	private final DeliveryProperties properties;
 
-	private final InterfaceService interfaceService;
-
 	private final ExchangedMessageAuditService auditService;
 
 	private final DeliveryDefinitionService definitionService;
@@ -79,13 +75,11 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 			List<ResultDeliveryChannel> channels,
 			@Qualifier(DeliveryConfig.DELIVERY_TASK_EXECUTOR) Executor executor,
 			DeliveryProperties properties,
-			InterfaceService interfaceService,
 			ExchangedMessageAuditService auditService,
 			DeliveryDefinitionService definitionService) {
 		channels.forEach(channel -> this.channels.put(channel.type(), channel));
 		this.executor = executor;
 		this.properties = properties;
-		this.interfaceService = interfaceService;
 		this.auditService = auditService;
 		this.definitionService = definitionService;
 
@@ -100,7 +94,7 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 		if (!definitions.isEmpty()) {
 			return targetsOf(definitions, request, includeCallback);
 		}
-		return legacyTargetsOf(request, includeCallback);
+		return defaultTargetsOf(request, includeCallback);
 	}
 
 	private List<DeliveryTarget> targetsOf(List<DeliveryDefinitionInfo> definitions, TcMessageRequest request, boolean includeCallback) {
@@ -135,28 +129,11 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 		return targets;
 	}
 
-	/** 전달 정의가 없는 인터페이스 — 레거시와 같은 대상 */
-	private List<DeliveryTarget> legacyTargetsOf(TcMessageRequest request, boolean includeCallback) {
+	/** 전달 정의가 없는 인터페이스 — 요청의 callback 주소만 */
+	private List<DeliveryTarget> defaultTargetsOf(TcMessageRequest request, boolean includeCallback) {
 		List<DeliveryTarget> targets = new ArrayList<>();
 		if (includeCallback && request.wantsCallback()) {
 			targets.add(DeliveryTarget.always(DeliveryType.CALLBACK_URL, "callback", request.getPushUrl()));
-		}
-
-		InterfaceInfo iInfo = interfaceService.findInterfaceByName(request.getOpcode());
-		if (iInfo == null || !iInfo.isReply() || !StringUtils.hasText(iInfo.getReplyName())) {
-			return targets;
-		}
-		InterfaceInfo rInfo = interfaceService.findInterfaceByName(iInfo.getReplyName());
-		if (rInfo == null || rInfo.getWebHookNameList() == null) {
-			return targets;
-		}
-		for (String webHookName : rInfo.getWebHookNameList()) {
-			WebHook webHook = WebHookManager.getManager().getWebHook(webHookName);
-			if (webHook == null) {
-				log.warn("응답 인터페이스에 등록된 WebHook 을 찾을 수 없어 건너뜁니다: {} ({})", webHookName, rInfo.getName());
-				continue;
-			}
-			targets.add(DeliveryTarget.always(DeliveryType.WEBHOOK, webHook.getName(), webHook.getUrl()));
 		}
 		return targets;
 	}

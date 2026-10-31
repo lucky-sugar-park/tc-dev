@@ -58,7 +58,7 @@
 | 15 | 비동기 어댑터 큐(죽은 코드) 제거 | ✅ | 어댑터의 타이머·큐·`request(holder, callback)`, `PlcReqAndResHolder`·`PlcRequestCallback`, 커넥터 설정 `asyncRequestUse`·`asyncTimer*`(API 필드 포함) 제거(2026-10-31). DB 칼럼은 남긴다 — `migration/007` 이 NULL 허용으로, DROP 은 주석 |
 | 16 | 운영 환경의 실제 호출 시스템 API 키 전환(감사 `PRINCIPAL` 로 대상 확인 → 키 발급·교체 → 옛 계정 중지) | ⬜ 운영 작업 — 이 버전 배포 전 전환이 안 끝났으면 배포 직후 전환 스위치를 켠다 |
 | 17 | 인터페이스 세부 정의 — [interface-detail-design.md](interface-detail-design.md) | 🔄 A(요청 미리보기)·B(인터페이스 settings) 완료. 남은 것: C 점 options(워드 안 비트 `D100.3`·`HR40001.3`, 문자열 인코딩, 배율·오프셋·단위 — I3), D OPC UA(Eclipse Milo Nexus 확인, 노드 찾아보기, 구독 결과를 전달 정의로 — I4) |
-| 18 | vplc 단위 테스트(지금 0개) | ⬜ Modbus·OPC UA 가상 장비를 붙이기 전에. `ByteUtil` 중복(tc·vplc) 정리 검토 |
+| 18 | vplc 단위 테스트(지금 0개) | ⬜ Modbus·OPC UA 가상 장비를 붙이기 전에 (tc 의 `ByteUtil` 은 RAW 와 함께 없앰) |
 
 ## 진행 기록
 
@@ -96,3 +96,4 @@
 - 2026-10-31: 커넥터 화면 — 카드·표 보기, 발행 상태 칼럼, 작업 칼럼, 제목·건수, 쪽 넘김, 셀 편집(주소·포트·설명). 인터페이스 화면 — 필터 라벨 위로, 타입·응답 IF·작업, 송수신 이력 보기. Chrome 에서 확인(잘못된 포트 셀 편집이 화면을 죽이던 것 고침).
 - 2026-10-31: 인터페이스 세부 정의 설계 [interface-detail-design.md](interface-detail-design.md)(결정 I1~I6, I3 배율은 tc·I4 구독은 전달 정의 경로). A단계 — `PlcDriver.plan`(실행과 같은 묶기·프레임), `POST /ifsvc/management/plan`, 상세 보기·요청 미리보기. 로컬 재기동 뒤 화면에서 미리보기 확인.
 - 2026-10-31: B단계 — 인터페이스 settings(MELSEC 중계·감시 타이머, Modbus unitId·writeFunction, mergeGap), migration 010, 폼 탭, 변환기가 다른 경로를 settings 로 옮김. 단위 107개 통과. e2e·Playwright 는 시험 계정이 없어 아직 돌리지 않음(항목은 더함). 운영 반영 대기: migration 006~010·`TC_SECRET_KEY`·재기동, #16 API 키 전환.
+- 2026-11-01: RAW 인터페이스 제거(결정 I7, [interfaces.md](interfaces.md)) — 인터페이스는 점으로만 정의, 타입은 READ·WRITE. `header_prop`·`data_prop` 표와 RAW 클래스·API(변환·헤더 템플릿)·어댑터의 RAW 요청 경로·원격 `/exchange` 를 없앰. 전달 정의가 없는 인터페이스는 callback 만(응답 인터페이스 WebHook 경로 없음). migration 011(RAW 인터페이스·옛 칼럼·화면 문구 삭제). 단위 94개 통과, e2e 는 아직 안 돌림.

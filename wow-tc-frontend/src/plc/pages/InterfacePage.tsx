@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Box, Chip, MenuItem, Switch, TextField } from '@mui/material';
+import { Box, MenuItem, Switch, TextField } from '@mui/material';
 import { GridActionsCellItem, type GridColDef } from '@mui/x-data-grid-pro';
 import EditIcon from '@mui/icons-material/Edit';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import HistoryIcon from '@mui/icons-material/History';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -18,15 +17,14 @@ import { useCan, usePerm } from '../../shared/usePerm';
 import { InterfaceAuditDialog } from '../components/InterfaceAuditDialog';
 import { InterfaceDetailDialog } from '../components/InterfaceDetailDialog';
 import { InterfaceFormDialog } from '../components/InterfaceFormDialog';
-import { RawInterfaceDialog } from '../components/RawInterfaceDialog';
 import { connectorApi, fetchProtocols, fetchWebhookNames, interfaceApi } from '../services/plcApi';
 import type { InterfaceInfo, PlcConnectorInfo, ProtocolDescriptor } from '../types/plc';
 
 const SCREEN = 'tc.plc.interface';
 
 /**
- * 인터페이스 (docs/frontend-design.md §5) — 목록(형·PLC·정의 방식 필터), POINTS 등록·수정(점 표), RAW 보기 + POINTS 변환, 사용 켜고 끄기, 삭제.
- * 응답(REPLY) 인터페이스는 RAW 의 부속이라 기본으로 숨긴다.
+ * 인터페이스 (docs/frontend-design.md §5, docs/interfaces.md) — 목록(타입·PLC 필터), 등록·수정(기본·프로토콜 설정·점·요청 미리보기),
+ * 상세 보기, 송수신 이력, 사용 켜고 끄기, 삭제.
  */
 export default function InterfacePage(): ReactElement {
   const { t } = useI18n();
@@ -39,12 +37,10 @@ export default function InterfacePage(): ReactElement {
   const [protocols, setProtocols] = useState<ProtocolDescriptor[]>([]);
   const [webhooks, setWebhooks] = useState<string[]>([]);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'READ' | 'WRITE' | 'REPLY'>('ALL');
-  const [modeFilter, setModeFilter] = useState<'ALL' | 'POINTS' | 'RAW'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'READ' | 'WRITE'>('ALL');
   const [plcFilter, setPlcFilter] = useState('');
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<{ open: boolean; initial?: InterfaceInfo; error?: string | null }>({ open: false });
-  const [rawOf, setRawOf] = useState<string | null>(null);
   const [auditOf, setAuditOf] = useState<string | null>(null);
   const [detailOf, setDetailOf] = useState<string | null>(null);
   const { error, fail, clear, retry } = useLoadFailure();
@@ -118,22 +114,19 @@ export default function InterfacePage(): ReactElement {
   }, [t]);
 
   const filtered = useMemo(() => rows.filter((r) => {
-    if (typeFilter === 'ALL' ? r.interfaceType === 'REPLY' : r.interfaceType !== typeFilter) return false;
-    if (modeFilter !== 'ALL' && (r.mode ?? 'RAW') !== modeFilter) return false;
+    if (typeFilter !== 'ALL' && r.interfaceType !== typeFilter) return false;
     if (plcFilter && r.plcName !== plcFilter) return false;
     return matches(search, r.name, r.description, r.plcName);
-  }), [rows, typeFilter, modeFilter, plcFilter, search]);
+  }), [rows, typeFilter, plcFilter, search]);
 
   const columns = useMemo<GridColDef<InterfaceInfo>[]>(() => [
     { field: 'name', headerName: t('i18n.tc.interface.name', '이름(opcode)'), width: 240 },
     { field: 'interfaceType', headerName: t('i18n.tc.interface.ifType', '타입'), width: 80 },
     { field: 'plcName', headerName: t('i18n.tc.interface.plc', 'PLC 커넥터'), width: 140 },
     {
-      field: 'mode', headerName: t('i18n.tc.interface.mode', '정의'), width: 90,
-      renderCell: ({ row }) => <Chip size="small" variant="outlined" color={row.mode === 'POINTS' ? 'primary' : 'default'} label={row.mode ?? 'RAW'} />,
+      field: 'points', headerName: t('i18n.tc.interface.points', '점'), width: 240, sortable: false,
+      valueGetter: (_v, r) => (r.points ?? []).map((p) => `${p.name}=${p.address}`).join(', '),
     },
-    // 응답 인터페이스는 RAW 에만 있다 — POINTS 는 읽기 하나 = 인터페이스 하나(점은 수정 대화상자에서)
-    { field: 'replyName', headerName: t('i18n.tc.interface.replyIf', '응답 IF'), width: 200, valueGetter: (_v, r) => r.replyName ?? '' },
     {
       field: 'use', headerName: t('i18n.tc.interface.use', '사용'), width: 80,
       renderCell: ({ row }) => (
@@ -147,13 +140,9 @@ export default function InterfacePage(): ReactElement {
       field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 90,
       getActions: ({ row }) => {
         const acts: ReactElement[] = [];
-        if (row.mode === 'POINTS') {
-          acts.push(<GridActionsCellItem key="detail" icon={<InfoOutlinedIcon />} label={t('i18n.tc.interface.detail', '상세 보기')}
-            onClick={() => setDetailOf(row.name)} showInMenu />);
-          if (perm('U')) acts.push(<GridActionsCellItem key="edit" icon={<EditIcon />} label={t('i18n.common.edit', '수정')} onClick={() => { void openEdit(row); }} />);
-        } else {
-          acts.push(<GridActionsCellItem key="raw" icon={<VisibilityIcon />} label={t('i18n.tc.raw.view', 'RAW 보기·변환')} onClick={() => setRawOf(row.name)} />);
-        }
+        if (perm('U')) acts.push(<GridActionsCellItem key="edit" icon={<EditIcon />} label={t('i18n.common.edit', '수정')} onClick={() => { void openEdit(row); }} />);
+        acts.push(<GridActionsCellItem key="detail" icon={<InfoOutlinedIcon />} label={t('i18n.tc.interface.detail', '상세 보기')}
+          onClick={() => setDetailOf(row.name)} showInMenu />);
         if (canAudit) {
           acts.push(<GridActionsCellItem key="audit" icon={<HistoryIcon />} label={t('i18n.tc.interface.auditHistory', '송수신 이력 보기')}
             onClick={() => setAuditOf(row.name)} showInMenu />);
@@ -171,7 +160,7 @@ export default function InterfacePage(): ReactElement {
         name: t('i18n.menu.tc.plc.interface', '인터페이스'),
         rows: filtered.map((r) => ({
           opcode: r.name, [t('i18n.tc.interface.ifType', '타입')]: r.interfaceType, [t('i18n.tc.interface.plc', 'PLC 커넥터')]: r.plcName ?? '',
-          [t('i18n.tc.interface.mode', '정의')]: r.mode ?? 'RAW', [t('i18n.tc.interface.use', '사용')]: r.use ? 'Y' : 'N',
+          [t('i18n.tc.interface.use', '사용')]: r.use ? 'Y' : 'N',
           [t('i18n.tc.interface.points', '점')]: (r.points ?? []).map((p) => `${p.name}=${p.address}:${p.type}`).join(' '),
           [t('i18n.tc.common.description', '설명')]: r.description ?? '',
         })),
@@ -192,19 +181,9 @@ export default function InterfacePage(): ReactElement {
               <TextField select size="small" value={typeFilter} sx={{ width: 140 }}
                 onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
                 slotProps={{ htmlInput: { 'aria-label': t('i18n.tc.interface.ifType', '타입') } }}>
-                <MenuItem value="ALL">READ·WRITE</MenuItem>
+                <MenuItem value="ALL">{t('i18n.tc.common.all', '전체')}</MenuItem>
                 <MenuItem value="READ">READ</MenuItem>
                 <MenuItem value="WRITE">WRITE</MenuItem>
-                <MenuItem value="REPLY">REPLY</MenuItem>
-              </TextField>
-            </FilterField>
-            <FilterField label={t('i18n.tc.interface.mode', '정의')}>
-              <TextField select size="small" value={modeFilter} sx={{ width: 120 }}
-                onChange={(e) => setModeFilter(e.target.value as typeof modeFilter)}
-                slotProps={{ htmlInput: { 'aria-label': t('i18n.tc.interface.mode', '정의') } }}>
-                <MenuItem value="ALL">{t('i18n.tc.common.all', '전체')}</MenuItem>
-                <MenuItem value="POINTS">POINTS</MenuItem>
-                <MenuItem value="RAW">RAW</MenuItem>
               </TextField>
             </FilterField>
             <FilterField label={t('i18n.tc.interface.plc', 'PLC 커넥터')}>
@@ -222,8 +201,6 @@ export default function InterfacePage(): ReactElement {
       </Box>
       <InterfaceFormDialog open={form.open} initial={form.initial} connectors={connectors} protocols={protocols} webhooks={webhooks}
         error={form.error} onClose={() => setForm({ open: false })} onSubmit={(info) => { void save(info); }} />
-      <RawInterfaceDialog name={rawOf} canConvert={perm('U')} onClose={() => setRawOf(null)}
-        onConverted={() => { setRawOf(null); showToast(t('i18n.tc.convert.done', 'POINTS 로 바꿨습니다'), 'success'); void loadRef.current(); }} />
       <InterfaceAuditDialog name={auditOf} onClose={() => setAuditOf(null)} />
       <InterfaceDetailDialog name={detailOf} connectors={connectors} onClose={() => setDetailOf(null)} />
     </PageContainer>

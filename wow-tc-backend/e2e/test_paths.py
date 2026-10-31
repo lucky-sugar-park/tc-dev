@@ -64,22 +64,9 @@ threading.Thread(target=srv.serve_forever, daemon=True).start()
 # ── 준비: WRITE 인터페이스 ──
 s, b = call("GET", "/api/v1/ifsvc/management/find/byName/plc.e2e.d100.write")
 if s != 200 or not isinstance(b, dict) or not b.get("name"):
-    req = json.load(open(os.path.join(R, "fixture-if-read.json"), encoding="utf-8"))
-    rep = json.load(open(os.path.join(R, "fixture-if-read-reply.json"), encoding="utf-8"))
-    req.update({"name": "plc.e2e.d100.write", "replyName": "plc.e2e.d100.write.reply", "interfaceType": "WRITE",
-                "dataLength": 4, "description": "e2e write D100..D101",
-                "dataProps": [{"interfaceId": 0, "name": "d100", "order": 1, "type": "SHORT", "length": 2, "description": "D100"},
-                              {"interfaceId": 0, "name": "d101", "order": 2, "type": "SHORT", "length": 2, "description": "D101"}]})
-    for hp in req["headerProps"]:
-        if hp["name"] == "command":
-            hp["strValue"] = "0114"
-    rep.update({"name": "plc.e2e.d100.write.reply", "dataProps": [], "dataLength": 0, "description": "e2e write reply"})
-    for hp in rep["headerProps"]:
-        if hp["name"] == "respDataLen":
-            hp["strValue"] = "0200"
-    for d in (req, rep):
-        s, b = call("POST", "/api/v1/ifsvc/management/register", d)
-        print("interface register", d["name"], s, "" if s == 200 else b)
+    d = common.d100_interface("plc.e2e.d100.write", "WRITE", description="e2e write D100..D101")
+    s, b = call("POST", "/api/v1/ifsvc/management/register", d)
+    print("interface register", d["name"], s, "" if s == 200 else b)
 
 # ── 1. WRITE ──
 v1, v2 = int(RUN) % 30000, -1234
@@ -90,7 +77,7 @@ check(f"WRITE 뒤 READ 값 일치(d100={v1}, d101={v2})", s == 200 and b["data"]
 tx, (s, b) = plc("/api/v1/ifsvc/request-and-reply", "plc.e2e.d100.write", {"d100": 1})
 check("WRITE 데이터 누락 → 실패(4xx/5xx)", s >= 400, (s, b))
 tx, (s, b) = plc("/api/v1/ifsvc/request-and-reply", "plc.e2e.d100.write", {"d100": 40000, "d101": 1})
-check("WRITE SHORT 범위 초과 → 400", s == 400, (s, b))
+check("WRITE INT16 범위 초과 → 400", s == 400, (s, b))
 tx, (s, b) = plc("/api/v1/ifsvc/request-and-reply", "plc.e2e.d100.write", {"d100": "77", "d101": 1.0})
 check("WRITE 문자열 숫자·정수형 실수 허용 → 200", s == 200 and b.get("success") is True, (s, b))
 

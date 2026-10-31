@@ -24,11 +24,10 @@ function sample(p: PointInfo): unknown {
   return (p.count ?? 1) > 1 ? Array.from({ length: p.count ?? 1 }, one) : one();
 }
 
-/** 인터페이스 정의로 요청 data 양식을 만든다 — 읽기는 빈 값, 쓰기는 점(또는 RAW 데이터 속성) 이름마다 예시 값 */
+/** 인터페이스 정의로 요청 data 양식을 만든다 — 읽기는 빈 값, 쓰기는 점 이름마다 예시 값 */
 function template(i: InterfaceInfo): Record<string, unknown> {
   if (i.interfaceType !== 'WRITE') return {};
-  if (i.mode === 'POINTS') return Object.fromEntries((i.points ?? []).map((p) => [p.name, sample(p)]));
-  return Object.fromEntries((i.dataProps ?? []).map((p) => [p.name, p.type === 'STRING' ? '' : 0]));
+  return Object.fromEntries((i.points ?? []).map((p) => [p.name, sample(p)]));
 }
 
 type Sent = { at: number; opcode: string; status: number; body: TcResponse; elapsedMs: number; transactionId: string };
@@ -93,13 +92,12 @@ export default function InterfaceTestPage(): ReactElement {
     <PageContainer>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 1, flex: 1, minHeight: 0 }}>
         <Paper variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Autocomplete options={list} value={selected} getOptionLabel={(o) => `${o.name} (${o.interfaceType}·${o.mode ?? 'RAW'})`}
+          <Autocomplete options={list} value={selected} getOptionLabel={(o) => `${o.name} (${o.interfaceType})`}
             isOptionEqualToValue={(a, b) => a.name === b.name} onChange={(_e, v) => { void pick(v); }}
             renderInput={(p) => <TextField {...p} size="small" label={t('i18n.tc.interfaceTest.pick', '인터페이스(opcode)')} />} />
           {selected && (
             <Typography variant="caption" color="text.secondary">
-              PLC {selected.plcName} · {selected.interfaceType} · {selected.mode ?? 'RAW'}
-              {selected.mode === 'POINTS' && ` · ${(selected.points ?? []).map((p) => `${p.name}=${p.address}`).join(', ')}`}
+              PLC {selected.plcName} · {selected.interfaceType} · {(selected.points ?? []).map((p) => `${p.name}=${p.address}`).join(', ')}
             </Typography>
           )}
           {selected?.interfaceType === 'WRITE' && (

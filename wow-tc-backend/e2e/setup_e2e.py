@@ -37,8 +37,7 @@ def exists(path):
 if not exists("/api/v1/plc-connector/find/byName/plc-e2e"):
     s, _ = call("POST", "/api/v1/plc-connector/register", json.load(open(os.path.join(R, "fixture-connector-e2e.json"), encoding="utf-8")))
     print("커넥터 plc-e2e 등록:", s)
-for fixture in ("fixture-if-read.json", "fixture-if-read-reply.json"):
-    d = json.load(open(os.path.join(R, fixture), encoding="utf-8"))
+for d in (common.d100_interface("plc.e2e.d100.read"),):
     if not exists(f"/api/v1/ifsvc/management/find/byName/{d['name']}"):
         s, _ = call("POST", "/api/v1/ifsvc/management/register", d)
         print("인터페이스 등록:", d["name"], s)

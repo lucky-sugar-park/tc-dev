@@ -191,7 +191,7 @@ public final class McFrames implements WireProtocol {
 		return responseLength(buf, available, ascii);
 	}
 
-	/** 4E 요청만 — 같은 연결에 RAW 인터페이스의 3E 요청이 섞여도 요청마다 본다 */
+	/** 4E 요청만 — 요청마다 서브헤더를 본다 */
 	@Override
 	public boolean hasSerial(byte[] request) {
 		return isFourERequest(request);

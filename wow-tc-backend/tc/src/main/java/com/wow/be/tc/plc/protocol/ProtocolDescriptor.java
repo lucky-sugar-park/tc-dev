@@ -11,11 +11,9 @@ import java.util.List;
  *                   검증도 이 목록으로 한다({@link InterfaceSettings})
  * @param areas      주소 영역(MELSEC 디바이스, Modbus 영역)
  * @param examples   주소 예
- * @param rawSupported RAW 인터페이스(헤더·데이터 바이트 정의)를 받는가
  */
 public record ProtocolDescriptor(String protocol, String label, List<Setting> settings, List<Setting> interfaceSettings, List<Area> areas,
-		List<String> examples,
-		boolean rawSupported) {
+		List<String> examples) {
 
 	/**
 	 * @param type    NUMBER · ENUM · TEXT

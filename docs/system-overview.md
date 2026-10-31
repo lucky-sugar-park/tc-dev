@@ -123,3 +123,5 @@ tc는 vplc가 가상 장비인지 모른 채 실제 PLC처럼 접속한다. 그�
 - [legacy-tc-backend-analysis.md](legacy-tc-backend-analysis.md): 레거시 tc-backend 코드 분석과 품질 이슈
 - [dispatch-redesign.md](dispatch-redesign.md): tc dispatch 재설계 (요청 → 인터페이스 → PLC → 결과 전달)
 - [framework-core-dispatch-changes.md](framework-core-dispatch-changes.md): 재설계를 위한 framework-core dispatch 수정 명세
+- [interfaces.md](interfaces.md): 인터페이스 정의 — 점(이름·주소·형), 프로토콜별 프레임, 예제
+- [interface-detail-design.md](interface-detail-design.md): 인터페이스 세부 정의(인터페이스 settings·요청 미리보기, 단계 A~D)

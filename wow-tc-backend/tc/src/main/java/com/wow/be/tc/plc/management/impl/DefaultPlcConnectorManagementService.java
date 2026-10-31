@@ -521,7 +521,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	/**
 	 * 프로토콜 드라이버로 커넥터 설정을 검증하고 기본값을 채운다(잘못되면 IllegalArgumentException → 400).
 	 * <ul>
-	 *   <li>MELSEC 은 RAW 요청 객체가 {@code messageFrameFormat} 을 보므로 설정의 프레임과 맞춘다. 다른 프로토콜은 BINARY.</li>
+	 *   <li>MELSEC 은 옛 칸 {@code messageFrameFormat} 을 설정의 프레임과 맞춘다(설정이 없던 행의 기본 프레임으로 쓰인다). 다른 프로토콜은 BINARY.</li>
 	 *   <li>어댑터 클래스는 프로토콜이 정한다 — Modbus 면 {@link ModbusTcpAdapter}. MELSEC 은 비었거나 다른 프로토콜의 어댑터일 때만
 	 *       {@link MelsecProgrammableControllerAdapter} 로(옛 패키지 이름이 든 행은 그대로 둔다 — LegacyClassNames 가 찾는다).</li>
 	 * </ul>

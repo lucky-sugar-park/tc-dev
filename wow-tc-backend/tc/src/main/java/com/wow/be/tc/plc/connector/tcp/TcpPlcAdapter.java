@@ -42,7 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * TCP 위의 PLC 어댑터 공통 부분 — 연결·재연결·채널 빌려 쓰기·시간 초과·주기적 연결 확인·이벤트. PLC 하나에 하나이고, 연결을
  * 유지하며 요청마다 그 연결을 쓴다. 프로토콜마다 다른 것(응답 자르기·요청 번호·연결 확인 프레임)은 드라이버가 만든
- * {@link WireProtocol} 에 묻는다. 하위 클래스는 프로토콜 이름과 RAW 인터페이스 처리만 정한다(docs/plc-protocol-design.md §14).
+ * {@link WireProtocol} 에 묻는다. 하위 클래스는 프로토콜 이름만 정한다(docs/plc-protocol-design.md §14).
  *
  * <p>docs/plc-connection-design.md §5.
  * <ul>

@@ -29,14 +29,6 @@ public class InterfaceSpec extends SearchSpec<InterfaceEntity> {
 		return super.with("interfaceType", condType, interfaceTypes);
 	}
 	
-	public Specification<InterfaceEntity> withCommandClassName(CondType condType, String commandClassName) {
-		return super.with("commandClassName", condType, commandClassName);
-	}
-
-	public Specification<InterfaceEntity> withReplyName(CondType condType, String replyName) {
-		return super.with("replyName", condType, replyName);
-	}
-	
 	public Specification<InterfaceEntity> withCreatedDate(CondType condType, String createdDate) {
 		return super.with("createdDate", condType, createdDate);
 	}

@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * PLC 응답 바이트를 프레임 하나씩 잘라 넘긴다. 어디서 자르는지는 프로토콜이 안다({@link WireProtocol#responseLength}) —
- * MELSEC 은 서브헤더로 3E·4E 를 가려 같은 연결에 RAW(3E)와 POINTS(4E)가 섞여도 되고, Modbus 는 MBAP 길이 칸으로 자른다.
+ * MELSEC 은 서브헤더로 3E·4E 를 가리고, Modbus 는 MBAP 길이 칸으로 자른다.
  *
  * <p>예전 MELSEC 전용 디코더의 ASCII 해석은 버퍼 배열을 직접 읽고(직접 버퍼면 실패), 길이 문자를 거꾸로 10진으로 읽고, 길이
  * 검사가 늘 통과해 ASCII 응답을 한 번도 제대로 자르지 못했다(결함 M5).

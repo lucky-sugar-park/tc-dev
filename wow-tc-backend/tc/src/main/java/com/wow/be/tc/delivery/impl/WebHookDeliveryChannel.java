@@ -12,7 +12,7 @@ import com.wow.be.tc.dispatch.TcMessageRequest;
 import com.wow.be.tc.dispatch.TcMessageResponse;
 
 /**
- * 응답 인터페이스에 등록된 WebHook 으로 결과를 POST 한다. 레거시와 같은 메서드(POST)다.
+ * 전달 정의에 지정한 WebHook 으로 결과를 POST 한다. 레거시와 같은 메서드(POST)다.
  */
 @Component
 public class WebHookDeliveryChannel implements ResultDeliveryChannel {

@@ -3,8 +3,6 @@ package com.wow.be.tc.plc.connector;
 import java.util.Properties;
 
 import com.wow.be.tc.ToolControlException;
-import com.wow.be.tc.plc.PlcRequest;
-import com.wow.be.tc.plc.PlcResponse;
 import com.wow.be.tc.plc.protocol.PlcDrivers;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
@@ -34,28 +32,20 @@ public interface ProgrammableControllerAdapter {
 	public abstract void shutdownQuietly();
 	
 	/**
-	 * PLC READ/WRITE 동기식으로 요청 
-	 */
-	public abstract void request(PlcRequest req, PlcResponse res) throws ToolControlException;
-
-	/**
 	 * 요청 프레임 하나를 PLC 와 주고받는다 — 다른 인스턴스가 넘긴 교환(내부 전달)을 소유 인스턴스가 처리하는 길
-	 * (docs/plc-ha-design.md §3.1). 요청·응답 객체를 만들고 해석하는 일은 요청을 받은 인스턴스가 한다.
+	 * (docs/plc-ha-design.md §3.1). 프레임을 만들고 해석하는 일은 프로토콜 드라이버가 한다.
 	 *
 	 * @return 응답 프레임
 	 */
 	public abstract byte[] exchangeFrame(String reqId, byte[] frame) throws ToolControlException;
 
 	/**
-	 * 점 읽기·쓰기(POINTS 인터페이스) — 프로토콜 드라이버가 프레임을 만들고 해석하고, 교환은 이 어댑터의
+	 * 점 읽기·쓰기 — 프로토콜 드라이버가 프레임을 만들고 해석하고, 교환은 이 어댑터의
 	 * {@link #exchangeFrame}(로컬 채널 또는 주인 인스턴스)로 한다(docs/plc-protocol-design.md §3·§5).
 	 */
 	public default PlcResult execute(PlcOperation operation) throws ToolControlException {
 		return PlcDrivers.of(operation.protocol()).execute(operation, this::exchangeFrame);
 	}
-
-	/** 응답 프레임을 응답 객체에 채운다(헤더·데이터 나누기, 종료 코드) */
-	public abstract void completeResponse(PlcResponse res, byte[] frame) throws ToolControlException;
 
 	/** 이 인스턴스가 PLC 와 직접 연결한 어댑터인가. 원격 어댑터(다른 인스턴스로 넘김)는 false */
 	public default boolean isLocal() {
@@ -66,8 +56,4 @@ public interface ProgrammableControllerAdapter {
 	
 	/** 지금 운영 상태·살아 있는 채널 수·마지막 연결 오류 */
 	public abstract AdapterStatus status();
-	
-	public abstract PlcRequest newPlcRequestInstance();
-	
-	public abstract PlcResponse newPlcResponseInstance();	
 }

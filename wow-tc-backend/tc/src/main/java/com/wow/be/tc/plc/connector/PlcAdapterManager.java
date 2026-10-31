@@ -132,11 +132,6 @@ public class PlcAdapterManager {
 		this.get(name).resume();
 	}
 	
-	/** 연결하지 않은 어댑터 — 원격 어댑터가 요청·응답 객체를 만들고 응답 프레임을 해석하는 데 쓴다 */
-	public ProgrammableControllerAdapter newUnconnectedAdapter(String className) throws ToolControlException {
-		return createPlcAdapterInstance(className);
-	}
-
 	private ProgrammableControllerAdapter createPlcAdapterInstance(String className) throws ToolControlException {
 		log.debug("PlcAdapterManager.createPlcAdapterInstance(String className)...");
 		try {

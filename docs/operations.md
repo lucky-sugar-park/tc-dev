@@ -73,6 +73,8 @@
 | `007_plc_async_columns.sql` | 지운 비동기 큐 설정 칼럼(`plc_connector.async_*`)을 NULL 허용으로. **DROP 은 주석 — 백업 확인 뒤 따로 실행** |
 | `008_plc_protocol.sql` | PLC 프로토콜 일반화 — 커넥터 `protocol`·`settings_json`, 인터페이스 `mode`·`read_back`(기존은 RAW), 점 표 `interface_point` |
 | `009_ui_support.sql` | 새 화면 — 다국어 `i18n_item`, 공통 코드 `common_code`, 북마크 `bookmark`(mes-dev 와 같은 칼럼). 씨앗은 앱이 넣는다 |
+| `010_interface_settings.sql` | 인터페이스 settings(`interface.settings_json`) — 커넥터 설정 덮어쓰기·인터페이스 전용 옵션 |
+| `011_remove_raw.sql` | RAW 인터페이스 정의를 없앤다 — 점으로 정의하지 않은 인터페이스와 응답 인터페이스 삭제, `header_prop`·`data_prop` 표와 `interface` 의 옛 칼럼 DROP(결정 I7). **운영 데이터가 없을 때 만든 것 — 데이터가 있으면 먼저 백업** |
 
 ```bash
 mysql -u root -p tc < migration/002_api_client.sql
@@ -217,8 +219,8 @@ PLC 연결은 처음 인스턴스에 몰려 있다. 처리에는 문제가 없�
 - **4E 프레임을 권한다**(커넥터 설정 `frame: 4E_BINARY`, PLC 이더넷 모듈이 4E 를 받으면). 응답에 일련번호가 붙어 시간 초과가 나도 연결을 끊지 않는다. 기존 RAW 인터페이스(3E 헤더)는 같은 연결로 그대로 돈다.
 - **연결 확인(루프백)**: 커넥터 설정 `healthCheckIntervalSec`(기본 30초, 0 이면 끔). 쉬는 연결에 루프백을 보내 PLC 가 답하지 않으면 그 연결을 닫고 다시 잇는다 — 연결 상태 `lastError` 에 `연결 확인(루프백)에 답이 없음` 으로 남는다. PLC 이더넷 모듈 설정에서 루프백 시험(0619)을 막아 두었으면 0 으로 끈다.
 - **연결 시험**(`POST /api/v1/plc-connector/test-connection/byName/{name}`)은 포트마다 TCP 연결과 연결 확인(MELSEC 루프백, Modbus 레지스터 읽기)을 본다. 게시 중인 커넥터는 PLC 가 포트당 연결 하나만 받으면 시험이 거부되니 해제한 뒤 시험한다.
-- **RAW 인터페이스를 POINTS 로 옮기기**: `POST /api/v1/ifsvc/management/convert-to-points/byName/{이름}` 으로 먼저 미리보기(기본) — 만들 점·경고·옛 응답 인터페이스를 본다. 경고(STRING·BYTE 값 표현)가 있으면 그 opcode 를 쓰는 외부 시스템과 확인한다. `?dryRun=false` 로 적용하면 같은 opcode 가 POINTS 로 돌고 `data` 키·값은 그대로다. 되돌리려면 인터페이스 수정에서 `mode` 를 `RAW` 로(헤더·데이터 정의는 남아 있다). 재기동은 필요 없다. 옛 응답 인터페이스는 `replyUsedBy` 가 비었으면 지워도 된다.
-- **Modbus TCP 장비**: 커넥터를 `protocol: MODBUS_TCP` 로 등록한다(어댑터 클래스는 자동). 설정 `unitId`(게이트웨이 뒤 장치 번호, 기본 1), `wordOrder`(32비트 값이 이상하게 읽히면 `LITTLE` — CDAB 장비), `addressBase`(장비 문서가 0부터 세면 0). 인터페이스는 POINTS 만 쓴다(주소 `HR1`·`40001`·`CO1` …). 장비가 동시 연결 수를 제한하면 포트·VIP 를 하나로 둔다. 연결 확인은 보유 레지스터 주소 0 을 읽는다 — 그 주소가 없어 예외로 답해도 살아 있다고 본다.
+- **인터페이스 정의**: 점(이름·주소·형)으로만 정의한다 — [interfaces.md](interfaces.md). 실제로 보낼 요청은 화면의 요청 미리보기나 `POST /api/v1/ifsvc/management/plan` 으로 본다. 다른 국·네트워크 PLC 로 중계하려면 인터페이스 settings 의 `networkNo`·`stationNo`.
+- **Modbus TCP 장비**: 커넥터를 `protocol: MODBUS_TCP` 로 등록한다(어댑터 클래스는 자동). 설정 `unitId`(게이트웨이 뒤 장치 번호, 기본 1), `wordOrder`(32비트 값이 이상하게 읽히면 `LITTLE` — CDAB 장비), `addressBase`(장비 문서가 0부터 세면 0). 인터페이스 점 주소는 `HR1`·`40001`·`CO1` …. 장비가 동시 연결 수를 제한하면 포트·VIP 를 하나로 둔다. 연결 확인은 보유 레지스터 주소 0 을 읽는다 — 그 주소가 없어 예외로 답해도 살아 있다고 본다.
 
 ## 6. API 키 (타 시스템)
 
