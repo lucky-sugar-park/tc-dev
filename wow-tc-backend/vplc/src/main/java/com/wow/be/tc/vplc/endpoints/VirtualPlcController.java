@@ -276,6 +276,13 @@ public class VirtualPlcController {
 		int wordCount=writeReq.getWordCount();
 		String data=writeReq.getData();
 
+		if(writeReq.getWords()!=null) {
+			if(vplcId==null && vplcName==null) {
+				throw idOrNameRequired();
+			}
+			String id=vplcId!=null ? vplcId : virtualPlcManagementService.findVirtualPlcByName(vplcName).getId();
+			return virtualPlcManipulationService.writeWords(id, memoryType, frameFormat, startAddress, writeReq.getWords());
+		}
 		if(vplcId!=null) {
 			return virtualPlcManipulationService.write(vplcId, memoryType, frameFormat, startAddress, wordCount, data);
 		} else if(vplcName!=null) {

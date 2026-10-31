@@ -41,6 +41,9 @@ public interface VirtualPlcManipulationService {
 	
 	public MemoryInfo writeByVplcName(String vplcName, String memoryType, String frameFormat, int startAddress, int wordCount, String data) throws VirtualPlcException;
 	
+	/** 워드 값을 쓴다(낮은 바이트 먼저 — MC 프로토콜과 같다) */
+	public MemoryInfo writeWords(String vplcId, String memoryType, String frameFormat, int startAddress, int[] words) throws VirtualPlcException;
+
 	public MemoryInfo clearAll(String vplcId, String memoryType, String frameFormat, int currentPosition) throws VirtualPlcException;
 	
 	public MemoryInfo clearAllByVplcName(String vplcName, String memoryType, String frameFormat, int currentPosition) throws VirtualPlcException;

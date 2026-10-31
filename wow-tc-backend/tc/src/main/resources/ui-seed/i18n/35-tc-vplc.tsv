@@ -1,0 +1,55 @@
+# tc 가상 PLC 화면 문구(5-7: 가상 PLC 목록·메모리 보기·제어) — 코드<TAB>ko<TAB>en<TAB>ja<TAB>zh
+i18n.tc.vplc.title	가상 PLC	Virtual PLC	仮想PLC	虚拟 PLC
+i18n.tc.vplc.add	가상 PLC 등록	Add virtual PLC	仮想PLC登録	添加虚拟 PLC
+i18n.tc.vplc.edit	가상 PLC 수정	Edit virtual PLC	仮想PLC編集	编辑虚拟 PLC
+i18n.tc.vplc.search	이름·IP·설명	Name · IP · description	名前・IP・説明	名称・IP・说明
+i18n.tc.vplc.frame	프레임	Frame	フレーム	帧格式
+i18n.tc.vplc.manufacturer	제조사	Manufacturer	メーカー	制造商
+i18n.tc.vplc.startPort	시작 포트	Start port	開始ポート	起始端口
+i18n.tc.vplc.portCount	포트 수	Port count	ポート数	端口数
+i18n.tc.vplc.connLimit	포트당 연결	Connections per port	ポート当たり接続数	每端口连接数
+i18n.tc.vplc.portRule	1~65535 안	Within 1–65535	1〜65535の範囲	1~65535 之间
+i18n.tc.vplc.memoryTypes	메모리 종류	Memory types	メモリ種類	存储器类型
+i18n.tc.vplc.memRequired	메모리 종류를 하나 이상	Select at least one memory type	メモリ種類を1つ以上	至少选择一种存储器类型
+i18n.tc.vplc.runningHelp	실행 중에는 포트를 바꿔도 다시 시작해야 반영됩니다.	While running, port changes take effect after a restart.	実行中はポートを変更しても再起動後に反映されます。	运行中修改端口需重新启动后生效。
+i18n.tc.vplc.ports	포트	Ports	ポート	端口
+i18n.tc.vplc.port	포트	Port	ポート	端口
+i18n.tc.vplc.connected	연결 수	Connections	接続数	连接数
+i18n.tc.vplc.connections	연결	Connections	接続	连接
+i18n.tc.vplc.client	클라이언트	Client	クライアント	客户端
+i18n.tc.vplc.noClient	(없음)	(none)	(なし)	(无)
+i18n.tc.vplc.connectedAt	연결된 때	Connected at	接続日時	连接时间
+i18n.tc.vplc.channel	채널	Channel	チャネル	通道
+i18n.tc.vplc.memory	메모리	Memory	メモリ	存储器
+i18n.tc.vplc.memoryType	메모리	Memory	メモリ	存储器
+i18n.tc.vplc.publish	게시	Publish	公開	发布
+i18n.tc.vplc.release	해제	Release	解除	解除
+i18n.tc.vplc.start	시작	Start	開始	启动
+i18n.tc.vplc.stop	정지	Stop	停止	停止
+i18n.tc.vplc.pause	일시정지	Pause	一時停止	暂停
+i18n.tc.vplc.confirmPause	일시정지하면 연결은 두고 요청에 답하지 않습니다(tc 시간 초과 시험). 멈출까요?	When paused, connections stay open but requests get no reply (for tc timeout tests). Pause?	一時停止すると接続は維持したまま要求に応答しません(tcのタイムアウト試験)。停止しますか?	暂停后保持连接但不响应请求(用于 tc 超时测试)。确定暂停?
+i18n.tc.vplc.confirmDelete	{name} 을(를) 지울까요?	Delete {name}?	{name} を削除しますか?	删除 {name}?
+i18n.tc.vplc.startAddress	시작 주소	Start address	開始アドレス	起始地址
+i18n.tc.vplc.pageSize	워드 수	Words	ワード数	字数
+i18n.tc.vplc.autoRefresh	자동 새로 고침	Auto refresh	自動更新	自动刷新
+i18n.tc.vplc.off	끔	Off	オフ	关闭
+i18n.tc.vplc.prev	앞 쪽	Previous page	前ページ	上一页
+i18n.tc.vplc.next	다음 쪽	Next page	次ページ	下一页
+i18n.tc.vplc.nonePublished	게시된 가상 PLC 가 없습니다 — 가상 PLC 목록에서 게시하세요.	No published virtual PLC — publish one in the virtual PLC list.	公開された仮想PLCがありません — 仮想PLC一覧で公開してください。	没有已发布的虚拟 PLC — 请在虚拟 PLC 列表中发布。
+i18n.tc.vplc.address	주소	Address	アドレス	地址
+i18n.tc.vplc.decimal	10진	Decimal	10進	十进制
+i18n.tc.vplc.unsigned	부호 없음	Unsigned	符号なし	无符号
+i18n.tc.vplc.bits	비트(15 → 0)	Bits (15 → 0)	ビット(15 → 0)	位(15 → 0)
+i18n.tc.vplc.write	값 쓰기	Write values	値の書き込み	写入值
+i18n.tc.vplc.written	썼습니다	Written	書き込みました	已写入
+i18n.tc.vplc.clearAll	모두 지우기	Clear all	すべてクリア	全部清除
+i18n.tc.vplc.confirmClear	{type} 메모리를 모두 0 으로 지울까요?	Clear all {type} memory to 0?	{type} メモリをすべて0にクリアしますか?	将 {type} 存储器全部清零?
+i18n.tc.vplc.modeWords	워드 값	Word values	ワード値	字值
+i18n.tc.vplc.modeText	문자열(ASCII)	Text (ASCII)	文字列(ASCII)	字符串(ASCII)
+i18n.tc.vplc.words	값(쉼표로 여러 개)	Values (comma-separated)	値(カンマ区切りで複数)	值(逗号分隔多个)
+i18n.tc.vplc.wordsHelp	예: 1234, -1, 0x00FF — 차례로 이어진 주소에 쓴다	e.g. 1234, -1, 0x00FF — written to consecutive addresses	例: 1234, -1, 0x00FF — 連続したアドレスに書き込みます	例: 1234, -1, 0x00FF — 依次写入连续地址
+i18n.tc.vplc.text	문자열	Text	文字列	字符串
+i18n.tc.vplc.textHelp	한 워드에 두 글자 — 낮은 바이트가 앞 글자(MC 와 같다)	Two characters per word — low byte is the first character (same as MC)	1ワードに2文字 — 下位バイトが先頭の文字(MCと同じ)	每字两个字符 — 低字节为第一个字符(与 MC 相同)
+i18n.tc.vplc.addrRule	0 이상의 정수 주소	An integer address of 0 or more	0以上の整数アドレス	不小于 0 的整数地址
+i18n.tc.vplc.wordRule	-32768~65535 정수(0x 로 시작하면 16진)를 쉼표로	Integers -32768–65535 (0x prefix for hex), comma-separated	-32768〜65535の整数(0xで始まれば16進)をカンマ区切りで	-32768~65535 的整数(以 0x 开头为十六进制),逗号分隔
+i18n.tc.vplc.textRule	ASCII 글자만	ASCII characters only	ASCII文字のみ	仅限 ASCII 字符

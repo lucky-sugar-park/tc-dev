@@ -1,0 +1,115 @@
+import { useEffect, useMemo, useState, type FormEvent, type ReactElement } from 'react';
+import { Alert, Autocomplete, Box, Button, Chip, Dialog, DialogContent, MenuItem, Stack, TextField } from '@mui/material';
+import { DataGridPro, type GridColDef } from '@mui/x-data-grid-pro';
+import { DialogFooter, DialogTitleClose, DraggablePaper, extractApiError, useI18n } from 'wow-mes-frontend-shared';
+import { fmtTime } from '../../shared/format';
+import { MEMORY_TYPES, vplcApi } from '../services/vplcApi';
+import type { Vplc, VplcConnection } from '../types/vplc';
+
+const EMPTY: Vplc = {
+  id: '', name: '', frameFormat: 'BINARY', manufacturer: 'MITSUBISHI', ipAddress: '127.0.0.1', startPort: 15100, portCount: 1, portConnLimit: 4,
+  description: '', memoryTypeList: ['D*', 'M*'], published: false,
+};
+
+/** 가상 PLC 등록·수정 — 이름·프레임(BINARY·ASCII)·포트(시작·수·포트당 연결)·메모리 종류. 포트는 실행 중에는 바꿀 수 없다 */
+export function VplcFormDialog({ open, initial, onClose, onSubmit, error }: {
+  open: boolean;
+  initial?: Vplc;
+  onClose: () => void;
+  onSubmit: (v: Vplc) => void;
+  error?: string | null;
+}): ReactElement {
+  const { t } = useI18n();
+  const edit = !!initial;
+  const [v, setV] = useState<Vplc>(EMPTY);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  useEffect(() => { if (open) { setV(initial ? { ...EMPTY, ...initial } : EMPTY); setErrors({}); } }, [open, initial]);
+  const set = (patch: Partial<Vplc>) => setV((s) => ({ ...s, ...patch }));
+  const running = initial?.status === 'RUNNING' || initial?.status === 'PAUSED';
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const errs: Record<string, string> = {};
+    if (!/^[A-Za-z0-9_.-]{1,100}$/.test(v.name)) errs.name = t('i18n.tc.connector.nameRule', '영숫자·_ . - 100자까지');
+    if (!(v.startPort >= 1 && v.startPort + v.portCount - 1 <= 65535)) errs.port = t('i18n.tc.vplc.portRule', '1~65535 안');
+    if (!(v.portCount >= 1 && v.portCount <= 32)) errs.portCount = '1~32';
+    if (!(v.portConnLimit >= 1)) errs.conn = t('i18n.tc.apiclient.positive', '1 이상');
+    if (v.memoryTypeList.length === 0) errs.mem = t('i18n.tc.vplc.memRequired', '메모리 종류를 하나 이상');
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    onSubmit(v);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperComponent={DraggablePaper}
+      slotProps={{ paper: { component: 'form', onSubmit: submit } as never }}>
+      <DialogTitleClose onClose={onClose}>{edit ? t('i18n.tc.vplc.edit', '가상 PLC 수정') : t('i18n.tc.vplc.add', '가상 PLC 등록')}</DialogTitleClose>
+      <DialogContent dividers>
+        <Stack spacing={2} sx={{ mt: 0.5 }}>
+          {error && <Alert severity="error">{error}</Alert>}
+          {running && <Alert severity="info">{t('i18n.tc.vplc.runningHelp', '실행 중에는 포트를 바꿔도 다시 시작해야 반영됩니다.')}</Alert>}
+          <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
+            <TextField label={t('i18n.tc.point.name', '이름')} required value={v.name} onChange={(e) => set({ name: e.target.value })}
+              error={!!errors.name} helperText={errors.name} />
+            <TextField select label={t('i18n.tc.vplc.frame', '프레임')} value={v.frameFormat} onChange={(e) => set({ frameFormat: e.target.value as Vplc['frameFormat'] })}>
+              <MenuItem value="BINARY">BINARY</MenuItem>
+              <MenuItem value="ASCII">ASCII</MenuItem>
+            </TextField>
+          </Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 2 }}>
+            <TextField label="IP" value={v.ipAddress ?? ''} onChange={(e) => set({ ipAddress: e.target.value })} />
+            <TextField label={t('i18n.tc.vplc.startPort', '시작 포트')} type="number" value={v.startPort} onChange={(e) => set({ startPort: Number(e.target.value) })}
+              error={!!errors.port} helperText={errors.port} />
+            <TextField label={t('i18n.tc.vplc.portCount', '포트 수')} type="number" value={v.portCount} onChange={(e) => set({ portCount: Number(e.target.value) })}
+              error={!!errors.portCount} helperText={errors.portCount} />
+            <TextField label={t('i18n.tc.vplc.connLimit', '포트당 연결')} type="number" value={v.portConnLimit} onChange={(e) => set({ portConnLimit: Number(e.target.value) })}
+              error={!!errors.conn} helperText={errors.conn} />
+          </Box>
+          <Autocomplete multiple options={MEMORY_TYPES.map((m) => m.code)} value={v.memoryTypeList}
+            getOptionLabel={(c) => MEMORY_TYPES.find((m) => m.code === c)?.label ?? c}
+            onChange={(_e, val) => set({ memoryTypeList: val })}
+            renderValue={(vals, getItemProps) => vals.map((x, i) => <Chip size="small" label={x.replace('*', '')} {...getItemProps({ index: i })} key={x} />)}
+            renderInput={(p) => <TextField {...p} label={t('i18n.tc.vplc.memoryTypes', '메모리 종류')} error={!!errors.mem} helperText={errors.mem} />} />
+          <TextField label={t('i18n.tc.vplc.manufacturer', '제조사')} value={v.manufacturer ?? ''} onChange={(e) => set({ manufacturer: e.target.value })} />
+          <TextField label={t('i18n.tc.common.description', '설명')} value={v.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
+        </Stack>
+      </DialogContent>
+      <DialogFooter onClose={onClose}><Button type="submit" variant="contained">{t('i18n.common.save', '저장')}</Button></DialogFooter>
+    </Dialog>
+  );
+}
+
+type ClientRow = { key: string; port: number; clientIp?: string; clientChannelId?: string; connTimestamp?: string };
+
+/** 포트별 연결과 붙어 있는 클라이언트(tc 커넥터 등) */
+export function VplcConnectionsDialog({ vplc, onClose }: { vplc: Vplc | null; onClose: () => void }): ReactElement {
+  const { t } = useI18n();
+  const [conns, setConns] = useState<VplcConnection[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setConns([]); setError(null);
+    if (vplc) vplcApi.connections(vplc.id).then(setConns).catch((e) => setError(extractApiError(e)));
+  }, [vplc]);
+  const rows = useMemo<ClientRow[]>(() => conns.flatMap((c) => (c.connectedClientList?.length
+    ? c.connectedClientList.map((x, i) => ({ key: `${c.port}-${i}`, port: c.port, clientIp: x.clientIp, clientChannelId: x.clientChannelId, connTimestamp: x.connTimestamp }))
+    : [{ key: `${c.port}-none`, port: c.port }])), [conns]);
+  const cols = useMemo<GridColDef<ClientRow>[]>(() => [
+    { field: 'port', headerName: t('i18n.tc.vplc.port', '포트'), width: 90 },
+    { field: 'clientIp', headerName: t('i18n.tc.vplc.client', '클라이언트'), width: 160, valueGetter: (v) => v ?? t('i18n.tc.vplc.noClient', '(없음)') },
+    { field: 'connTimestamp', headerName: t('i18n.tc.vplc.connectedAt', '연결된 때'), width: 170, valueFormatter: (v: string) => fmtTime(v) },
+    { field: 'clientChannelId', headerName: t('i18n.tc.vplc.channel', '채널'), flex: 1, minWidth: 160 },
+  ], [t]);
+  return (
+    <Dialog open={!!vplc} onClose={onClose} maxWidth="md" fullWidth PaperComponent={DraggablePaper}>
+      <DialogTitleClose onClose={onClose}>{t('i18n.tc.vplc.connections', '연결')} — {vplc?.name}</DialogTitleClose>
+      <DialogContent dividers>
+        {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
+        <Box sx={{ height: 320, position: 'relative' }}>
+          <Box sx={{ position: 'absolute', inset: 0 }}>
+            <DataGridPro rows={rows} columns={cols} getRowId={(r) => r.key} density="compact" disableRowSelectionOnClick hideFooter />
+          </Box>
+        </Box>
+      </DialogContent>
+      <DialogFooter onClose={onClose} />
+    </Dialog>
+  );
+}

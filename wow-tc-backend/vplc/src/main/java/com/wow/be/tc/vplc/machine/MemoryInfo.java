@@ -45,7 +45,8 @@ public class MemoryInfo {
 		short wordValues[]=new short[bytes.length>>1];
 		int idx=0;
 		for(int i=0;i<bytes.length;i+=2) {
-			wordValues[idx++]=(short)(bytes[i+1]<<8|bytes[i]);
+			// 낮은 바이트는 부호 없이 — 예전에는 0x80 이상이면 부호가 번져 1234 가 -46 으로 보였다
+			wordValues[idx++]=(short)(bytes[i+1]<<8|(bytes[i]&0xFF));
 		}
 		this.setWords(wordValues);
 	}

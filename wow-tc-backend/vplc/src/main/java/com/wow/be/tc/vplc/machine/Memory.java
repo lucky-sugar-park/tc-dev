@@ -87,7 +87,7 @@ public class Memory {
 	}
 
 	public void writeWord(int pos, byte low, byte high) {
-		this.writeWord(pos, (short)(high<<8|low));
+		this.writeWord(pos, (short)(high<<8|(low&0xFF)));
 	}
 
 	public void writeWord(int pos, WordInfo wInfo) {

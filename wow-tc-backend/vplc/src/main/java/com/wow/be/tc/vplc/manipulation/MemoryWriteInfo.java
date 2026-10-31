@@ -29,10 +29,16 @@ public class MemoryWriteInfo extends AbstractInfo {
 	 */
 	private String data;
 
+	/**
+	 * 워드 값(부호 있는 16비트 -32768~32767 또는 0~65535). 있으면 data 대신 쓰고 wordCount 는 그 길이다 — data 는 문자열 바이트라
+	 * 숫자 값(예: D100=1234)을 쓸 수 없었다.
+	 */
+	private int[] words;
+
 	@Override
 	public String toPlainText() {
 		return "vplcId=" + vplcId + ", vplcName=" + vplcName + ", memoryType=" + memoryType
 				+ ", frameFormat=" + frameFormat + ", startAddress=" + startAddress + ", wordCount=" + wordCount
-				+ ", data=" + data;
+				+ ", data=" + data + ", words=" + java.util.Arrays.toString(words);
 	}
 }

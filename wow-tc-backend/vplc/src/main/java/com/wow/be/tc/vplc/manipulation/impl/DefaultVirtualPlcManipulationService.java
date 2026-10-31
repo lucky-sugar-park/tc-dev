@@ -199,7 +199,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	public MemoryInfo read(String vplcId, String memoryType, String frameFormat, int startAddress, int wordCount) throws VirtualPlcException {
 		log.debug("");
 		MemoryType memType=MemoryType.toMemoryType(memoryType);
-		byte[] bytes=vplcManager.getVirtualProgrammableController(vplcId).read(startAddress, wordCount, memType);
+		byte[] bytes=published(vplcId).read(startAddress, wordCount, memType);
 		MemoryInfo mInfo=new MemoryInfo();
 		mInfo.setVplcId(vplcId);
 		mInfo.setFrameFormat(FrameFormat.valueOf(frameFormat));
@@ -213,15 +213,35 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 
 	@Override
 	public MemoryInfo readByVplcName(String vplcName, String memoryType, String frameFormat, int startAddress, int wordCount) throws VirtualPlcException {
-		return null;
+		return read(idOf(vplcName), memoryType, frameFormat, startAddress, wordCount);
 	}
 
 	@Override
 	public MemoryInfo write(String vplcId, String memoryType, String frameFormat, int startAddress, int wordCount, String data) throws VirtualPlcException {
 		log.debug("");
 		MemoryType memType=MemoryType.toMemoryType(memoryType);
-		VirtualProgrammableController vplc=vplcManager.getVirtualProgrammableController(vplcId);
-		vplc.write(startAddress, wordCount, data.getBytes(), memType);
+		return writeBytes(vplcId, memType, frameFormat, startAddress, wordCount, data.getBytes());
+	}
+
+	@Override
+	public MemoryInfo writeWords(String vplcId, String memoryType, String frameFormat, int startAddress, int[] words) throws VirtualPlcException {
+		log.debug("");
+		byte[] bytes=new byte[words.length<<1];
+		for(int i=0; i<words.length; i++) {
+			int w=words[i];
+			if(w<Short.MIN_VALUE || w>0xFFFF) {
+				throw new VirtualPlcException(VirtualPlcException.ERR_400, "워드 값은 -32768~65535 입니다: " + w);
+			}
+			bytes[i<<1]=(byte)(w & 0xFF);
+			bytes[(i<<1)+1]=(byte)((w>>8) & 0xFF);
+		}
+		return writeBytes(vplcId, MemoryType.toMemoryType(memoryType), frameFormat, startAddress, words.length, bytes);
+	}
+
+	private MemoryInfo writeBytes(String vplcId, MemoryType memType, String frameFormat, int startAddress, int wordCount, byte[] data)
+			throws VirtualPlcException {
+		VirtualProgrammableController vplc=published(vplcId);
+		vplc.write(startAddress, wordCount, data, memType);
 		byte[] bytes=vplc.read(startAddress, 20, memType);
 		MemoryInfo mInfo=new MemoryInfo();
 		mInfo.setVplcId(vplcId);
@@ -236,14 +256,14 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 
 	@Override
 	public MemoryInfo writeByVplcName(String vplcName, String memoryType, String frameFormat, int startAddress, int wordCount, String data) throws VirtualPlcException {
-		return null;
+		return write(idOf(vplcName), memoryType, frameFormat, startAddress, wordCount, data);
 	}
 
 	@Override
 	public MemoryInfo clearAll(String vplcId, String memoryType, String frameFormat, int currentPosition) throws VirtualPlcException {
 		log.debug("");
 		MemoryType memType=MemoryType.toMemoryType(memoryType);
-		VirtualProgrammableController vplc=vplcManager.getVirtualProgrammableController(vplcId);
+		VirtualProgrammableController vplc=published(vplcId);
 		vplc.clear(memType);
 		byte[] bytes=vplc.read(currentPosition, 20, memType);
 		MemoryInfo mInfo=new MemoryInfo();
@@ -259,6 +279,28 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 
 	@Override
 	public MemoryInfo clearAllByVplcName(String vplcName, String memoryType, String frameFormat, int currentPosition) throws VirtualPlcException {
-		return null;
+		return clearAll(idOf(vplcName), memoryType, frameFormat, currentPosition);
+	}
+
+	/** 게시(메모리에 올라온)된 가상 PLC — 아니면 409. 예전에는 NPE 로 500 이었다 */
+	private VirtualProgrammableController published(String vplcId) throws VirtualPlcException {
+		VirtualProgrammableController vplc=vplcManager.getVirtualProgrammableController(vplcId);
+		if(vplc==null) {
+			throw new VirtualPlcException(VirtualPlcException.ERR_409, "게시되지 않은 가상 PLC 입니다 — 먼저 게시하세요: " + vplcId);
+		}
+		return vplc;
+	}
+
+	/** 이름 → 아이디. 예전 이름으로 하는 읽기·쓰기·지우기는 null 을 돌려줬다 */
+	private String idOf(String vplcName) throws VirtualPlcException {
+		try {
+			VirtualPlcInfo info=vplcManagementService.findVirtualPlcByName(vplcName);
+			if(info==null) {
+				throw new VirtualPlcException(VirtualPlcException.ERR_404, "가상 PLC 를 찾을 수 없습니다: " + vplcName);
+			}
+			return info.getId();
+		} catch(NoSuchElementException e) {
+			throw new VirtualPlcException(VirtualPlcException.ERR_404, "가상 PLC 를 찾을 수 없습니다: " + vplcName, e);
+		}
 	}
 }

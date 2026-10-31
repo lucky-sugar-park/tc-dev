@@ -53,7 +53,7 @@
 | # | 일 | 상태 |
 |---|---|---|
 | 12 | PLC 보강: 주기적 연결 상태 확인, 4E 프레임, 응답 길이 검증, 포트 여러 개 병렬 시험 | ✅ 2026-10-31 — [plc-protocol-design.md](plc-protocol-design.md) §13. 실제 PLC 로 4E·루프백 확인은 남음 |
-| 13 | Modbus·OPC UA 어댑터(tc, vplc) | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md). 인터페이스를 MC 3E 프레임 바이트에서 논리 주소(점)로, 드라이버 경계, 다중화 계약을 작업 단위로. 결정 P1~P10 확정. **1~4단계 완료**(POINTS·MELSEC 드라이버 §12, MELSEC 보강 §13, Modbus TCP §14, 다중화 계약 `/execute`·RAW→POINTS 변환 §15). 5단계(새 프론트) 진행 중 — 설계 [frontend-design.md](frontend-design.md)(결정 F1~F10 확정), **5-1 백엔드 계약·5-2 셸·5-3 PLC·5-4 전달·5-5 운영·5-6 관리 화면 완료** |
+| 13 | Modbus·OPC UA 어댑터(tc, vplc) | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md). 인터페이스를 MC 3E 프레임 바이트에서 논리 주소(점)로, 드라이버 경계, 다중화 계약을 작업 단위로. 결정 P1~P10 확정. **1~4단계 완료**(POINTS·MELSEC 드라이버 §12, MELSEC 보강 §13, Modbus TCP §14, 다중화 계약 `/execute`·RAW→POINTS 변환 §15). 5단계(새 프론트) 진행 중 — 설계 [frontend-design.md](frontend-design.md)(결정 F1~F10 확정), **5단계 완료 — 5-1 백엔드 계약·5-2 셸·5-3 PLC·5-4 전달·5-5 운영·5-6 관리·5-7 가상 PLC 화면** |
 | 14 | 로컬 시험 데이터 정리(`plc-fake`, `e2e-*`·`hist-*`·`redis-down` 클라이언트, 시험 이력, 시험 DB `tc_boot`) | ⬜ |
 | 15 | 비동기 어댑터 큐(죽은 코드) 제거 | ✅ | 어댑터의 타이머·큐·`request(holder, callback)`, `PlcReqAndResHolder`·`PlcRequestCallback`, 커넥터 설정 `asyncRequestUse`·`asyncTimer*`(API 필드 포함) 제거(2026-10-31). DB 칼럼은 남긴다 — `migration/007` 이 NULL 허용으로, DROP 은 주석 |
 | 16 | 운영 환경의 실제 호출 시스템 API 키 전환(감사 `PRINCIPAL` 로 대상 확인 → 키 발급·교체 → 옛 계정 중지) | ⬜ 운영 작업 — 이 버전 배포 전 전환이 안 끝났으면 배포 직후 전환 스위치를 켠다 |
@@ -89,3 +89,4 @@
 - 2026-10-31: 5-4 전달 화면 — 전달 정의(유형별 대상·보낼 때·바뀔 때만), WebHook(보내 보기), 외부 DB 연결(비밀번호 저장 여부·연결 시험). 문구 32-tc-delivery.tsv(4개 언어). Playwright delivery.spec.ts(2), 화면 시험 8개 통과.
 - 2026-10-31: 5-5 운영 화면 — 송수신 기록(서버 조회 `audit/search/query`·거래 보기·결과 재전송), 메시지 모니터(SSE), 스케줄 Job(종류별 폼·멈춤/재개·실행 이력), 설정 변경 이력(앞뒤·바뀐 칸). 스케줄 버그 고침 — 멈춤·재개가 이름을 ID 로 넘겨 500, 간격 트리거가 6번 돌고 사라짐, 보관 기간 int 넘침. 문구 33-tc-ops.tsv. e2e test_ui_api 35·test_paths 19, Playwright 11개 통과. 운영 반영은 jar 교체(재기동 필요).
 - 2026-10-31: 5-6 관리 화면 — 사용자(로그인 막힘 표시·제한 풀기·사용 이력·비밀번호 초기화), API 클라이언트(허용 opcode·IP·URL, 키 발급은 한 번만 보임·폐기), 운영 옵션(권한 검사 모드·전환 스위치), 다국어(4개 언어 표·빠진 것), 공통 코드(그룹·코드). 백엔드 `users/{id}/history`·`login-blocked`·`login-unblock`. 문구 34-tc-admin.tsv. e2e test_ui_api 38, Playwright 16개 통과. 운영 반영은 jar 교체(재기동 필요).
+- 2026-10-31: 5-7 가상 PLC 화면 — 목록(등록·게시·시작·일시정지·정지·해제·연결), 메모리 보기·제어(10진·16진·비트·ASCII 표, 칸 고쳐 쓰기·비트 켜기·여러 값/문자열 쓰기·자동 새로 고침). vplc 고침: 워드 값 쓰기(words), 낮은 바이트 부호 번짐, 이름으로 읽기·쓰기·지우기 null, 게시 안 됨 NPE→409. 문구 35-tc-vplc.tsv. e2e test_vplc_http_methods 35, Playwright 18개 통과. 5단계(새 프론트) 완료.
