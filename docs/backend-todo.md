@@ -53,7 +53,7 @@
 | # | 일 | 상태 |
 |---|---|---|
 | 12 | PLC 보강: 주기적 연결 상태 확인, 4E 프레임, 응답 길이 검증, 포트 여러 개 병렬 시험 | ✅ 2026-10-31 — [plc-protocol-design.md](plc-protocol-design.md) §13. 실제 PLC 로 4E·루프백 확인은 남음 |
-| 13 | Modbus·OPC UA 어댑터(tc, vplc) | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md). 인터페이스를 MC 3E 프레임 바이트에서 논리 주소(점)로, 드라이버 경계, 다중화 계약을 작업 단위로. 결정 P1~P10 확정. **1~4단계 완료**(POINTS·MELSEC 드라이버 §12, MELSEC 보강 §13, Modbus TCP §14, 다중화 계약 `/execute`·RAW→POINTS 변환 §15). 5단계(새 프론트) 진행 중 — 설계 [frontend-design.md](frontend-design.md)(결정 F1~F10 확정), **5-1 백엔드 계약 완료** |
+| 13 | Modbus·OPC UA 어댑터(tc, vplc) | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md). 인터페이스를 MC 3E 프레임 바이트에서 논리 주소(점)로, 드라이버 경계, 다중화 계약을 작업 단위로. 결정 P1~P10 확정. **1~4단계 완료**(POINTS·MELSEC 드라이버 §12, MELSEC 보강 §13, Modbus TCP §14, 다중화 계약 `/execute`·RAW→POINTS 변환 §15). 5단계(새 프론트) 진행 중 — 설계 [frontend-design.md](frontend-design.md)(결정 F1~F10 확정), **5-1 백엔드 계약·5-2 셸 완료** |
 | 14 | 로컬 시험 데이터 정리(`plc-fake`, `e2e-*`·`hist-*`·`redis-down` 클라이언트, 시험 이력, 시험 DB `tc_boot`) | ⬜ |
 | 15 | 비동기 어댑터 큐(죽은 코드) 제거 | ✅ | 어댑터의 타이머·큐·`request(holder, callback)`, `PlcReqAndResHolder`·`PlcRequestCallback`, 커넥터 설정 `asyncRequestUse`·`asyncTimer*`(API 필드 포함) 제거(2026-10-31). DB 칼럼은 남긴다 — `migration/007` 이 NULL 허용으로, DROP 은 주석 |
 | 16 | 운영 환경의 실제 호출 시스템 API 키 전환(감사 `PRINCIPAL` 로 대상 확인 → 키 발급·교체 → 옛 계정 중지) | ⬜ 운영 작업 — 이 버전 배포 전 전환이 안 끝났으면 배포 직후 전환 스위치를 켠다 |
@@ -84,3 +84,4 @@
 - 2026-10-31: PLC 일반화 3단계 완료 — Modbus TCP 드라이버(HR·IR·CO·DI, FC 1·2·3·4·5·6·15·16, 워드 순서, 예외 코드 → plcStatus)와 어댑터. MELSEC 어댑터에서 TCP 공통 계층(TcpPlcAdapter·WireProtocol)을 떼어 냄 — 번호가 있는 요청(4E·Modbus)은 시간 초과에도 연결 유지. 커넥터 NULL 칼럼 조회 500 고침. 단위 ModbusDriverTest(13), e2e fake_modbus.py + test_plc_modbus.py(23).
 - 2026-10-31: PLC 일반화 4단계 완료 — 인스턴스 사이 작업 단위 계약 `/internal/plc/{name}/execute`(점·값·설정 → 값·PLC 상태, RAW 는 프레임), 옛 `/exchange` 는 순차 재기동용으로 받고 보내는 쪽은 404 면 `/exchange` 로. RAW→POINTS 변환 API(`convert-to-points`, 미리보기 기본, 적용은 변경 이력, 헤더·데이터 정의는 남겨 되돌릴 수 있음). 단위 RawToPointsConverterTest(6), e2e test_plc_convert.py(14), test_plc_remote.py 에 /execute 6개.
 - 2026-10-31: 5단계(새 프론트) 설계 frontend-design.md — 독립 앱 + MES framework·shared, 정적 메뉴, 화면 19개, 다국어 4개 언어(F5 수정 확정). 5-1 백엔드 계약 완료: 로그인 본문 토큰, 내 권한(화면 권한 uiroute.tc.*), 다국어·공통 코드·북마크 표와 API(migration 009, 씨앗), SSE(framework 컨트롤러 + 구독 권한, plc_connection 이벤트), 홈 요약, 시험 읽기, 프로토콜 설명, 화면 서빙(TC_UI_DIR). e2e test_ui_api.py(31).
+- 2026-10-31: 5-2 — wow-tc-frontend 프로젝트(MES framework·shared 0.8.46), 셸 TcLayout·tc 로그인·정적 메뉴(화면 19개, 권한으로 가림)·홈(실데이터), tc-config.json(vplc 메뉴), 화면 문구 씨앗 30-tc-screens.tsv. 개발 서버·tc 서빙(재기동 없이) 확인.

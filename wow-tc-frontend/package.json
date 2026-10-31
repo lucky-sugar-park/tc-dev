@@ -1,0 +1,39 @@
+{
+  "name": "wow-tc-frontend",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "tc(PLC 게이트웨이) 화면 — mes-dev 의 framework·shared 를 쓰는 독립 앱 (docs/frontend-design.md)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.1.1",
+    "@mui/material": "^9.1.1",
+    "@mui/x-data-grid-pro": "^9.6.0",
+    "@mui/x-license": "^9.6.0",
+    "axios": "^1.7.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.1.1",
+    "wow-mes-frontend-framework": "0.8.46",
+    "wow-mes-frontend-shared": "0.8.46",
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  },
+  "overrides": {
+    "xlsx": "$xlsx"
+  }
+}

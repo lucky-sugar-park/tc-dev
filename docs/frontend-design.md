@@ -183,3 +183,17 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 
 - 함께 고친 것: 없음. 알게 된 것 — Spring Boot 4(Jackson 3)는 요청 JSON 에 빠진 **원시형**(boolean·int) 필드를 거부한다(400 "Failed to read request"). 새 요청 형은 `Boolean` 등 참조형으로 둔다.
 - 시험: e2e `test_ui_api.py`(31) — 위 전부, 화면 서빙은 `TC_E2E_UI_DIR` 이 있을 때.
+
+## 11. 구현 — 5-2 셸·로그인·정적 메뉴·홈 (2026-10-31)
+
+| 것 | 내용 |
+|---|---|
+| 프로젝트 | `wow-tc-frontend`(npm 앱 하나, 0.3.0). React 19·Vite 6·MUI 9·DataGrid Pro 9, framework·shared `0.8.46`(Nexus group, `.npmrc`). xlsx 는 `vendor/xlsx-0.20.3.tgz` + `overrides`(F6). 개발 서버 5180 — `/api` → tc, `/vplc-api` → vplc |
+| 셸 `TcLayout` | shared 에서 내보내는 부품만으로 `DefaultLayout` 을 다시 짰다 — 제목 WOW-TC, 로그인 `TcLoginPage`(회원가입·인증 메일·비밀번호 찾기 없음, 언어 선택), 비밀번호 변경 필요면 shared `ChangePasswordPage`. shared 가 내보내지 않는 탭 보존 정책·장식 없는 화면은 뺐다 — 탭은 화면 상태를 지킨다(`keep`) |
+| 메뉴·경로 | `src/screens.ts`(화면 19개·그룹 5개, 정적). 잎마다 `routeCode: uiroute.<키>` — 셸이 서버 권한으로 가린다. 메뉴 이름은 `i18n.menu.<키>` |
+| 배포 설정 | `/tc-config.json`(빌드 없이 고침) — `vplcUrl` 이 없으면 가상 PLC 메뉴를 숨긴다(F8) |
+| 홈 | 커넥터(게시·연결·끊김), 오늘 요청·실패, 커넥터 연결 상태 표, 최근 오류 표. 보이는 동안 10초마다 |
+| 나머지 화면 | "준비 중" — 메뉴·권한·경로는 열려 있고 5-3 부터 채운다 |
+| 문구 | `ui-seed/i18n/30-tc-screens.tsv`(4개 언어) — 화면 코드 `t('i18n.tc.…', '한국어')` 와 같은 코드 |
+
+확인: 타입 검사·빌드 통과, 개발 서버와 tc 서빙(`TC_UI_DIR` 에 `dist` 복사, 재기동 없음) 모두 로그인 화면·셸·메뉴 이동·홈 실데이터. 화면 e2e(F9 Playwright)는 화면이 생기는 5-3 부터.

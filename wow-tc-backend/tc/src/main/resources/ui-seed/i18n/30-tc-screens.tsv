@@ -1,0 +1,22 @@
+# tc 화면 문구 (docs/frontend-design.md §5). 한 줄 = 코드<TAB>ko<TAB>en<TAB>ja<TAB>zh. 화면을 더하면 여기도 더한다(프론트 t(코드, 한국어 기본값) 와 같은 코드).
+i18n.tc.comingSoon	이 화면은 준비 중입니다.	This screen is under construction.	この画面は準備中です。	此页面正在建设中。
+i18n.tc.connector.name	커넥터	Connector	コネクタ	连接器
+i18n.tc.connector.protocol	프로토콜	Protocol	プロトコル	协议
+i18n.tc.connector.state	연결 상태	Connection	接続状態	连接状态
+i18n.tc.connector.connected	연결	Connected	接続	已连接
+i18n.tc.connector.disconnected	끊김	Disconnected	切断	已断开
+i18n.tc.connector.released	해제	Released	解除	已释放
+i18n.tc.connector.instance	연결 인스턴스	Instance	接続インスタンス	连接实例
+i18n.tc.connector.lastError	마지막 오류	Last error	最後のエラー	最近错误
+i18n.tc.audit.time	시각	Time	時刻	时间
+i18n.tc.audit.errorCode	오류 코드	Error code	エラーコード	错误代码
+i18n.tc.audit.errorMessage	내용	Message	内容	内容
+i18n.tc.audit.transactionId	트랜잭션 ID	Transaction ID	トランザクションID	事务ID
+i18n.tc.home.connectors	커넥터(게시)	Connectors (published)	コネクタ(公開)	连接器(已发布)
+i18n.tc.home.connected	연결됨	Connected	接続中	已连接
+i18n.tc.home.disconnected	끊김	Disconnected	切断	已断开
+i18n.tc.home.requestsToday	오늘 요청	Requests today	本日のリクエスト	今日请求
+i18n.tc.home.failuresToday	오늘 실패	Failures today	本日の失敗	今日失败
+i18n.tc.home.connectorState	커넥터 연결 상태	Connector status	コネクタ接続状態	连接器状态
+i18n.tc.home.recentErrors	최근 오류	Recent errors	最近のエラー	最近错误
+i18n.tc.home.updatedAt	갱신	Updated	更新	更新于
