@@ -89,21 +89,24 @@ mysql -u root -p tc < migration/002_api_client.sql
 3. 그 관리자로 로그인하면 비밀번호를 바꾸기 전까지 다른 API 가 403(`ERR_403_TC_PASSWORD_CHANGE_REQUIRED`)이다. `PUT /api/v1/me/password` 로 바꾼다.
 4. 환경 변수에서 해시를 지운다(다음 기동부터 읽지 않지만 남겨 둘 이유가 없다).
 
-### 3.3 배포 스크립트 (`deploy/`)
+### 3.3 빌드·배포 스크립트 (`scripts/`)
 
-Windows PC 기준. 사용법 요약은 [deploy/README.md](../deploy/README.md).
+Windows 기준, 레포 루트에서 실행한다. 사용법(PowerShell·cmd)은 [scripts/README.md](../scripts/README.md). mes-dev 의 `scripts/` 와 같은 구성이다.
 
-1. **꾸러미 만들기(개발 PC)** — `deploy\build-release.ps1`. tc jar 와 화면(dist)을 빌드해 `deploy\out\wow-tc-<버전>-<yyMMdd-HHmm>\`(+zip)에 `tc\tc.jar`, `ui\`, `migration\`, `install.ps1`, `tc-ctl.ps1`, `env.example.ps1`, `tools\ShutdownViaJmx.java`, `VERSION.txt`(버전·빌드 시각·커밋) 를 넣는다. 비밀값과 `ui\tc-config.json` 은 넣지 않는다.
-2. **처음 설치(설치할 PC)** — 꾸러미를 풀고 `.\install.ps1 -InstallDir C:\wow-tc`. 설치 폴더의 `env.example.ps1` 을 `env.ps1` 로 복사해 채운다(§2.1의 값. 비밀값을 파일에 두지 않으려면 `$TcAppArgs` 로 설정 파일을 준다). DB 스크립트(§3.1)를 돌리고 `C:\wow-tc\tc-ctl.ps1 start`. tc-ctl 은 `env.ps1` 의 값을 tc 프로세스에만 넘기고 지운다. `TC_UI_DIR` 은 설치 폴더의 `ui` 로 정한다.
-3. **화면만 바꿀 때** — `.\install.ps1 -InstallDir C:\wow-tc -Part Ui`. **재기동 없음.** 새 자산을 먼저 넣고 `index.html` 을 바꾼 뒤 옛 자산을 지운다. `ui\tc-config.json` 은 덮지 않는다.
-4. **백엔드를 바꿀 때** — `.\install.ps1 -InstallDir C:\wow-tc` 는 새 jar 를 `tc\tc.jar.new` 로 올려 두기만 한다(tc 가 멈춰 있으면 바로 바꿔 끼운다). 새 DB 스크립트가 있으면 알려 준다 — 재기동 전에 돌린다. 적용은 MES 등에 알린 뒤 `-Restart`(또는 `tc-ctl.ps1 restart`).
-   - 재기동은 **정상 종료**(§4.1)다. Windows 에는 SIGTERM 이 없어 로컬 JMX 로 Spring 에 종료를 요청한다(`spring.application.admin.enabled`, 기본 켬 — 같은 PC·같은 사용자만 붙는다). 90초 안에 끝나지 않을 때만 강제로 끝낸다.
-   - 옛 jar 는 `tc\backup\` 에 남는다(최근 5개). 새 jar 로 2분 안에 `/api/health` 가 `UP`·`DEGRADED` 가 되지 않으면 **옛 jar 로 되돌려 다시 띄운다**(종료 코드 2, 실패한 jar 는 `tc\tc.jar.new.failed`).
-   - 다중화면 인스턴스마다 §4.2.3 순서(LB 에서 빼기 → `-Restart` → 확인 → 넣기)로 한 대씩.
-5. **가상 PLC 가 있는 시험 PC** — `-VplcUrl http://<vplc>:8088` 로 `ui\tc-config.json` 을 쓴다(가상 PLC 메뉴가 보인다). 화면이 vplc 를 바로 부르므로 vplc 의 `VPLC_CORS_ALLOWED_ORIGIN_PATTERNS` 에 tc 화면 주소가 있어야 한다(기본 `http://localhost:3000,5180,8087`).
-6. **Windows 서비스로 띄우는 경우** — `env.ps1` 의 `$TcServiceName` 에 서비스 이름을 적으면 tc-ctl 이 서비스를 멈추고 띄운다(jar 교체·되돌리기는 같다). 서비스는 `C:\wow-tc\tc\tc.jar` 를 띄우고 환경 변수를 서비스 설정에 둔다. 서비스 래퍼가 종료 때 정상 종료 신호를 주는지 확인한다.
+| 스크립트 | 하는 일 |
+|---|---|
+| `deploy-frontend.ps1` | 화면 빌드(`npm run build`) → tc 가 서빙하는 폴더(기본 `run\ui`, 다른 tc 면 `-UiDir` 로 그 `TC_UI_DIR`)로 배포. **재기동 없음.** 새 자산 → `index.html` → 옛 자산 정리 순서라 보던 화면이 깨지지 않는다. `tc-config.json`(가상 PLC 주소)은 덮지 않는다(`-VplcUrl`·`-NoVplc` 때만) |
+| `deploy-backend.ps1` | `gradlew :tc:build`(+단위 테스트) → `:tc:publish` 로 실행 jar 를 Nexus `com.wow.be:wow-tc:<버전>`(SNAPSHOT 이면 `-private-snapshot`, 아니면 `-private`)에 올림 → Nexus 에서 받아 빌드한 것과 같은지(SHA-256) 확인 → `run\tc\tc.jar.new` → **재기동**(`run-backend.ps1 -Restart`). `-SkipRestart` 면 대기만, `-SkipPublish` 면 Nexus 없이 |
+| `run-backend.ps1` | `run\tc\tc.jar` 를 띄우고·멈추고(`-Stop`)·재기동(`-Restart`)·상태(`-Status`). 기본은 백그라운드 + `/api/health` 확인, `-Foreground` 는 이 창에서 |
 
-로컬 확인(2026-10-31): 처음 설치·기동, 화면만(pid 그대로), 실행 중 백엔드(대기만), `-Restart`(정상 종료 → 교체 → 기동 21초), 깨진 jar 되돌리기, 설치본(8087)에서 Playwright 홈·커넥터·가상 PLC 메모리.
+- **재기동은 정상 종료(§4.1)다.** Windows 에는 SIGTERM 이 없어 로컬 JMX 로 Spring 에 종료를 요청한다(`spring.application.admin.enabled`, 기본 켬 — 같은 PC·같은 사용자만 붙는다, `TC_APP_ADMIN_ENABLED`). 90초 안에 끝나지 않을 때만 강제로 끝낸다.
+- 새 jar 로 2분 안에 `/api/health` 가 `UP`·`DEGRADED` 가 되지 않으면 **전 jar(`tc.jar.prev`)로 되돌려 다시 띄운다**(종료 코드 2, 실패한 jar 는 `run\tc\tc.jar.failed`).
+- DB 스크립트(§3.1)는 돌리지 않는다 — 새 스크립트가 있으면 재기동 전에 돌린다.
+- 비밀값: DB 비밀번호는 `application-local.yml`(git 제외)을 읽게 해서 띄운다. `TC_JWT_SECRET`·`TC_SECRET_KEY` 는 환경 변수가 있으면 그것을, 없으면 `run\local\` 의 값(처음 기동 때 만든다). 그 밖의 설정은 환경 변수(§2.1). 넘긴 비밀값은 실행한 창에 남기지 않는다.
+- Nexus 업로드 자격증명은 전역 `~/.gradle/gradle.properties` 의 `nexusUsername`/`nexusPassword`(mes-dev 와 같다).
+- 가상 PLC 화면: 화면이 vplc 를 바로 부르므로 vplc 의 `VPLC_CORS_ALLOWED_ORIGIN_PATTERNS` 에 tc 화면 주소가 있어야 한다(기본 `http://localhost:3000,5180,8087`).
+
+로컬 확인(2026-10-31): cmd 에서 화면 배포, 백엔드 빌드(+테스트)→Nexus→받아서 기동(48초), 같은 버전 재배포 + 정상 종료 재기동(28초), 깨진 jar 되돌리기(종료 코드 2), 스크립트로 띄운 tc(8087)에서 Playwright 송수신 기록·홈·가상 PLC 메모리. `-Foreground` 는 확인하지 않았다.
 
 ## 4. 재기동
 

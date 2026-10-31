@@ -55,3 +55,6 @@ application-local.yml
 # Python
 __pycache__/
 *.pyc
+
+# --- 로컬 실행 폴더(scripts/run-backend.ps1 — jar·화면·로그·로컬 비밀값) ---
+/run/

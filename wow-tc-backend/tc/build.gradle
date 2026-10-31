@@ -34,3 +34,28 @@ dependencies {
 tasks.named("bootJar") {
     exclude "application-local.yml"
 }
+
+// ── 배포 (maven-publish) — 실행 jar(bootJar)를 사내 Nexus 에 com.wow.be:wow-tc:<버전> 으로 올린다 ──
+// scripts/deploy-backend.ps1 이 올린 뒤 같은 좌표로 내려받아 재기동한다(서버가 Nexus 에서 받는 것과 같은 길).
+// 자격증명은 전역 ~/.gradle/gradle.properties 의 nexusUsername/nexusPassword(리포지토리에 두지 않는다)
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        tc(MavenPublication) {
+            artifactId = 'wow-tc'
+            artifact tasks.named('bootJar')
+        }
+    }
+    repositories {
+        maven {
+            name = 'nexus'
+            url = version.toString().endsWith('SNAPSHOT') ? nexusSnapshotUrl : nexusReleaseUrl
+            allowInsecureProtocol = true   // 로컬 HTTP Nexus
+            credentials {
+                username = findProperty('nexusUsername')
+                password = findProperty('nexusPassword')
+            }
+        }
+    }
+}

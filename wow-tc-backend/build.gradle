@@ -21,6 +21,9 @@ ext {
 
     // 사내 Nexus (localhost HTTP)
     nexusGroupUrl     = 'http://localhost:8081/repository/inzi-mes-platform-maven-group/'
+    // 실행 jar 를 올리는 곳(scripts/deploy-backend.ps1) — mes-dev 와 같이 SNAPSHOT 이면 -private-snapshot, 아니면 -private
+    nexusReleaseUrl   = 'http://localhost:8081/repository/inzi-mes-platform-maven-private/'
+    nexusSnapshotUrl  = 'http://localhost:8081/repository/inzi-mes-platform-maven-private-snapshot/'
 }
 
 allprojects {

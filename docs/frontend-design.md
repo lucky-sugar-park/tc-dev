@@ -96,7 +96,7 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 ### 4.3 화면 서빙 (U6)
 
 - 설정 `tc.ui.dir: ${TC_UI_DIR:}` — 비우면 서빙하지 않는다(지금처럼). 값이 있으면 그 폴더를 `/` 에서 서빙하고, `/api/**`·`/internal/**`·`/actuator/**` 가 아닌 모르는 경로는 `index.html`(SPA). 캐시: `index.html` 은 no-cache, 해시 붙은 자산은 길게.
-- 배포: `vite build` → 폴더에 복사. **tc 재기동 없음.** 스크립트는 `deploy/`(build-release·install `-Part Ui`) — docs/operations.md §3.3
+- 배포: `vite build` → 폴더에 복사. **tc 재기동 없음.** 스크립트는 `scripts/deploy-frontend.ps1` — docs/operations.md §3.3
 - 다중화: 인스턴스마다 같은 폴더(공유 디스크 또는 각자 복사).
 
 ### 4.4 DB (migration 009)
