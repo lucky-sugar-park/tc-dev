@@ -90,6 +90,49 @@ function Get-Health {
   try { return (Invoke-RestMethod -Uri "http://localhost:$Port/api/health" -TimeoutSec 3).status } catch { return $null }
 }
 
+# 포트를 듣고 있는 프로세스 id(없으면 $null)
+function Get-PortOwner {
+  $c = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($c) { return [int]$c.OwningProcess }
+  return $null
+}
+
+function Get-ProcessLabel([int]$id) {
+  $p = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue
+  if (-not $p) { return "pid $id" }
+  $cmdLine = "$($p.CommandLine)"
+  if ($cmdLine.Length -gt 160) { $cmdLine = $cmdLine.Substring(0, 160) + '...' }
+  return "pid $id ($($p.Name)) $cmdLine"
+}
+
+# 기동 로그에서 실패 원인을 꺼낸다 — Spring 의 APPLICATION FAILED TO START 설명, 없으면 마지막 Caused by·ERROR 줄
+function Get-StartFailure([string]$out, [string]$err) {
+  $lines = @()
+  if (Test-Path $out) { $lines = @(Get-Content $out -Encoding UTF8) }
+  $i = -1
+  for ($k = $lines.Count - 1; $k -ge 0; $k--) { if ($lines[$k] -match '^\s*APPLICATION FAILED TO START\s*$') { $i = $k; break } }
+  if ($i -ge 0) {
+    return @($lines[($i + 1)..($lines.Count - 1)] | Where-Object { $_.Trim() -and $_ -notmatch '^\*+$' } | Select-Object -First 12)
+  }
+  $found = @()
+  $error1 = $lines | Where-Object { $_ -match '\s(ERROR|FATAL)\s' } | Select-Object -First 1
+  if ($error1) { $found += $error1 }
+  $cause = $lines | Where-Object { $_ -match '^Caused by:' } | Select-Object -Last 1
+  if ($cause) { $found += $cause }
+  if ($found) { return $found }
+  if (Test-Path $err) { $e = @(Get-Content $err -Tail 10 -Encoding UTF8 | Where-Object { $_.Trim() }); if ($e) { return $e } }
+  return @($lines | Select-Object -Last 15)
+}
+
+function Write-StartFailure([string]$summary, [string[]]$detail, [string]$out) {
+  Write-Host "tc 기동 실패 — $summary" -ForegroundColor Red
+  if ($detail) {
+    Write-Host '  원인:' -ForegroundColor Red
+    $detail | ForEach-Object { Write-Host "    $_" }
+  }
+  if ($out) { Write-Host "  로그: $out" -ForegroundColor DarkGray }
+}
+
 # 로컬 비밀값 — 환경 변수가 없으면 run\local\ 의 값(처음이면 만든다). 값은 화면에 내지 않는다
 function Get-LocalSecret([string]$envName, [string]$file, [int]$bytes) {
   $v = [Environment]::GetEnvironmentVariable($envName)
@@ -128,7 +171,17 @@ function Set-TcEnv {
 }
 
 function Start-Tc {
+  $script:StartFailKind = $null
   if (Get-TcProcess) { Write-Host "tc 가 이미 떠 있습니다(pid $((Get-TcProcess).Id))." -ForegroundColor Yellow; return $true }
+  $owner = Get-PortOwner
+  if ($owner) {
+    # 다른 프로세스가 포트를 쥐고 있으면 띄워도 곧 끝나고, health 는 그 프로세스가 대신 답한다
+    $script:StartFailKind = 'port'
+    Write-StartFailure "포트 $Port 를 이미 다른 프로세스가 쓰고 있습니다" @(
+      (Get-ProcessLabel $owner),
+      "그 프로세스를 멈추거나(Stop-Process -Id $owner) -Port 로 다른 포트를 주세요")
+    return $false
+  }
   New-Item -ItemType Directory -Force $tcDir, $logDir, $uiDir | Out-Null
   [void](Use-NewJar)
   if (-not (Test-Path $jar)) {
@@ -159,21 +212,33 @@ function Start-Tc {
     if (-not $javaPid) { Start-Sleep -Milliseconds 200 }
   }
   if (-not $javaPid) {
-    Write-Host "  java 가 뜨지 않았거나 바로 끝났습니다 — $err" -ForegroundColor Red
-    if (Test-Path $err) { Get-Content $err -Tail 10 | ForEach-Object { Write-Host "    $_" } }
+    Write-StartFailure 'java 가 뜨지 않았거나 바로 끝났습니다' (Get-StartFailure $out $err) $err
     return $false
   }
   $javaPid | Set-Content $pidFile
   Write-Host "  tc 를 띄웠습니다(pid $javaPid, 포트 $Port) — 기동 확인 중" -ForegroundColor DarkGray
   $deadline = (Get-Date).AddSeconds($StartTimeoutSeconds)
   while ((Get-Date) -lt $deadline) {
-    $h = Get-Health
-    if ($h -eq 'UP' -or $h -eq 'DEGRADED') { Write-Host "tc 기동 완료 — http://localhost:$Port  (/api/health $h)" -ForegroundColor Green; return $true }
-    if (-not (Get-TcProcess)) { break }
+    if (-not (Get-Process -Id $javaPid -ErrorAction SilentlyContinue)) {
+      $cmd.WaitForExit(5000) | Out-Null
+      Remove-Item $pidFile -ErrorAction SilentlyContinue
+      Write-StartFailure "기동 중에 끝났습니다(종료 코드 $($cmd.ExitCode))" (Get-StartFailure $out $err) $out
+      return $false
+    }
+    # 이 java 가 포트를 쥔 뒤에만 health 를 믿는다 — 다른 프로세스가 대신 답하면 성공으로 잘못 본다
+    if ((Get-PortOwner) -eq $javaPid) {
+      $h = Get-Health
+      if ($h -eq 'UP') { Write-Host "tc 기동 완료 — http://localhost:$Port  (pid $javaPid, /api/health UP)" -ForegroundColor Green; return $true }
+      if ($h -eq 'DEGRADED') {
+        Write-Host "tc 기동 완료 — http://localhost:$Port  (pid $javaPid, /api/health DEGRADED — Redis 에 닿지 않습니다. 사용자 로그인이 안 됩니다)" -ForegroundColor Yellow
+        return $true
+      }
+    }
     Start-Sleep -Seconds 2
   }
-  Write-Host "tc 가 $StartTimeoutSeconds 초 안에 뜨지 않았습니다 — 로그: $out" -ForegroundColor Red
-  if (Test-Path $out) { Get-Content $out -Tail 15 -Encoding UTF8 | ForEach-Object { Write-Host "    $_" } }
+  $detail = @("/api/health: $(if ($h) { $h } else { '응답 없음' }), 포트 주인: $(if ($o = Get-PortOwner) { Get-ProcessLabel $o } else { '없음' })")
+  $detail += Get-StartFailure $out $err
+  Write-StartFailure "$StartTimeoutSeconds 초 안에 뜨지 않았습니다(pid $javaPid 는 아직 살아 있음 — ./scripts/run-backend.ps1 -Stop)" $detail $out
   return $false
 }
 
@@ -194,6 +259,8 @@ function Stop-Tc {
 if ($Status) {
   $p = Get-TcProcess
   if ($p) { Write-Host "실행 중 — pid $($p.Id), 시작 $($p.StartTime), /api/health $(Get-Health)" } else { Write-Host '멈춰 있음' }
+  $owner = Get-PortOwner
+  if ($owner -and (-not $p -or $owner -ne $p.Id)) { Write-Host "포트 $Port 를 다른 프로세스가 쓰고 있습니다: $(Get-ProcessLabel $owner)" -ForegroundColor Yellow }
   if (Test-Path $newJar) { Write-Host "적용 대기 중인 새 jar: $newJar — ./scripts/run-backend.ps1 -Restart" -ForegroundColor Yellow }
   if ($p) { exit 0 } else { exit 3 }
 }
@@ -202,6 +269,7 @@ if ($Stop) { Step 'tc 중지'; Stop-Tc; exit 0 }
 
 if ($Foreground) {
   if (Get-TcProcess) { throw "tc 가 이미 백그라운드로 떠 있습니다 — 먼저 ./scripts/run-backend.ps1 -Stop" }
+  if ($owner = Get-PortOwner) { throw "포트 $Port 를 이미 다른 프로세스가 쓰고 있습니다 — $(Get-ProcessLabel $owner)" }
   Step "tc 구동(포그라운드, 포트 $Port) — 중지: Ctrl+C"
   New-Item -ItemType Directory -Force $tcDir, $uiDir | Out-Null
   [void](Use-NewJar)
@@ -216,7 +284,8 @@ if ($Restart) {
   Stop-Tc
   $applied = Test-Path $newJar
   if (Start-Tc) { exit 0 }
-  if ($applied -and (Test-Path $prevJar)) {
+  # 포트 충돌은 jar 탓이 아니므로 되돌리지 않는다
+  if ($applied -and $script:StartFailKind -ne 'port' -and (Test-Path $prevJar)) {
     Step '새 jar 로 뜨지 않아 전 jar 로 되돌립니다'
     Stop-Tc
     Copy-Item $jar (Join-Path $tcDir 'tc.jar.failed') -Force
