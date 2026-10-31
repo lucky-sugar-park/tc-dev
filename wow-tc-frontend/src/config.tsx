@@ -14,6 +14,9 @@ const PAGES: Record<string, Loader> = {
   'tc.plc.interface': () => import('./plc/pages/InterfacePage'),
   'tc.plc.interface-test': () => import('./plc/pages/InterfaceTestPage'),
   'tc.plc.monitor': () => import('./plc/pages/ConnectionMonitorPage'),
+  'tc.delivery.rule': () => import('./delivery/pages/DeliveryRulePage'),
+  'tc.delivery.webhook': () => import('./delivery/pages/WebHookPage'),
+  'tc.delivery.dbconn': () => import('./delivery/pages/DbConnectionPage'),
 };
 
 const comingSoon = (m: ScreenMeta): Loader => () =>

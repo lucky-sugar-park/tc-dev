@@ -37,3 +37,9 @@ export async function openScreen(page: Page, group: string, label: string): Prom
   }
   await expect(selected).toBeVisible();
 }
+
+/** 지금 보이는 화면의 통합검색 — 열린 탭마다 검색칸이 있어 보이는 것만 */
+export async function searchFor(page: Page, text: string): Promise<void> {
+  await page.getByLabel('통합검색').filter({ visible: true }).fill(text);
+}
+

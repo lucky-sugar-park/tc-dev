@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, openScreen } from './helpers';
+import { login, openScreen, searchFor } from './helpers';
 
 /**
  * PLC 화면(5-3) — 실제 tc·vplc(plc-e2e, D 메모리, RAW 인터페이스 plc.e2e.d100.read)가 있어야 한다(백엔드 e2e setup_e2e.py).
@@ -46,7 +46,7 @@ test('커넥터 — 목록, 등록 폼(프로토콜별 설정), 시험 읽기', 
 
 test('인터페이스 — 목록 필터, RAW 보기와 POINTS 변환 미리보기', async ({ page }) => {
   await openScreen(page, 'PLC', '인터페이스');
-  await page.getByLabel('통합검색').fill('plc.e2e.d100.read');
+  await searchFor(page, 'plc.e2e.d100.read');
   const row = page.getByRole('row').filter({ hasText: 'plc.e2e.d100.read' }).first();
   await expect(row).toBeVisible();
   await row.getByRole('menuitem', { name: 'RAW 보기·변환' }).or(row.getByLabel('RAW 보기·변환')).first().click();
@@ -87,7 +87,7 @@ test('인터페이스 — POINTS 등록(점 표)·목록·삭제', async ({ page
   await dialog.getByRole('button', { name: '저장' }).click();
   await expect(dialog).toBeHidden();
 
-  await page.getByLabel('통합검색').fill(name);
+  await searchFor(page, name);
   const row = page.getByRole('row').filter({ hasText: name }).first();
   await expect(row.getByText('POINTS')).toBeVisible();
   await expect(row.getByText('d100=D100')).toBeVisible();
