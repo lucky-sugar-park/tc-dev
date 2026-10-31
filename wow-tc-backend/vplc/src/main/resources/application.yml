@@ -14,6 +14,11 @@ server:
   port: 8088
   shutdown: graceful
 
+vplc:
+  cors:
+    # 화면 출처(쉼표) — 새 tc 화면은 vplc 를 바로 부른다(docs/frontend-design.md F8). 개발 서버 5180, tc 가 서빙하는 화면 8087, 옛 화면 3000
+    allowed-origin-patterns: ${VPLC_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5180,http://localhost:8087}
+
 spring:
   config:
     import: optional:classpath:application-local.yml
