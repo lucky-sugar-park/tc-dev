@@ -27,12 +27,6 @@ public class PlcConnectorInfo extends AbstractInfo {
 	
 	private String adapterClassName;
 	
-	private boolean asyncRequestUse;
-	
-	private long asyncTimerStartDelay;
-	
-	private long asyncTimerRunInterval;
-	
 	private boolean published;
 	
 	/**

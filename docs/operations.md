@@ -57,6 +57,7 @@
 | `004_config_change_hist.sql` | 설정 변경 이력 표 |
 | `005_user_cleanup.sql` | 사용자 새 칼럼, `enabled` NULL → 1. **옛 칼럼 DROP 은 주석 — 백업 확인 뒤 따로 실행** |
 | `006_db_table_delivery.sql` | 결과 기록용 DB 연결 표, 전달 정의 `TABLE_NAME` 칼럼 |
+| `007_plc_async_columns.sql` | 지운 비동기 큐 설정 칼럼(`plc_connector.async_*`)을 NULL 허용으로. **DROP 은 주석 — 백업 확인 뒤 따로 실행** |
 
 ```bash
 mysql -u root -p tc < migration/002_api_client.sql

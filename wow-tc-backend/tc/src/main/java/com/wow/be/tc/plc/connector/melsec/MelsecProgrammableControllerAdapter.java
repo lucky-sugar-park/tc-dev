@@ -4,16 +4,10 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Deque;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -24,9 +18,7 @@ import java.util.concurrent.TimeoutException;
 
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
-import com.wow.be.tc.plc.PlcReqAndResHolder;
 import com.wow.be.tc.plc.PlcRequest;
-import com.wow.be.tc.plc.PlcRequestCallback;
 import com.wow.be.tc.plc.PlcResponse;
 import com.wow.be.tc.plc.connector.Payload;
 import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
@@ -35,7 +27,6 @@ import com.wow.be.tc.plc.connector.PlcConnectorEvent.EventType;
 import com.wow.be.tc.plc.connector.ProgrammableControllerAdapter;
 import com.wow.be.tc.utils.ByteUtil;
 import com.wow.be.tc.utils.ByteUtil.Endian;
-import com.wow.be.tc.utils.TimerUtil;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -81,12 +72,6 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 
 	private List<String> localVips;
 
-	private volatile boolean asyncUse = true;
-
-	private long asyncTimerStartDelay;
-
-	private long asyncTimerRunInterval;
-
 	private String messageFrameFormat;
 
 	private PlcConnectionEventListener pceListener;
@@ -116,16 +101,6 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 
 	private ScheduledExecutorService maintenance;
 
-	// ── 비동기 요청(타이머 큐) — 레거시 기능 그대로 ──
-
-	private final Deque<PlcReqAndResHolder> q = new ConcurrentLinkedDeque<>();
-
-	private final Map<String, PlcRequestCallback> reqCallbacks = new ConcurrentHashMap<>();
-
-	private Timer timer;
-
-	private TimerTask qworker;
-
 	public MelsecProgrammableControllerAdapter() {
 		this("BINARY");
 	}
@@ -144,16 +119,6 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 		return name;
 	}
 
-	@Override
-	public void pauseAsyncUse() {
-		this.asyncUse = false;
-	}
-
-	@Override
-	public void resumeAsyncUse() {
-		this.asyncUse = true;
-	}
-
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public void ready(long id, String name, Properties props) throws ToolControlException {
@@ -163,10 +128,7 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 		this.hostIp = props.getProperty("hostIp");
 		this.tports = new ArrayList<>((List) props.get("targetPorts"));
 		this.localVips = new ArrayList<>((List) props.get("localVips"));
-		this.asyncUse = (Boolean) props.get("asyncUse");
 		this.messageFrameFormat = props.getProperty("messageFrameFormat");
-		this.asyncTimerStartDelay = (Long) props.get("asyncTimerStartDelay");
-		this.asyncTimerRunInterval = (Long) props.get("asyncTimerRunInterval");
 		this.pceListener = (PlcConnectionEventListener) props.get("connectionListener");
 		this.retryIntervalRate = (Long) props.get("plcRetryIntervalRate");
 		this.retryIntervalIncrement = (Boolean) props.get("plcRetryIntervalIncrement");
@@ -226,7 +188,6 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			log.warn("PLC 에 아직 연결하지 못했습니다. 뒤에서 계속 연결을 시도합니다: {}", name);
 		}
 
-		prepareTimer();
 		emit(EventType.START, null, "START_REQUEST", connected + " EA connections are established.");
 	}
 
@@ -420,47 +381,6 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 		return Math.max(0, deadline - System.currentTimeMillis());
 	}
 
-	@Override
-	public void request(PlcReqAndResHolder reqAndResHolder, PlcRequestCallback reqCallback) throws ToolControlException {
-		if (!asyncUse || operStatus == PlcConnectorOperStatus.PAUSED || operStatus == PlcConnectorOperStatus.UNKNOWN) {
-			throw new ToolControlException("비동기 요청을 쓰지 않는 커넥터이거나 요청할 수 없는 운영 상태입니다: 비동기 " + asyncUse + ", 상태 " + operStatus);
-		}
-		reqCallbacks.put(reqAndResHolder.getRequest().getReqId(), reqCallback);
-		q.add(reqAndResHolder);
-	}
-
-	private void prepareTimer() {
-		this.qworker = new TimerTask() {
-			@Override
-			public void run() {
-				if (q.isEmpty()) {
-					return;
-				}
-				List<PlcReqAndResHolder> reqList = new ArrayList<>();
-				while (!q.isEmpty()) {
-					reqList.add(q.poll());
-				}
-				reqList.forEach(holder -> {
-					PlcRequest req = holder.getRequest();
-					PlcResponse res = holder.getResponse();
-					try {
-						request(req, res);
-						PlcRequestCallback reqCallback = reqCallbacks.remove(req.getReqId());
-						if (reqCallback != null) {
-							reqCallback.callbackRequest(res);
-						}
-					} catch (ToolControlException e) {
-						log.warn("Fail to execute PLC request: {}", req.getReqId(), e);
-					}
-				});
-				TimerUtil.waitWithSleep(500);
-			}
-		};
-		// 데몬으로 실행함 (Main thread 종료되면 timer도 종료되어야 함)
-		this.timer = new Timer("plc-" + name + "-async", true);
-		this.timer.scheduleAtFixedRate(qworker, asyncTimerStartDelay, asyncTimerRunInterval);
-	}
-
 	// ── 상태 ──
 
 	// No use - 현재 connection을 테스트 할 때에 netty로 직접 연결 테스트하도록 되어 있음
@@ -506,9 +426,6 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 	/** 재연결을 멈추고 연결을 모두 닫는다 */
 	private void shutdownInternals() {
 		running = false;
-		if (timer != null) {
-			timer.cancel();
-		}
 		if (maintenance != null) {
 			maintenance.shutdownNow();
 		}
@@ -534,16 +451,8 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 
 	@Override
 	public void destroy() {
-		q.clear();
-		reqCallbacks.clear();
 		synchronized (channels) {
 			channels.clear();
-		}
-		if (timer != null) {
-			timer.cancel();
-		}
-		if (qworker != null) {
-			qworker.cancel();
 		}
 	}
 

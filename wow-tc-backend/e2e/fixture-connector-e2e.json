@@ -1,8 +1,5 @@
 {
   "adapterClassName": "com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter",
-  "asyncRequestUse": false,
-  "asyncTimerRunInterval": 1000,
-  "asyncTimerStartDelay": 1000,
   "commProtocolHeadersReqTemplate": {},
   "commProtocolHeadersResTemplate": {},
   "connLimitPerPort": 1,

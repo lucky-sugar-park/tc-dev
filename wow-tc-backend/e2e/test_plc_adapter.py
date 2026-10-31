@@ -58,8 +58,12 @@ def setup():
                 d["replyName"] = reply
             s, b = call("POST", "/api/v1/ifsvc/management/register", d)
             print("interface register", name, s, "" if s == 200 else b)
+    # tc 가 가짜 PLC 보다 먼저 떴으면 이미 게시된 커넥터가 점점 긴 간격(최대 수십 초)으로 재연결 중이다 —
+    # 해제 후 다시 게시해 지금 바로 연결한다(게시는 연결하지 못하면 실패를 알린다)
+    s, b = call("POST", "/api/v1/plc-connector/control/release/byName/plc-fake")
+    print("release", s)
     s, b = call("POST", "/api/v1/plc-connector/control/publish/byName/plc-fake")
-    print("publish", s)
+    print("publish", s, b)
     time.sleep(2)
 
 if PHASE == "main":

@@ -227,9 +227,6 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 				props.put("hostIp", pInfo.getHostIp());
 				props.put("targetPorts", pInfo.getPorts());
 				props.put("localVips", pInfo.getConnectionVips());
-				props.put("asyncUse", pInfo.isAsyncRequestUse());
-				props.put("asyncTimerStartDelay", pInfo.getAsyncTimerStartDelay());
-				props.put("asyncTimerRunInterval", pInfo.getAsyncTimerRunInterval());
 				props.put("operStatus", successState.name());
 				props.put("messageFrameFormat", pInfo.getMessageFrameFormat().getName());
 				props.put("headerReqTemplate", pInfo.getCommProtocolHeadersResTemplate());

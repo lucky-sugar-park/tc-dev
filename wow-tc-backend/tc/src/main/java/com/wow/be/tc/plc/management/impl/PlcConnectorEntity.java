@@ -51,15 +51,6 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 	@Column(name="ADAPTER_CLASS_NAME")
 	private String adapterClassName;
 	
-	@Column(name="ASYNC_REQ_USE")
-	private Boolean asyncRequestUse;
-	
-	@Column(name="ASYNC_TIMER_START_DELAY")
-	private Long asyncTimerStartDelay;
-	
-	@Column(name="ASYNC_TIMER_RUN_INTERVAL")
-	private Long asyncTimerRunInterval;
-	
 	@Column(name="IS_PUBLISHED")
 	private Boolean published;
 	
@@ -112,9 +103,6 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 		info.setName(this.name);
 		info.setManufacturer(this.manufacturer);
 		info.setAdapterClassName(this.adapterClassName);
-		info.setAsyncRequestUse(this.asyncRequestUse);
-		info.setAsyncTimerStartDelay(this.asyncTimerStartDelay==null?1500:this.asyncTimerStartDelay);
-		info.setAsyncTimerRunInterval(this.asyncTimerRunInterval==null?5000:this.asyncTimerRunInterval);
 		info.setPublished(this.published!=null?this.published:false);
 		info.setStatus1(PlcConnectorInfoStatus.valueOf(this.status1));
 		info.setStatus2(PlcConnectorOperStatus.valueOf(this.status2));
@@ -178,10 +166,6 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 		if(info.getAdapterClassName()!=null && !"".equals(info.getAdapterClassName())) {
 			this.setAdapterClassName(info.getAdapterClassName());
 		}
-		this.setAsyncRequestUse(info.isAsyncRequestUse());
-		this.setAsyncTimerStartDelay(info.getAsyncTimerStartDelay()<=0?500:info.getAsyncTimerStartDelay());
-		this.setAsyncTimerRunInterval(info.getAsyncTimerRunInterval()<=0?500:info.getAsyncTimerRunInterval());
-		
 		this.setPublished(info.isPublished());
 		if(info.getStatus1()!=null && !"".equals(info.getStatus1().name())) {
 			this.setStatus1(info.getStatus1().name());

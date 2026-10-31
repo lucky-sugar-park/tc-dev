@@ -41,10 +41,7 @@ public class PlcConnectorLoader {
 				props.put("className", plcInfo.getAdapterClassName());
 				props.put("targetPorts", plcInfo.getPorts());
 				props.put("localVips", plcInfo.getConnectionVips());
-				props.put("asyncUse", plcInfo.isAsyncRequestUse());
 				props.put("messageFrameFormat", plcInfo.getMessageFrameFormat().getName());
-				props.put("asyncTimerStartDelay", 1000L);
-				props.put("asyncTimerRunInterval", 2000L);
 				props.put("headerReqTemplate", plcInfo.getCommProtocolHeadersReqTemplate());
 				props.put("headerResTemplate", plcInfo.getCommProtocolHeadersResTemplate());
 				props.put("infoStatus", plcInfo.getStatus1().name());
