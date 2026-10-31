@@ -1,5 +1,5 @@
 """미검증 경로 e2e — WRITE, CALLBACK_URL·허용 목록, 스케줄 Job, 커넥터 해제·게시.
-전제: tc 를 TC_DELIVERY_ALLOWEDURLPREFIXES_0=http://127.0.0.1:18090/ 로 띄움, vplc plc-e2e 게시됨."""
+전제: tc 를 TC_DELIVERY_ALLOWED_URL_PREFIXES=http://127.0.0.1:18090/ 로 띄움, vplc plc-e2e 게시됨."""
 import json, os, re, subprocess, sys, threading, time, urllib.request, urllib.error
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

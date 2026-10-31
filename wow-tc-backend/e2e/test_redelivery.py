@@ -1,6 +1,6 @@
 """관리자 결과 재전송(#11) e2e — docs/redelivery-design.md.
 
-전제: tc 를 TC_SECRET_KEY, TC_DELIVERY_ALLOWEDURLPREFIXES_0=http://127.0.0.1:18090/ 로 띄움, vplc plc-e2e 게시됨.
+전제: tc 를 TC_SECRET_KEY, TC_DELIVERY_ALLOWED_URL_PREFIXES=http://127.0.0.1:18090/ 로 띄움, vplc plc-e2e 게시됨.
 plc.e2e.d100.read 에 이 시험의 전달 정의만 걸어 두고 끝에 지운다."""
 import json
 import os

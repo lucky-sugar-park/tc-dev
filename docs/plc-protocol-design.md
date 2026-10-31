@@ -1,6 +1,6 @@
 # PLC 프로토콜 일반화 설계 (MELSEC · Modbus TCP · OPC UA)
 
-> 상태: **설계안 — 결정 대기** (2026-10-31, v0.3.0). 대상: `wow-tc-backend/tc`, `vplc`, e2e.
+> 상태: **설계 확정** (2026-10-31, v0.3.0 — 결정 P1~P10 제안대로 확정). 대상: `wow-tc-backend/tc`, `vplc`, e2e.
 > 할 일: [backend-todo.md](backend-todo.md) #12(PLC 보강), #13(Modbus·OPC UA). 프론트 재작성 전에 끝낸다 — 커넥터·인터페이스 화면이 이 모델 위에 선다.
 > 관련: [dispatch-redesign.md](dispatch-redesign.md) §4·단계 7(값 코덱), [system-overview.md](system-overview.md) §1, [plc-ha-design.md](plc-ha-design.md) §3.1·§4(다중화 전달).
 
@@ -228,9 +228,11 @@ POST /internal/plc/{name}/execute
 | OPC UA | e2e 용 서버(파이썬 `asyncua` 또는 Milo 예제 서버) |
 | 다중화 | `test_plc_remote.py` 를 `/execute` 로 — 세 프로토콜 |
 
-## 10. 결정할 것
+## 10. 결정
 
-| # | 질문 | 제안 | 이유 |
+**2026-10-31 확정 — P1~P10 모두 아래 제안대로.**
+
+| # | 질문 | 결정 | 이유 |
 |---|---|---|---|
 | P1 | 지금 RAW 인터페이스 | **호환 모드로 계속 돌리고 변환 도구로 하나씩 옮긴다** | 일괄 자동 변환은 알아보지 못하는 정의에서 운영이 깨진다. 외부 계약은 같아 급하지 않다 |
 | P2 | 점 저장 | **표 `INTERFACE_POINT`**(인터페이스 ID, 순서, 이름, 주소, 형, 개수, 길이, 순서 재정의) | 화면이 행 단위로 편집하고, 같은 주소를 쓰는 인터페이스 찾기(검색)가 쉽다. JSON 칼럼은 검색이 어렵다 |

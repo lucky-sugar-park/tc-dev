@@ -21,6 +21,8 @@
 
 ### 2.1 환경 변수
 
+**모든 설정과 기본값은 `wow-tc-backend/tc/src/main/resources/application.yml` 에 있다**(코드에만 있는 설정은 두지 않는다). 아래는 그중 환경 변수로 받는 것 — 파일의 `${환경변수:기본값}` 자리다. 다른 값을 바꾸려면 같은 키를 환경 변수(Spring 규칙: 점→`_`, 하이픈 빼고 대문자)나 기동 인자 `--키=값` 으로 준다.
+
 | 변수 | 필수 | 내용 |
 |---|---|---|
 | `TC_DB_PASSWORD` | ✔ | DB 비밀번호 |
@@ -32,7 +34,10 @@
 | `TC_BOOTSTRAP_ADMIN_ID`, `TC_BOOTSTRAP_ADMIN_PASSWORD_HASH` | 처음만 | 최초 관리자(§3) |
 | `TC_PLC_OWNERSHIP_ENABLED` | 다중화 때 | `true` 면 PLC 마다 연결할 인스턴스를 Redis 임대로 정한다(기본 false — 한 대 운영). [plc-ha-design.md](plc-ha-design.md) §10 |
 | `TC_INTERNAL_SECRET` | 다중화 때 | 인스턴스 사이 PLC 교환 서명 키 — 모든 인스턴스가 같은 값. 바꿀 때는 옛 값을 `TC_INTERNAL_SECRET_PREVIOUS` 로 함께 주고 차례로 재기동한 뒤 옛 값을 뺀다 |
-| `TC_INSTANCE_INTERNALURL`, `TC_INSTANCE_INTERNALPORT` | 다중화 때 | 이 인스턴스의 내부 주소(예: `http://10.0.1.11:8187`)와 포트. 방화벽은 tc 인스턴스끼리만 그 포트를 연다. 포트를 따로 두지 않으면(0) LB 에서 `/internal/**` 를 막는다 |
+| `TC_INSTANCE_INTERNAL_URL`, `TC_INSTANCE_INTERNAL_PORT` | 다중화 때 | 이 인스턴스의 내부 주소(예: `http://10.0.1.11:8187`)와 포트. 방화벽은 tc 인스턴스끼리만 그 포트를 연다. 포트를 따로 두지 않으면(0) LB 에서 `/internal/**` 를 막는다 |
+| `TC_DELIVERY_ALLOWED_URL_PREFIXES` | 운영 권장 | 결과(callback·WebHook)를 보내도 되는 주소 앞부분(쉼표 목록). 비우면 모든 주소 허용(경고) |
+| `PLC_REQUEST_TIMEOUT_MS` | | PLC 요청 시간 초과(기본 20000) |
+| `TC_SERVER_PORT` | | 기본 8087 |
 | `TC_SECRET_KEY` | DB_TABLE 전달을 쓰면 | 외부 DB 연결 비밀번호 암호화 키(Base64 32바이트). **바꾸거나 잃으면 저장된 비밀번호를 다시 입력해야 한다** — DB 백업과 따로 보관. [db-table-delivery.md](db-table-delivery.md) §3.1 |
 
 비밀값은 저장소에 두지 않는다. 로컬 개발은 `application-local.yml`(gitignored, 실행 jar 에서 빠짐)을 쓴다.
@@ -112,7 +117,7 @@ mysql -u root -p tc < migration/002_api_client.sql
 | 항목 | 값 |
 |---|---|
 | 같아야 하는 것 | DB, Redis, `TC_JWT_SECRET`(사용자 토큰이 어느 인스턴스에서나 통하게), `TC_INTERNAL_SECRET`, `TC_SECRET_KEY`, `plc.*` 설정 |
-| 인스턴스마다 다른 것 | `TC_INSTANCE_INTERNALURL`(예: `http://10.0.1.11:8187`), `TC_INSTANCE_INTERNALPORT`(예: 8187) |
+| 인스턴스마다 다른 것 | `TC_INSTANCE_INTERNAL_URL`(예: `http://10.0.1.11:8187`), `TC_INSTANCE_INTERNAL_PORT`(예: 8187) |
 | 켜는 것 | `TC_PLC_OWNERSHIP_ENABLED=true` |
 | 시계 | NTP 로 맞춘다 — 스케줄(Quartz 클러스터)과 내부 요청 서명(±30초)이 시각을 쓴다 |
 | 방화벽 | 내부 포트는 tc 인스턴스끼리만. 내부 포트를 따로 두지 않으면(0) LB 에서 `/internal/**` 를 막는다 |

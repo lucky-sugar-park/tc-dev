@@ -31,7 +31,7 @@
 
    | 환경 변수 | 값 | 쓰는 시험 |
    |---|---|---|
-   | `TC_DELIVERY_ALLOWEDURLPREFIXES_0` | `http://127.0.0.1:18090/` | test_paths(콜백 허용 목록) |
+   | `TC_DELIVERY_ALLOWED_URL_PREFIXES` | `http://127.0.0.1:18090/` | test_paths(콜백 허용 목록) |
    | `PLC_REQUEST_TIMEOUT_MS` | `3000` | test_plc_adapter(늦은 응답) |
    | `TC_APICLIENT_EXPIRYCHECKCRON` | `*/30 * * * * *` | test_api_key(만료 알림) |
    | `SPRING_APPLICATION_ADMIN_ENABLED` | `true` | test_shutdown(JMX 정상 종료) |

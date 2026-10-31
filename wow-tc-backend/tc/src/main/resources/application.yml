@@ -1,8 +1,11 @@
 # Tool Control(tc) 애플리케이션 설정
 #
+# tc 의 모든 설정은 이 파일에 기본값과 함께 적는다 — 코드에만 있는 설정은 두지 않는다.
+# 환경마다 다른 값은 ${환경변수:기본값} 으로 받는다. 운영에서 주는 환경 변수 목록은 docs/operations.md §2.1.
+#
 # 전제 인프라(로컬): MariaDB 3306, Redis 6379.
 # 비밀값(DB 비밀번호, JWT 서명 키)은 환경 변수로만 준다 — 기본값을 두지 않는다.
-#   TC_DB_PASSWORD, TC_JWT_SECRET
+#   TC_DB_PASSWORD, TC_JWT_SECRET (선택: TC_SECRET_KEY, 다중화 때 TC_INTERNAL_SECRET)
 # 접속 정보는 환경 변수로 바꿀 수 있고, 없으면 아래 로컬 기본값을 쓴다.
 # 로컬 개발: 같은 폴더의 application-local.yml(git 미추적, application-local.yml.example 참고)에 비밀값을 두면
 #   IDE 에서 환경 변수 없이 실행할 수 있다. 환경 변수가 있으면 환경 변수가 이긴다. 실행 jar(bootJar)에는 넣지 않는다.
@@ -133,7 +136,23 @@ tc:
   # 결과 기록용 외부 DB 연결(DB_TABLE 전달). 연결 자체는 /api/v1/db-connections 로 재기동 없이 등록한다.
   db-connection:
     allowed-url-prefixes: [ "jdbc:mariadb:", "jdbc:mysql:" ]
+    # JDBC 주소에 쓸 수 없는 옵션(대소문자 무시) — 대상 DB 서버가 tc 서버의 파일을 읽어 가거나 받은 값을 역직렬화하게 만드는 옵션
+    forbidden-url-options: [ allowLocalInfile, allowLoadLocalInfile, allowUrlInLocalInfile, autoDeserialize, allowMultiQueries, init, socketFactory ]
     connect-timeout: 5s
+  # 결과 전달(callback·WebHook·DB_TABLE) — docs/dispatch-redesign.md, docs/redelivery-design.md. 기동 때 읽는다(바꾸면 재기동)
+  delivery:
+    connect-timeout: 3s
+    read-timeout: 10s
+    # 결과를 보내도 되는 주소의 앞부분(쉼표 목록) — 요청의 callback 주소와 WebHook 주소 모두. 비우면 모든 주소 허용(경고 로그, SSRF 위험)
+    allowed-url-prefixes: ${TC_DELIVERY_ALLOWED_URL_PREFIXES:}
+    executor:
+      core-size: 4
+      max-size: 16
+      queue-capacity: 500
+      thread-name-prefix: delivery-
+    # 관리자 재전송 — 한 번에 보낼 수(대상 × 기록), 같은 재전송을 다시 받지 않는 시간(중복 클릭)
+    redelivery-max-batch: 500
+    redelivery-duplicate-window: 10s
   # 설정 변경 이력(CONFIG_CHANGE_HIST) 보존 — docs/auth-and-audit-design.md §5.4
   config-history:
     retention-days: 365
@@ -159,20 +178,47 @@ tc:
       org.quartz.jobStore.tablePrefix: qrtz_
       org.quartz.jobStore.isClustered: true
       org.quartz.jobStore.clusterCheckinInterval: 20000
+  plc:
+    # PLC 소유권(다중화) — docs/plc-ha-design.md §3.2·§3.3, 운영 절차 docs/operations.md §4.2. 기동 때 읽는다(바꾸면 재기동)
+    # false(기본, 한 대 운영): 기동 때 게시된 커넥터를 모두 연결하고 Redis 없이도 PLC 요청을 처리한다.
+    # true(두 대 이상): PLC 마다 연결할 인스턴스를 Redis 임대로 하나 정한다 — 기동 때 Redis 가 없으면 아무 PLC 에도 연결하지 않는다.
+    #   함께 줄 것: tc.instance.internal-url·internal-port, tc.internal.secret
+    ownership:
+      enabled: ${TC_PLC_OWNERSHIP_ENABLED:false}
+      lease-ttl: 10s
+      renew-interval: 3s
+      scan-interval: 2s
+      # 임대를 얻은 직후 이 시간 동안은 재연결을 짧은 고정 간격으로(결정 H1a)
+      takeover-fast-retry: 30s
+      takeover-retry-interval: 2s
+    # PLC 연결 상태(Redis tc:plc-state:*) — 연결을 가진 인스턴스가 갱신하고, 갱신이 멈추면 만료로 사라진다
+    state:
+      ttl-ms: 15000
+      refresh-interval-ms: 5000
+  # 이 인스턴스의 내부 주소 — 다른 인스턴스가 PLC 교환을 넘길 때 쓴다(다중화 때만). 인스턴스마다 다르다
+  instance:
+    internal-url: ${TC_INSTANCE_INTERNAL_URL:}
+    # 0 이면 주 포트를 같이 쓴다(그때는 LB 에서 /internal/** 를 막는다). 값을 주면 그 포트는 /internal/** 만 받는다(결정 H3)
+    internal-port: ${TC_INSTANCE_INTERNAL_PORT:0}
+  # 인스턴스 사이 PLC 교환 서명(HMAC) — 모든 인스턴스가 같은 값. 바꿀 때는 옛 값을 secret-previous 로 함께 준다(operations.md §4.2.7)
+  internal:
+    secret: ${TC_INTERNAL_SECRET:}
+    secret-previous: ${TC_INTERNAL_SECRET_PREVIOUS:}
 
 scheduler:
   name:
     default: TestScheduler
 
+# PLC 통신 — 기동 때 읽는다(바꾸면 재기동). 게시할 때 커넥터마다 이 값으로 어댑터를 만든다
 plc:
   connection:
     retry:
       count: 10
       interval:
+        # 끊긴 채널의 재연결 간격(ms). increment 면 시도마다 rate 씩 늘어 최대 30초
         rate: 1500
         increment: true
-
-oper:
-  duplication:
-    # default: single / multiple-active / active-standby
-    mode: active-standby
+  request:
+    # PLC 요청 하나의 시간 초과(ms) — 쉬는 채널을 기다린 시간도 들어간다. 넘으면 504 이고 그 연결을 닫고 다시 연결한다.
+    # 종료 단계 상한(spring.lifecycle.timeout-per-shutdown-phase 25s)보다 짧게 둔다
+    timeout-ms: ${PLC_REQUEST_TIMEOUT_MS:20000}

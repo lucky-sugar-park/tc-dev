@@ -35,8 +35,8 @@ public class InternalSignature {
 
 	private final byte[] previous;
 
-	public InternalSignature(@Value("${tc.internal.secret:${TC_INTERNAL_SECRET:}}") String secret,
-			@Value("${tc.internal.secret-previous:${TC_INTERNAL_SECRET_PREVIOUS:}}") String previous) {
+	public InternalSignature(@Value("${tc.internal.secret:}") String secret,
+			@Value("${tc.internal.secret-previous:}") String previous) {
 		this.secret = secret.getBytes(StandardCharsets.UTF_8);
 		this.previous = previous.getBytes(StandardCharsets.UTF_8);
 	}

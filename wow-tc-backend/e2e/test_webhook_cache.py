@@ -2,7 +2,7 @@
 
 다른 tc 인스턴스가 WebHook 을 바꾸거나 지운 것을 DB 를 직접 고쳐 흉내 낸다. 이 인스턴스의 캐시는 그 사이 옛 값을 쓰다가
 만료(10초) 뒤 DB 의 값을 따른다.
-전제: tc 를 TC_DELIVERY_ALLOWEDURLPREFIXES_0=http://127.0.0.1:18090/ 로 띄움, vplc plc-e2e 게시됨."""
+전제: tc 를 TC_DELIVERY_ALLOWED_URL_PREFIXES=http://127.0.0.1:18090/ 로 띄움, vplc plc-e2e 게시됨."""
 import json
 import os
 import re
