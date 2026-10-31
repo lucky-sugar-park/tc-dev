@@ -56,6 +56,7 @@ public class PlcConnectionStateStore {
 	/** 연결 이벤트 — 해제(SHUTDOWN·STOP)면 상태를 지우고, 아니면 이벤트를 남긴다 */
 	public void onEvent(PlcConnectorEvent event) {
 		String name = event.getPlcConnectorName();
+		PlcConnectionPushEvent.push(event, identity.id());
 		switch (event.getType()) {
 			case SHUTDOWN, STOP -> write(() -> redis.delete(KEY + name));
 			default -> {

@@ -1,0 +1,27 @@
+# tc 메뉴·앱 문구 (docs/frontend-design.md §5). 한 줄 = 코드<TAB>ko<TAB>en<TAB>ja<TAB>zh. 화면 키와 메뉴는 프론트 src/config.tsx 와 같다.
+i18n.tc.app.title	WOW-TC	WOW-TC	WOW-TC	WOW-TC
+i18n.tc.app.subtitle	PLC 게이트웨이	PLC gateway	PLCゲートウェイ	PLC网关
+i18n.menu.tc.home	홈	Home	ホーム	首页
+i18n.menu.tc.plc	PLC	PLC	PLC	PLC
+i18n.menu.tc.plc.connector	커넥터	Connectors	コネクタ	连接器
+i18n.menu.tc.plc.interface	인터페이스	Interfaces	インターフェース	接口
+i18n.menu.tc.plc.interface-test	인터페이스 시험	Interface test	インターフェーステスト	接口测试
+i18n.menu.tc.plc.monitor	연결 모니터	Connection monitor	接続モニター	连接监控
+i18n.menu.tc.delivery	전달	Delivery	配信	投递
+i18n.menu.tc.delivery.rule	전달 정의	Delivery rules	配信定義	投递规则
+i18n.menu.tc.delivery.webhook	WebHook	WebHooks	WebHook	WebHook
+i18n.menu.tc.delivery.dbconn	외부 DB 연결	External DB connections	外部DB接続	外部数据库连接
+i18n.menu.tc.ops	운영	Operations	運用	运维
+i18n.menu.tc.ops.audit	송수신 기록	Message log	送受信記録	收发记录
+i18n.menu.tc.ops.monitor	메시지 모니터	Message monitor	メッセージモニター	消息监控
+i18n.menu.tc.ops.schedule	스케줄 Job	Scheduled jobs	スケジュールジョブ	计划任务
+i18n.menu.tc.ops.confighist	설정 변경 이력	Configuration history	設定変更履歴	配置变更历史
+i18n.menu.tc.admin	관리	Administration	管理	管理
+i18n.menu.tc.admin.user	사용자	Users	ユーザー	用户
+i18n.menu.tc.admin.apiclient	API 클라이언트	API clients	APIクライアント	API客户端
+i18n.menu.tc.admin.option	운영 옵션	Operation options	運用オプション	运行选项
+i18n.menu.tc.admin.i18n	다국어	Translations	多言語	多语言
+i18n.menu.tc.admin.code	공통 코드	Common codes	共通コード	通用代码
+i18n.menu.tc.vplc	가상 PLC	Virtual PLC	仮想PLC	虚拟PLC
+i18n.menu.tc.vplc.list	가상 PLC 목록	Virtual PLCs	仮想PLC一覧	虚拟PLC列表
+i18n.menu.tc.vplc.memory	메모리 보기·제어	Memory & control	メモリ表示・制御	内存查看与控制

@@ -31,7 +31,9 @@ import lombok.extern.slf4j.Slf4j;
 		"com.wow.be.framework.dispatch",
 		"com.wow.be.framework.persist",
 		"com.wow.be.framework.security",
-		"com.wow.be.framework.session"
+		"com.wow.be.framework.session",
+		// SSE(/api/sse/connect·event/add) — 화면 셸(MES shared)의 계약, docs/frontend-design.md F2
+		"com.wow.be.framework.sse"
 	},
 	excludeFilters = @ComponentScan.Filter(
 		type = FilterType.REGEX,

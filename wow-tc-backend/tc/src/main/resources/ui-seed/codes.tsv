@@ -1,0 +1,15 @@
+# 공통 코드 씨앗 (docs/frontend-design.md §4.4). 한 줄 = 코드<TAB>상위(그룹이면 빈칸)<TAB>ko<TAB>en<TAB>ja<TAB>zh
+# 셸 설정 대화상자가 쓰는 그룹(mes-dev 와 같은 코드)
+common.code.ui.tab_retention		탭 보존 정책	Tab retention policy	タブ保持ポリシー	标签保留策略
+common.code.ui.tab_retention.keep	common.code.ui.tab_retention	보존	Keep	保持	保留
+common.code.ui.tab_retention.refresh	common.code.ui.tab_retention	다시 읽기	Refresh	再読み込み	刷新
+common.code.ui.tab_retention.reset	common.code.ui.tab_retention	새로	Reset	リセット	重置
+common.code.ui.tab_user_pref		탭 유지(사용자 선택)	Tab retention (user choice)	タブ保持（ユーザー選択）	标签页保留（用户选择）
+common.code.ui.tab_user_pref.follow	common.code.ui.tab_user_pref	시스템 기본 따름	Follow system default	システム既定に従う	遵循系统默认
+common.code.ui.tab_user_pref.light	common.code.ui.tab_user_pref	가볍게	Light	軽く	轻量
+common.code.ui.tab_user_pref.retain	common.code.ui.tab_user_pref	되도록 유지	Keep when possible	できるだけ保持	尽量保留
+# 다국어 종류(관리 화면 필터)
+common.code.i18n.kind		다국어 종류	Translation kind	多言語の種類	多语言类型
+common.code.i18n.kind.label	common.code.i18n.kind	화면 문구	Label	画面文言	界面文字
+common.code.i18n.kind.menu	common.code.i18n.kind	메뉴	Menu	メニュー	菜单
+common.code.i18n.kind.message	common.code.i18n.kind	메시지	Message	メッセージ	消息

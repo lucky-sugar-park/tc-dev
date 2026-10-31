@@ -16,6 +16,7 @@ import com.wow.be.tc.plc.protocol.PlcDriver;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PlcStatus;
+import com.wow.be.tc.plc.protocol.ProtocolDescriptor;
 import com.wow.be.tc.plc.protocol.PointType;
 import com.wow.be.tc.plc.protocol.ValueCodec;
 import com.wow.be.tc.plc.protocol.WireProtocol;
@@ -213,6 +214,29 @@ public class MelsecDriver implements PlcDriver {
 			}
 		}
 		return new PlcResult(Map.of(), PlcStatus.ok(PROTOCOL));
+	}
+
+	@Override
+	public ProtocolDescriptor describe() {
+		List<PointType> word = java.util.Arrays.stream(PointType.values()).filter(t -> t != PointType.BOOL).toList();
+		List<ProtocolDescriptor.Area> areas = new ArrayList<>();
+		for (MelsecDevice d : MelsecDevice.values()) {
+			areas.add(new ProtocolDescriptor.Area(d.name(), d.name() + (d.isBit() ? " (비트)" : " (워드)"), d.isBit(), d.isHexNumber(), false,
+				d.isBit() ? List.of(PointType.BOOL) : word));
+		}
+		return new ProtocolDescriptor(PROTOCOL, "MELSEC MC (3E·4E)", List.of(
+			new ProtocolDescriptor.Setting("frame", "ENUM", FRAME_3E_BINARY, null, null,
+				List.of(FRAME_3E_BINARY, FRAME_3E_ASCII, FRAME_4E_BINARY, FRAME_4E_ASCII), false,
+				"프레임 — 4E 는 요청 번호가 있어 시간 초과에도 연결을 유지한다(PLC 이더넷 모듈이 받으면 권장)"),
+			new ProtocolDescriptor.Setting("networkNo", "NUMBER", 0x00, 0, 0xFF, null, true, "네트워크 번호"),
+			new ProtocolDescriptor.Setting("pcNo", "NUMBER", 0xFF, 0, 0xFF, null, true, "PC 번호"),
+			new ProtocolDescriptor.Setting("ioNo", "NUMBER", 0x03FF, 0, 0xFFFF, null, true, "요구 I/O 번호"),
+			new ProtocolDescriptor.Setting("stationNo", "NUMBER", 0x00, 0, 0xFF, null, true, "요구 국 번호"),
+			new ProtocolDescriptor.Setting("monitoringTimer", "NUMBER", 0x0010, 0, 0xFFFF, null, true, "CPU 감시 타이머(250ms 단위)"),
+			new ProtocolDescriptor.Setting("maxWordsPerRequest", "NUMBER", MAX_WORDS, 1, MAX_WORDS, null, false, "요청 한 번의 최대 워드 수"),
+			new ProtocolDescriptor.Setting("healthCheckIntervalSec", "NUMBER", 30, 0, 3600, null, false,
+				"쉬는 연결 확인(루프백) 주기(초), 0 이면 끔")),
+			areas, List.of("D100", "M10", "X1F", "W1A", "ZR20000"), true);
 	}
 
 	@Override

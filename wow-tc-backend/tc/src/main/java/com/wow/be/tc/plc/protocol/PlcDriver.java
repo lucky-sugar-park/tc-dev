@@ -31,4 +31,7 @@ public interface PlcDriver {
 
 	/** TCP 연결 계층에 알려 줄 전송 규약(응답 자르기·요청 번호·연결 확인) — 정규화한 설정으로 만든다 */
 	WireProtocol wire(Map<String, Object> settings);
+
+	/** 화면용 설명 — 설정 항목·주소 영역·예 */
+	ProtocolDescriptor describe();
 }

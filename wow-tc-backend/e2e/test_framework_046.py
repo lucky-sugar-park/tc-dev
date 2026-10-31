@@ -42,9 +42,12 @@ s, b = call("GET", "/api/health")
 check("GET /api/health 인증 없이 200", s == 200 and b.get("status") in ("UP", "DEGRADED"), (s, b))
 s, b = call("POST", "/api/auth/login", {"id": "no-such-user-x", "password": "x"})
 check("POST /api/auth/login 은 공개(인증 없이 들어가 401 로그인 실패)", s == 401 and b.get("errorCode") == "ERR_401", (s, b))
-for method, path in (("POST", "/api/auth/signup"), ("GET", "/api/i18n/messages"), ("GET", "/api/auth/verify")):
+for method, path in (("POST", "/api/auth/signup"), ("GET", "/api/auth/verify")):
     s, b = call(method, path)
     check(f"{method} {path} 는 tc 에서 공개 아님(401)", s == 401, (s, b))
+# 화면 문구는 5단계(새 프론트)부터 tc 도 공개 — 로그인 화면이 먼저 부른다(docs/frontend-design.md §4.1)
+s, b = call("GET", "/api/i18n/messages")
+check("GET /api/i18n/messages 는 공개(로그인 화면용, 5단계부터)", s == 200 and isinstance(b, dict), s)
 
 # 검색 — conjType 이 없어도 되고(AND), 없는 항목은 400(예전에는 조건을 빼고 전체 행을 돌려줬다)
 s, b = call("POST", "/api/v1/plc-connector/search", {"conditions": [{"name": "name", "condType": "EQUALS", "value": "plc-e2e"}]}, TOKEN)

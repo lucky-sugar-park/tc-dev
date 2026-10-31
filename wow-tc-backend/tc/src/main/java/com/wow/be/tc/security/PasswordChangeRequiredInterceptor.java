@@ -30,7 +30,10 @@ public class PasswordChangeRequiredInterceptor implements HandlerInterceptor, We
 	public void addInterceptors(InterceptorRegistry registry) {
 		registry.addInterceptor(this)
 			.addPathPatterns("/api/**")
-			.excludePathPatterns("/api/auth/**", "/api/v1/me", "/api/v1/me/**");
+			.excludePathPatterns("/api/auth/**", "/api/v1/me", "/api/v1/me/**",
+				// 화면 셸(docs/frontend-design.md §4.1) — 비밀번호를 바꿔야 하는 사용자도 셸을 띄우고 바꿀 수 있어야 한다
+				"/api/me/permissions", "/api/me/profile", "/api/me/password", "/api/i18n/**", "/api/menus", "/api/ui-routes",
+				"/api/operation-options/effective", "/api/sse/**");
 	}
 
 	@Override

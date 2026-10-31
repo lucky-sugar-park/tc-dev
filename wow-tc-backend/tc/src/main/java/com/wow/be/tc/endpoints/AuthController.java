@@ -110,12 +110,12 @@ public class AuthController {
 		// 자바스크립트로 가져갈 수 있도록, 웹 브라우저에서 Authorization을 노출시킴
 		response.setHeader("Access-Control-Expose-Headers", "Authorization");
 
-		return new LoginResponse(true, suser.getUserInfo());
+		return new LoginResponse(true, suser.getJwTokenInfo().getAccessToken(), suser.getUserInfo());
 	}
 
 	@PostMapping("/reissue")
 	@PublicApi
-	public ResponseEntity<Void> reissueAccessToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	public ResponseEntity<LoginResponse> reissueAccessToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		log.debug("reissue AccessToken start");
 
 		String remoteAddress = extractRemoteAddress(request);
@@ -139,7 +139,8 @@ public class AuthController {
 		// 자바스크립트로 가져갈 수 있도록, 웹 브라우저에서 Authorization을 노출시킴
 		response.setHeader("Access-Control-Expose-Headers", "Authorization");
 
-		return ResponseEntity.ok().build();
+		// 화면(shared)은 본문의 accessToken 을 읽는다 — 헤더도 그대로
+		return ResponseEntity.ok(new LoginResponse(true, suser.getJwTokenInfo().getAccessToken(), suser.getUserInfo()));
 	}
 
 	@Operation(

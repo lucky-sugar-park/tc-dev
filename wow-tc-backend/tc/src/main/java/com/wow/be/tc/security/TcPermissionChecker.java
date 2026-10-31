@@ -103,6 +103,37 @@ public class TcPermissionChecker implements PermissionChecker {
 		return Decision.deny(resourceCode, action, name, "역할 " + roles + " 에 " + resourceCode + ":" + action + " 권한 없음");
 	}
 
+	/**
+	 * 역할들이 가진 자원 권한 — 화면이 메뉴·버튼을 가리는 데 쓴다({@code GET /api/me/permissions}, docs/frontend-design.md F3).
+	 * {@link #check} 와 같은 표다. 관리자는 {@code {"*": "ACRUDX"}}.
+	 */
+	public static Map<String, String> effective(Set<String> roles) {
+		if (roles.contains("ROLE_ADMIN")) {
+			return Map.of("*", ALL);
+		}
+		Map<String, String> out = new java.util.TreeMap<>();
+		if (roles.contains("ROLE_OPERATOR") || roles.contains("ROLE_MANAGER")) {
+			merge(out, OPERATOR);
+		}
+		if (roles.contains("ROLE_VIEWER") || roles.contains("ROLE_EMPLOYEE")) {
+			merge(out, VIEWER);
+		}
+		return out;
+	}
+
+	private static void merge(Map<String, String> out, Map<String, String> table) {
+		table.forEach((resource, actions) -> {
+			String have = out.getOrDefault(resource, "");
+			StringBuilder sb = new StringBuilder(have);
+			for (char c : actions.toCharArray()) {
+				if (have.indexOf(c) < 0) {
+					sb.append(c);
+				}
+			}
+			out.put(resource, sb.toString());
+		});
+	}
+
 	private static boolean allows(Map<String, String> table, String resource, char action) {
 		String actions = table.get(resource);
 		return actions != null && actions.indexOf(action) >= 0;

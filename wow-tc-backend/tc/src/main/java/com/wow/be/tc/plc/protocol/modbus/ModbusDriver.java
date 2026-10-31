@@ -18,6 +18,7 @@ import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PlcStatus;
 import com.wow.be.tc.plc.protocol.PointType;
+import com.wow.be.tc.plc.protocol.ProtocolDescriptor;
 import com.wow.be.tc.plc.protocol.ValueCodec;
 import com.wow.be.tc.plc.protocol.WireProtocol;
 import com.wow.be.tc.plc.protocol.modbus.ModbusAddress.Table;
@@ -283,6 +284,29 @@ public class ModbusDriver implements PlcDriver {
 			default -> "알 수 없는 예외";
 		};
 		return new PlcStatus(PROTOCOL, exception, String.format("Modbus 예외 코드 0x%02X (%s)", exception, why));
+	}
+
+	@Override
+	public ProtocolDescriptor describe() {
+		List<PointType> register = java.util.Arrays.stream(PointType.values()).filter(t -> t != PointType.BOOL).toList();
+		List<String> orders = List.of(ByteOrder.BIG.name(), ByteOrder.LITTLE.name());
+		return new ProtocolDescriptor(PROTOCOL, "Modbus TCP", List.of(
+			new ProtocolDescriptor.Setting("unitId", "NUMBER", 1, 0, 255, null, false, "단위 ID(게이트웨이 뒤 장치 번호)"),
+			new ProtocolDescriptor.Setting("byteOrder", "ENUM", "BIG", null, null, orders, false, "레지스터 안 바이트 순서"),
+			new ProtocolDescriptor.Setting("wordOrder", "ENUM", "BIG", null, null, orders, false,
+				"32·64비트 값의 워드 순서 — CDAB 장비는 LITTLE"),
+			new ProtocolDescriptor.Setting("addressBase", "ENUM", 1, null, null, List.of("0", "1"), false,
+				"HR100 같은 번호를 0 부터 셀지 1 부터 셀지(40001 표기는 늘 1부터)"),
+			new ProtocolDescriptor.Setting("maxRegistersPerRequest", "NUMBER", MAX_READ_REGISTERS, 1, MAX_READ_REGISTERS, null, false,
+				"요청 한 번의 최대 레지스터 수"),
+			new ProtocolDescriptor.Setting("maxCoilsPerRequest", "NUMBER", MAX_READ_COILS, 1, MAX_READ_COILS, null, false, "요청 한 번의 최대 코일 수"),
+			new ProtocolDescriptor.Setting("healthCheckIntervalSec", "NUMBER", 30, 0, 3600, null, false,
+				"쉬는 연결 확인(레지스터 읽기) 주기(초), 0 이면 끔")),
+			List.of(new ProtocolDescriptor.Area("HR", "보유 레지스터", false, false, false, register),
+				new ProtocolDescriptor.Area("IR", "입력 레지스터(읽기만)", false, false, true, register),
+				new ProtocolDescriptor.Area("CO", "코일", true, false, false, List.of(PointType.BOOL)),
+				new ProtocolDescriptor.Area("DI", "이산 입력(읽기만)", true, false, true, List.of(PointType.BOOL))),
+			List.of("HR1", "40001", "IR10", "300010", "CO1", "DI5"), false);
 	}
 
 	@Override

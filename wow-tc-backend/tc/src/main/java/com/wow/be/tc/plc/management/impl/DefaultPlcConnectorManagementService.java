@@ -41,6 +41,10 @@ import com.wow.be.tc.plc.protocol.PlcDriver;
 import com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter;
 import com.wow.be.tc.plc.connector.modbus.ModbusTcpAdapter;
 import com.wow.be.tc.plc.protocol.PlcDrivers;
+import com.wow.be.tc.plc.protocol.PlcOperation;
+import com.wow.be.tc.plc.protocol.PlcResult;
+import com.wow.be.tc.interfs.PointInfo;
+import com.wow.be.tc.plc.connector.ProgrammableControllerAdapter;
 import com.wow.be.tc.plc.protocol.WireProtocol;
 import com.wow.be.tc.plc.protocol.melsec.MelsecDriver;
 
@@ -358,6 +362,36 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		return testConnection(plcInfo);
 	}
 	
+	/** 시험 읽기 한 번에 읽는 점의 상한 */
+	static final int TEST_READ_MAX_POINTS=100;
+
+	@Override
+	public PlcResult testRead(String name, List<PointInfo> points) throws ToolControlException {
+		PlcConnectorInfo info=requirePlcConnectorEntityByName(name).info();
+		if(points==null || points.isEmpty()) {
+			throw new IllegalArgumentException("읽을 점(points)이 없습니다");
+		}
+		if(points.size()>TEST_READ_MAX_POINTS) {
+			throw new IllegalArgumentException("시험 읽기는 점 " + TEST_READ_MAX_POINTS + "개까지입니다: " + points.size());
+		}
+		PlcDriver driver=PlcDrivers.of(info.getProtocol());
+		java.util.Set<String> names=new java.util.HashSet<>();
+		for(PointInfo point: points) {
+			driver.validatePoint(point, com.wow.be.tc.Types.InterfaceType.READ);
+			if(!names.add(point.getName())) {
+				throw new IllegalArgumentException("점 이름이 겹칩니다: " + point.getName());
+			}
+		}
+		ProgrammableControllerAdapter adapter=PlcAdapterManager.getPlcManager().get(name);
+		if(adapter==null) {
+			throw ToolControlException.of(ToolControlException.PLC_UNAVAILABLE, "게시(publish)된 PLC 커넥터가 아닙니다: " + name);
+		}
+		String legacy=info.getMessageFrameFormat()!=null ? info.getMessageFrameFormat().name() : null;
+		Map<String, Object> settings=driver.normalizeSettings(info.getSettings(), legacy);
+		return adapter.execute(new PlcOperation(driver.protocol(), settings, PlcOperation.Kind.READ, points, Map.of(),
+			"test-read-" + java.util.UUID.randomUUID()));
+	}
+
 	/** 포트마다 동시에 연결하고 프로토콜의 연결 확인(MELSEC 루프백, Modbus 레지스터 읽기)까지(#12) — 예전에는 첫 포트에 TCP 연결만 봤다 */
 	private Map<String, String> testConnection(PlcConnectorInfo pInfo) {
 		log.debug("DefaultPlcConnectorManagementService.testConnection(PlcInfo pInfo) is called.");

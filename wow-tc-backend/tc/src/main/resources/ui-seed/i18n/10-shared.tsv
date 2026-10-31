@@ -1,0 +1,245 @@
+# 공용 셸(shared·framework·app) 화면 글 — 2026-10-21 다국어 일괄 적용. 한 줄 = 코드<TAB>ko<TAB>en<TAB>ja<TAB>zh
+# ── 앱 · 인증 · 로그인 ──
+i18n.app.factoryAHome	공장A 전용 홈 (override)	Factory A home (override)	工場A専用ホーム (override)	工厂A专用首页 (override)
+i18n.auth.allFieldsRequired	모든 필드를 입력해 주세요.	Please fill in all fields.	すべての項目を入力してください。	请填写所有字段。
+i18n.auth.backToLogin	로그인으로	Back to login	ログインへ戻る	返回登录
+i18n.auth.currentPassword	현재 비밀번호	Current password	現在のパスワード	当前密码
+i18n.auth.employeeNumber	사번	Employee number	社員番号	工号
+i18n.auth.employeeNumberHelp	회사에서 받은 사번 또는 거래처 담당자 번호(P-…)를 넣으세요. 이메일은 직원 기준정보에 등록된 것과 같아야 합니다.	Enter the employee number you received from your company, or your partner contact number (P-…). The email must match the one registered in the employee master data.	会社から付与された社員番号、または取引先担当者番号(P-…)を入力してください。メールアドレスは従業員マスタに登録されたものと同じである必要があります。	请输入公司发放的工号或合作伙伴联系人编号(P-…)。邮箱必须与员工主数据中登记的一致。
+i18n.auth.enterIdFirst	아이디를 먼저 입력해 주세요.	Enter your ID first.	先にIDを入力してください。	请先输入账号。
+i18n.auth.forbidden.contactAdmin	관리자에게 문의하세요.	Contact your administrator.	管理者に問い合わせてください。	请联系管理员。
+i18n.auth.forbidden.needed	필요한 권한	Required permission	必要な権限	所需权限
+i18n.auth.forbidden.screenDesc	이 화면을 쓰려면 아래 권한이 필요합니다.	The permission below is required to use this screen.	この画面を使うには、以下の権限が必要です。	使用此页面需要以下权限。
+i18n.auth.forbidden.screenHint	관리자가 권한을 주면 새로고침 뒤에 열립니다.	Once the administrator grants the permission, the screen opens after you refresh.	管理者が権限を付与すると、更新後に開けるようになります。	管理员授予权限后，刷新即可打开。
+i18n.auth.forgotPassword	비밀번호를 잊으셨나요?	Forgot your password?	パスワードをお忘れですか？	忘记密码？
+i18n.auth.forgotPasswordHint	아이디를 입력하면 등록된 이메일로 안내를 보냅니다.	Enter your ID and we will send instructions to your registered email.	IDを入力すると、登録済みのメールアドレスに案内を送ります。	输入账号后，我们会向已登记的邮箱发送说明。
+i18n.auth.forgotPasswordTitle	비밀번호를 잊으셨나요?	Forgot your password?	パスワードをお忘れですか？	忘记密码？
+i18n.auth.goLogin	로그인 화면으로	Go to login	ログイン画面へ	前往登录页面
+i18n.auth.loginFailed	로그인에 실패했습니다. 다시 시도해 주세요.	Login failed. Please try again.	ログインに失敗しました。もう一度お試しください。	登录失败，请重试。
+i18n.auth.newPassword	새 비밀번호	New password	新しいパスワード	新密码
+i18n.auth.newPasswordConfirm	새 비밀번호 확인	Confirm new password	新しいパスワード(確認)	确认新密码
+i18n.auth.passwordChangeFailed	비밀번호 변경에 실패했습니다. 다시 시도해 주세요.	Failed to change the password. Please try again.	パスワードの変更に失敗しました。もう一度お試しください。	修改密码失败，请重试。
+i18n.auth.passwordChangeForced	임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔야 다른 화면을 쓸 수 있습니다.	You signed in with a temporary password. Change it to a new password to use other screens.	仮パスワードでログインしました。新しいパスワードに変更しないと他の画面は使えません。	您使用临时密码登录。请先修改为新密码，才能使用其他页面。
+i18n.auth.passwordMismatch	비밀번호가 일치하지 않습니다.	Passwords do not match.	パスワードが一致しません。	两次输入的密码不一致。
+i18n.auth.passwordResetDone	비밀번호를 바꿨습니다. 로그인하세요.	Your password has been changed. Please log in.	パスワードを変更しました。ログインしてください。	密码已修改，请登录。
+i18n.auth.passwordResetDoneTitle	비밀번호를 바꿨습니다	Password changed	パスワードを変更しました	密码已修改
+i18n.auth.passwordResetSent	등록된 이메일이 있으면 안내를 보냈습니다. 30분 안에 링크를 여세요.	If the email is registered, we have sent instructions. Open the link within 30 minutes.	登録済みのメールアドレスがあれば案内を送りました。30分以内にリンクを開いてください。	如果该邮箱已登记，我们已发送说明。请在30分钟内打开链接。
+i18n.auth.passwordResetSubmit	비밀번호 바꾸기	Change password	パスワードを変更	修改密码
+i18n.auth.passwordResetTitle	새 비밀번호 정하기	Set a new password	新しいパスワードを設定	设置新密码
+i18n.auth.permissionsUnavailable	권한을 불러오지 못했습니다	Could not load permissions	権限を読み込めませんでした	无法加载权限
+i18n.auth.permissionsUnavailableDesc	서버와 연결이 잠시 끊겼을 수 있습니다.	The connection to the server may have been interrupted for a moment.	サーバーとの接続が一時的に切れた可能性があります。	与服务器的连接可能暂时中断。
+i18n.auth.resendDone	인증 메일을 재발송했습니다. 메일함을 확인해 주세요.	The verification email has been resent. Please check your inbox.	確認メールを再送しました。受信トレイをご確認ください。	验证邮件已重新发送，请查收邮箱。
+i18n.auth.resendFailed	인증 메일 재발송에 실패했습니다. 잠시 후 다시 시도해 주세요.	Failed to resend the verification email. Please try again later.	確認メールの再送に失敗しました。しばらくしてからもう一度お試しください。	重新发送验证邮件失败，请稍后重试。
+i18n.auth.sendResetLink	안내 보내기	Send instructions	案内を送信	发送说明
+i18n.auth.sentBody	로 인증 메일을 보냈습니다. 메일의 “이메일 인증하기” 버튼을 눌러 가입을 완료한 뒤 로그인하세요.	has been sent a verification email. Press the "Verify email" button in the email to complete sign-up, then log in.	に確認メールを送信しました。メール内の「メール認証」ボタンを押して登録を完了し、ログインしてください。	已发送验证邮件。请点击邮件中的“验证邮箱”按钮完成注册后再登录。
+i18n.auth.sentFailBody1	계정은 생성되었으나	The account was created, but sending the verification email failed for the address	アカウントは作成されましたが、	账号已创建，但无法向
+i18n.auth.sentFailBody2	로 인증 메일을 보내지 못했습니다. 잠시 후 “인증 메일 재발송”을 눌러 다시 시도하거나, 문제가 계속되면 관리자에게 문의하세요.	— please try again shortly with "Resend verification email", or contact your administrator if the problem continues.	に確認メールを送信できませんでした。しばらくしてから「確認メールを再送」を押してもう一度お試しください。問題が続く場合は管理者に問い合わせてください。	发送验证邮件。请稍后点击“重新发送验证邮件”重试；如果问题持续，请联系管理员。
+i18n.auth.sentFailTitle	인증 메일 발송에 실패했습니다	Failed to send the verification email	確認メールの送信に失敗しました	验证邮件发送失败
+i18n.auth.signupFailed	회원가입에 실패했습니다. 다시 시도해 주세요.	Sign-up failed. Please try again.	会員登録に失敗しました。もう一度お試しください。	注册失败，请重试。
+i18n.auth.unverified	이메일 인증이 완료되지 않았습니다. 가입 시 받은 메일의 확인 버튼을 눌러주세요.	Email verification is not complete. Press the confirm button in the email you received when signing up.	メール認証が完了していません。登録時に届いたメールの確認ボタンを押してください。	邮箱验证尚未完成。请点击注册时收到的邮件中的确认按钮。
+# ── 공용 낱말 (i18n.common.*) ──
+i18n.common.back	뒤로	Back	戻る	返回
+i18n.common.cancelDo	취소 처리	Process cancellation	取消処理	取消处理
+i18n.common.cancelReason	취소 사유	Cancel reason	取消理由	取消原因
+i18n.common.cancelRequest	요청 취소	Cancel request	申請を取り消す	取消申请
+i18n.common.change	변경	Change	変更	变更
+i18n.common.clearKeyword	검색어 지우기	Clear search	検索語をクリア	清除搜索词
+i18n.common.confirmTitle	확인	Confirm	確認	确认
+i18n.common.copy	복사	Copy	コピー	复制
+i18n.common.detail	상세 내용	Details	詳細	详细内容
+i18n.common.download	다운로드	Download	ダウンロード	下载
+i18n.common.forbiddenDefault	권한이 없어 요청을 수행할 수 없습니다.	You do not have permission to perform this request.	権限がないためこのリクエストを実行できません。	没有权限，无法执行此请求。
+i18n.common.loading	불러오는 중…	Loading…	読み込み中…	加载中…
+i18n.common.maximize	본문 가득	Maximize	最大化	最大化
+i18n.common.noMoreActions	추가 메뉴 없음	No more actions	追加メニューなし	没有更多菜单
+i18n.common.noOptions	후보가 없습니다	No candidates	候補がありません	没有候选项
+i18n.common.no_state_history	상태 이력이 없습니다.	No status history.	状態履歴がありません。	没有状态历史。
+i18n.common.none	선택 안 함	Not selected	選択なし	未选择
+i18n.common.opinion_reason	의견/사유	Comment / reason	意見/理由	意见/原因
+i18n.common.processed_at	처리일시	Processed at	処理日時	处理时间
+i18n.common.processed_by	처리자	Processed by	処理者	处理人
+i18n.common.register	등록	Register	登録	登记
+i18n.common.requestFailed	요청 처리 중 오류가 발생했습니다.	An error occurred while processing the request.	リクエストの処理中にエラーが発生しました。	处理请求时发生错误。
+i18n.common.reset	초기화	Reset	リセット	重置
+i18n.common.restore	이전 크기로	Restore size	元のサイズに戻す	还原大小
+i18n.common.saved	저장되었습니다.	Saved.	保存しました。	已保存。
+i18n.common.search	검색	Search	検索	搜索
+i18n.common.seqNo	순번	No.	番号	序号
+i18n.common.splitCollapse	왼쪽 목록 접기	Collapse left list	左の一覧を折りたたむ	收起左侧列表
+i18n.common.splitExpand	왼쪽 목록 펼치기	Expand left list	左の一覧を展開	展开左侧列表
+i18n.common.splitResize	목록 폭 조절 — 끌거나 ←/→, 두 번 누르면 기본 폭	Resize list width — drag, press ←/→, or double-click for the default width	一覧の幅を調整 — ドラッグまたは←/→、ダブルクリックで既定の幅	调整列表宽度 — 拖动或按 ←/→，双击恢复默认宽度
+i18n.common.state	상태	Status	状態	状态
+i18n.common.state_history	상태 이력	Status history	状態履歴	状态历史
+i18n.common.state_history_load_failed	상태 이력을 불러오지 못했습니다	Failed to load the status history	状態履歴を読み込めませんでした	无法加载状态历史
+i18n.common.toList	목록으로	Back to list	一覧へ	返回列表
+i18n.common.transition	변경	Change	変更	变更
+i18n.common.unifiedSearch	통합검색	Search all	統合検索	综合搜索
+i18n.common.unsaved.cancel	취소	Cancel	キャンセル	取消
+i18n.common.unsaved.discard	저장 안 함	Don't save	保存しない	不保存
+i18n.common.unsaved.message	저장하지 않은 변경 사항이 있습니다. 저장하시겠습니까?	You have unsaved changes. Do you want to save?	保存されていない変更があります。保存しますか？	有尚未保存的更改。是否保存？
+i18n.common.unsaved.save	저장	Save	保存	保存
+i18n.common.unsaved.title	저장하지 않은 변경	Unsaved changes	未保存の変更	未保存的更改
+i18n.common.unused	미사용	Unused	未使用	未使用
+i18n.common.used	사용	In use	使用中	使用中
+# ── 설명 · 엑셀 · 필터 바 · 머리글 · 홈 ──
+i18n.description.open	설명 열기	Open description	説明を開く	打开说明
+i18n.description.placeholder	설명을 입력하세요	Enter a description	説明を入力してください	请输入说明
+i18n.description.title	설명	Description	説明	说明
+i18n.description.view	설명 보기	View description	説明を表示	查看说明
+i18n.description.viewEdit	설명 보기/수정	View / edit description	説明を表示/編集	查看/编辑说明
+i18n.excel.buildFailed	엑셀 파일을 만들지 못했습니다.	Could not create the Excel file.	Excelファイルを作成できませんでした。	无法生成 Excel 文件。
+i18n.excel.cellLimitCell	엑셀 한 칸에는 {max}자까지 넣을 수 있습니다(시트 '{sheet}' {row}번째 행 '{col}' 칸: {len}자).	A single Excel cell holds up to {max} characters (sheet '{sheet}', row {row}, column '{col}': {len} characters).	Excelの1セルには{max}文字まで入力できます(シート'{sheet}' {row}行目 '{col}' 列: {len}文字)。	Excel 单元格最多可容纳 {max} 个字符(工作表“{sheet}”第 {row} 行“{col}”列：{len} 个字符)。
+i18n.excel.cellLimitHeader	엑셀 한 칸에는 {max}자까지 넣을 수 있습니다(시트 '{sheet}' 머리글: {len}자).	A single Excel cell holds up to {max} characters (sheet '{sheet}', header: {len} characters).	Excelの1セルには{max}文字まで入力できます(シート'{sheet}' ヘッダー: {len}文字)。	Excel 单元格最多可容纳 {max} 个字符(工作表“{sheet}”表头：{len} 个字符)。
+i18n.excel.defaultFileName	엑셀	Excel	Excel	Excel
+i18n.excel.lovNotFound	{column} '{value}' 을(를) 찾을 수 없습니다 — 지금 화면 언어의 이름이나 코드로 적어 주세요	{column}: '{value}' was not found — enter the name or code in the current screen language	{column} '{value}' が見つかりません — 現在の画面言語の名称またはコードで入力してください	{column}：找不到“{value}”— 请使用当前页面语言的名称或代码填写
+i18n.excel.lovNotLoaded	{column} 공통코드 목록을 아직 읽지 못했습니다 — 잠시 뒤 다시 올려 주세요	{column}: the common code list has not been loaded yet — please upload again shortly	{column} 共通コードの一覧をまだ読み込めていません — しばらくしてからもう一度アップロードしてください	{column}：尚未读取公共代码列表 — 请稍后重新上传
+i18n.excel.noSheetToExport	내보낼 시트가 없습니다.	There are no sheets to export.	出力するシートがありません。	没有可导出的工作表。
+i18n.excel.sheetColumnLimit	엑셀 한 시트에는 {max}칸까지 넣을 수 있습니다(시트 '{sheet}': {count}칸).	A single Excel sheet holds up to {max} columns (sheet '{sheet}': {count} columns).	Excelの1シートには{max}列まで入力できます(シート'{sheet}': {count}列)。	Excel 单个工作表最多可容纳 {max} 列(工作表“{sheet}”：{count} 列)。
+i18n.excel.sheetNotFoundNamed	엑셀 파일에 '{sheet}' 시트가 없습니다.	The Excel file has no sheet named '{sheet}'.	Excelファイルに'{sheet}'シートがありません。	Excel 文件中没有名为“{sheet}”的工作表。
+i18n.excel.sheetRowLimit	엑셀 한 시트에는 {max}행까지 넣을 수 있습니다(시트 '{sheet}': {count}행). 조건을 좁혀 나눠 내려받으세요.	A single Excel sheet holds up to {max} rows (sheet '{sheet}': {count} rows). Narrow the conditions and download in parts.	Excelの1シートには{max}行まで入力できます(シート'{sheet}': {count}行)。条件を絞って分けてダウンロードしてください。	Excel 单个工作表最多可容纳 {max} 行(工作表“{sheet}”：{count} 行)。请缩小条件分批下载。
+i18n.filter.collapse	검색 조건 접기	Collapse search conditions	検索条件を折りたたむ	收起搜索条件
+i18n.filter.expand	검색 조건 펼치기	Expand search conditions	検索条件を展開	展开搜索条件
+i18n.filter.hiddenHasValue	{label} — 접힌 칸에 값이 있습니다	{label} — a collapsed field has a value	{label} — 折りたたまれた項目に値があります	{label} — 已收起的条件中有值
+i18n.filter.moreFields	추가 검색 조건	More search conditions	追加の検索条件	更多搜索条件
+i18n.filter.search	검색	Search	検索	搜索
+i18n.framework.loading	로딩…	Loading…	読み込み中…	加载中…
+i18n.framework.noConfig	구성 정보를 찾을 수 없습니다 (AppConfigProvider 필요).	Configuration not found (AppConfigProvider required).	構成情報が見つかりません(AppConfigProviderが必要です)。	找不到配置信息(需要 AppConfigProvider)。
+i18n.framework.notDeployed	미배포 화면: {key} (이 빌드에 해당 화면이 없습니다)	Screen not deployed: {key} (this build does not include the screen)	未配備の画面: {key} (このビルドには該当画面がありません)	未部署的页面：{key}(此版本中没有该页面)
+i18n.framework.unregistered	미등록/미배포 화면: {path}	Unregistered / undeployed screen: {path}	未登録/未配備の画面: {path}	未注册/未部署的页面：{path}
+i18n.header.build	화면 빌드	Screen build	画面ビルド	页面构建
+i18n.header.buildTooltip	화면 빌드 — 최신 배포본인지 확인용	Screen build — to check that this is the latest deployment	画面ビルド — 最新のデプロイか確認するためのものです	页面构建 — 用于确认是否为最新部署版本
+i18n.home.go	홈	Home	ホーム	首页
+# ── 표준 액션 · 권한 동작 · 조건 요약 공용 낱말 ──
+i18n.action.excelUpload	엑셀 업로드	Excel upload	Excelアップロード	Excel 上传
+i18n.action.print	인쇄	Print	印刷	打印
+i18n.permission.action.A	접근	Access	アクセス	访问
+i18n.permission.action.C	만들기	Create	作成	新建
+i18n.permission.action.D	삭제	Delete	削除	删除
+i18n.permission.action.R	조회	View	参照	查看
+i18n.permission.action.U	수정	Edit	編集	修改
+i18n.permission.action.X	허용	Allow	許可	允许
+i18n.viewSummary.point.daysAgo	{n}일 전	{n} days ago	{n}日前	{n}天前
+i18n.viewSummary.point.now	지금	Now	現在	现在
+i18n.viewSummary.point.startOfMonth	이번 달 1일	1st of this month	今月1日	本月1日
+i18n.viewSummary.point.startOfToday	오늘 0시	Today 00:00	今日0時	今天0点
+i18n.viewSummary.point.startOfWeek	이번 주 시작	Start of this week	今週の開始	本周开始
+i18n.viewSummary.rel.last30d	최근 30일	Last 30 days	直近30日	最近30天
+i18n.viewSummary.rel.last7d	최근 7일	Last 7 days	直近7日	最近7天
+i18n.viewSummary.rel.lastMonth	지난달	Last month	先月	上个月
+i18n.viewSummary.rel.thisMonth	이번 달	This month	今月	本月
+i18n.viewSummary.rel.thisWeek	이번 주	This week	今週	本周
+i18n.viewSummary.rel.today	오늘	Today	今日	今天
+i18n.viewSummary.rel.yesterday	어제	Yesterday	昨日	昨天
+# ── 인터락 ──
+i18n.interlock.decision.blocked	차단됨 — 진행할 수 없습니다.	Blocked — cannot proceed.	ブロックされました — 続行できません。	已拦截 — 无法继续。
+i18n.interlock.decision.clean	인터락 문제가 없습니다.	No interlock issues.	インターロックの問題はありません。	没有互锁问题。
+i18n.interlock.decision.override_proceed	승인 진행	Approve and proceed	承認して続行	批准并继续
+i18n.interlock.decision.override_reason	승인 사유	Approval reason	承認理由	批准原因
+i18n.interlock.decision.proceed_anyway	계속	Proceed	続行	继续
+i18n.interlock.decision.requires_override	승인(오버라이드)이 필요합니다.	Approval (override) is required.	承認(オーバーライド)が必要です。	需要批准(覆盖)。
+i18n.interlock.decision.title	인터락 판정	Interlock decision	インターロック判定	互锁判定
+i18n.interlock.decision.warning	경고 — 계속 진행할 수 있습니다.	Warning — you can continue.	警告 — 続行できます。	警告 — 可以继续。
+i18n.interlock.fifo.inbound_date	입고	Received	入庫	入库
+i18n.interlock.fifo.loading	더 오래된 LOT 조회 중…	Looking up older LOTs…	古いLOTを検索中…	正在查询更早的 LOT…
+i18n.interlock.fifo.location	위치	Location	場所	位置
+i18n.interlock.fifo.older_lots_title	더 오래된 LOT (선입선출)	Older LOTs (FIFO)	古いLOT (先入先出)	更早的 LOT(先进先出)
+i18n.interlock.rule.col.kind	유형	Type	種別	类型
+i18n.interlock.rule.col.material	품목	Item	品目	物料
+i18n.interlock.rule.col.materialCode	품목코드	Item code	品番	物料编码
+i18n.interlock.rule.col.materialName	품목이름	Item name	品名	物料名称
+i18n.interlock.rule.col.no	번호	No.	番号	序号
+i18n.interlock.rule.col.spec	스펙	Spec	仕様	规格
+i18n.interlock.rule.col.unit	단위	Unit	単位	单位
+i18n.interlock.rule.createTitle	인터락 규칙 등록	Register interlock rule	インターロックルールの登録	新增互锁规则
+i18n.interlock.rule.deleteConfirm	'{code}' 품목의 인터락 규칙을 모두 삭제할까요?	Delete all interlock rules for item '{code}'?	品目'{code}'のインターロックルールをすべて削除しますか？	要删除物料“{code}”的所有互锁规则吗？
+i18n.interlock.rule.editTitle	인터락 규칙 수정	Edit interlock rule	インターロックルールの編集	修改互锁规则
+i18n.interlock.rule.element	인터락 요소	Interlock element	インターロック要素	互锁要素
+i18n.interlock.rule.err.element	인터락 요소를 선택하세요.	Select an interlock element.	インターロック要素を選択してください。	请选择互锁要素。
+i18n.interlock.rule.err.level	레벨을 선택하세요.	Select a level.	レベルを選択してください。	请选择级别。
+i18n.interlock.rule.err.material	품목을 선택하세요.	Select an item.	品目を選択してください。	请选择物料。
+i18n.interlock.rule.inherit	상속	Inherited	継承	继承
+i18n.interlock.rule.level	레벨	Level	レベル	级别
+i18n.interlock.rule.noRows	등록된 인터락 규칙이 없습니다.	No interlock rules registered.	登録されたインターロックルールがありません。	没有已登记的互锁规则。
+i18n.interlock.rule.searchPlaceholder	통합검색(품목코드·품목이름)	Search all (item code, item name)	統合検索(品番・品名)	综合搜索(物料编码·物料名称)
+i18n.interlock.rule.view.query	검색어: {q}	Search: {q}	検索語: {q}	搜索词：{q}
+# ── 목록 읽기 실패 · 품목 재고 · 메뉴 · 이동 사유 · 알림 창 ──
+i18n.loadFailure.title	목록을 불러오지 못했습니다	Could not load the list	一覧を読み込めませんでした	无法加载列表
+i18n.materialStock.available	입고(가용)	Received (available)	入庫(利用可能)	入库(可用)
+i18n.materialStock.code	품목코드	Item code	品番	物料编码
+i18n.materialStock.customer	고객사	Customer	顧客	客户
+i18n.materialStock.includeProvisional	가입고 포함	Include provisional receipts	仮入庫を含む	含暂收入库
+i18n.materialStock.kind	유형	Type	種別	类型
+i18n.materialStock.location	로케이션	Location	ロケーション	库位
+i18n.materialStock.lot	LOT	LOT	LOT	LOT
+i18n.materialStock.name	품명	Item name	品名	物料名称
+i18n.materialStock.noItem	품목 정보를 찾을 수 없습니다.	Item information not found.	品目情報が見つかりません。	找不到物料信息。
+i18n.materialStock.noStock	재고가 없습니다.	No stock.	在庫がありません。	没有库存。
+i18n.materialStock.provisional	가입고	Provisional receipt	仮入庫	暂收入库
+i18n.materialStock.qty	수량	Quantity	数量	数量
+i18n.materialStock.state	상태	Status	状態	状态
+i18n.materialStock.status	상태	Status	状態	状态
+i18n.materialStock.stock	재고 현황	Stock status	在庫状況	库存现状
+i18n.materialStock.title	품목 상세 · 재고 현황	Item details · Stock status	品目詳細 · 在庫状況	物料详情 · 库存现状
+i18n.materialStock.total	총재고	Total stock	総在庫	总库存
+i18n.materialStock.unit	단위	Unit	単位	单位
+i18n.materialStock.unknown	알 수 없음	Unknown	不明	未知
+i18n.materialStock.warehouse	창고	Warehouse	倉庫	仓库
+i18n.menu.resizeWidth	메뉴 폭 조절	Resize menu width	メニュー幅の調整	调整菜单宽度
+i18n.menu.scrollDown	아래로 스크롤	Scroll down	下へスクロール	向下滚动
+i18n.menu.scrollUp	위로 스크롤	Scroll up	上へスクロール	向上滚动
+i18n.moveReason.none	선택 안 함	Not selected	選択なし	未选择
+i18n.moveReason.otherHelp	기타는 비고에 까닭을 적으세요.	Enter the reason for 'Other' in the remark.	「その他」は備考に理由を記入してください。	选择“其他”时，请在备注中填写原因。
+i18n.moveReason.reason	이동 사유	Move reason	移動理由	移动原因
+i18n.moveReason.remark	비고	Remark	備考	备注
+i18n.notification.bell.connected	알림 (실시간 연결됨)	Notifications (live connection)	通知(リアルタイム接続中)	通知(实时连接中)
+i18n.notification.bell.disconnected	알림 (연결 끊김)	Notifications (disconnected)	通知(切断)	通知(连接已断开)
+i18n.notification.bell.empty	알림이 없습니다	No notifications	通知はありません	没有通知
+i18n.notification.popup.close	알림 닫기	Close notification	通知を閉じる	关闭通知
+# ── 운영옵션 화면 · 포장 종류 · PWA · 검색 · 시스템 띠 ──
+i18n.oper.option.empty	표시할 옵션이 없습니다.	No options to display.	表示するオプションがありません。	没有可显示的选项。
+i18n.oper.option.noChoices	선택할 값이 없습니다	No values to select	選択できる値がありません	没有可选的值
+i18n.oper.option.noneSelected	선택 안 함	Not selected	選択なし	未选择
+i18n.oper.option.reset	기본값	Default	既定値	默认值
+i18n.oper.option.resetFailed	초기화 중 오류가 발생했습니다.	An error occurred while resetting.	リセット中にエラーが発生しました。	重置时发生错误。
+i18n.oper.option.saveFailed	저장 중 오류가 발생했습니다.	An error occurred while saving.	保存中にエラーが発生しました。	保存时发生错误。
+i18n.oper.option.selectProvisionalWarehouse	가입고 창고를 먼저 선택하세요	Select the provisional receiving warehouse first	先に仮入庫倉庫を選択してください	请先选择暂收仓库
+i18n.package.kind.fallback	포장	Package	荷姿	包装
+i18n.package.kind.none	종류 없음	No type	種類なし	无类型
+i18n.pwa.later	나중에	Later	後で	稍后
+i18n.pwa.newVersion	새 버전이 배포됐습니다 — 새로고침해야 최신 화면이 적용됩니다.	A new version has been deployed — refresh to apply the latest screens.	新しいバージョンが配備されました — 更新すると最新の画面が適用されます。	新版本已部署 — 刷新后才会应用最新页面。
+i18n.pwa.newVersionWithBuild	새 버전이 배포됐습니다 — 새로고침해야 최신 화면이 적용됩니다 (현재 {build}).	A new version has been deployed — refresh to apply the latest screens (current {build}).	新しいバージョンが配備されました — 更新すると最新の画面が適用されます (現在 {build})。	新版本已部署 — 刷新后才会应用最新页面 (当前 {build})。
+i18n.pwa.noticeLabel	새 버전 알림	New version notice	新バージョンのお知らせ	新版本通知
+i18n.search.autocomplete.more	더 있습니다 — 글자를 더 넣어 좁히세요	There are more — type more characters to narrow down	他にもあります — 文字を追加して絞り込んでください	还有更多结果 — 请输入更多字符以缩小范围
+i18n.system.connectionLost	서버와 실시간 연결이 끊겼습니다 — 다시 연결하는 중입니다. 새 알림과 자동 갱신이 늦을 수 있습니다.	The real-time connection to the server was lost — reconnecting. New notifications and auto-refresh may be delayed.	サーバーとのリアルタイム接続が切れました — 再接続しています。新しい通知や自動更新が遅れることがあります。	与服务器的实时连接已断开 — 正在重新连接。新通知和自动刷新可能会延迟。
+i18n.system.noticeArea	시스템 알림	System notices	システム通知	系统通知
+# ── 설정 창 · 스펙 편집 · 스튜디오 크롬 · 탭 목록 ──
+i18n.settings.preset.a	탭 상단 · 탭이 위	Tabs on top · tabs first	タブ上部 · タブが上	标签在顶部 · 标签在上
+i18n.settings.preset.a.desc	탭으로 화면을 고르면 그 아래 해당 화면 Command Bar.	Choose a screen with the tabs; the Command Bar for that screen appears below them.	タブで画面を選ぶと、その下に該当画面のCommand Barが表示されます。	通过标签选择页面后，其下方显示该页面的 Command Bar。
+i18n.settings.preset.b	탭 상단 · Command Bar가 위	Tabs on top · Command Bar first	タブ上部 · Command Barが上	标签在顶部 · Command Bar 在上
+i18n.settings.preset.b.desc	제목·경로가 헤더 바로 아래 고정, 탭은 그 아래.	Title and path are fixed right below the header; the tabs come below that.	タイトルとパスはヘッダーの直下に固定され、タブはその下に表示されます。	标题和路径固定在页头下方，标签位于其下。
+i18n.settings.preset.c	탭 하단	Tabs at bottom	タブ下部	标签在底部
+i18n.settings.preset.c.desc	탭을 그리드 아래 맨 하단에 배치.	Places the tabs at the very bottom, below the grid.	タブをグリッドの下、最下部に配置します。	将标签放在表格下方的最底部。
+i18n.settings.preset.default	기본	Default	既定	默认
+i18n.settings.preset.none	탭 없음	No tabs	タブなし	无标签
+i18n.settings.preset.none.desc	화면 탭 미사용. Command Bar만 상단에.	Screen tabs are not used. Only the Command Bar is shown at the top.	画面タブを使いません。Command Barのみ上部に表示します。	不使用页面标签。仅在顶部显示 Command Bar。
+i18n.settings.preset.note	Command Bar(경로·제목·액션)와 Filter Bar는 항상 상단 고정입니다. 프리셋은 탭의 유무·위치·순서만 바꿉니다.	The Command Bar (path, title, actions) and the Filter Bar are always fixed at the top. A preset only changes whether tabs are shown, and their position and order.	Command Bar(パス・タイトル・アクション)とFilter Barは常に上部に固定されます。プリセットはタブの有無・位置・順序のみ変更します。	Command Bar(路径·标题·操作)和 Filter Bar 始终固定在顶部。预设只改变标签的有无、位置和顺序。
+i18n.settings.preset.preview	미리보기	Preview	プレビュー	预览
+i18n.settings.preview.crumbHome	홈	Home	ホーム	首页
+i18n.settings.preview.crumbPurchase	구매	Purchasing	購買	采购
+i18n.settings.preview.tabPo	발주관리	Purchase orders	発注管理	采购订单管理
+i18n.settings.preview.tabPr	구매요청	Purchase requests	購買依頼	采购申请
+i18n.settings.preview.tabSupplier	공급사	Suppliers	サプライヤー	供应商
+i18n.settings.system.loadFailed	운영옵션 조회 중 오류가 발생했습니다.	An error occurred while loading the operation options.	運用オプションの取得中にエラーが発生しました。	读取运行选项时发生错误。
+i18n.settings.system.loading	불러오는 중...	Loading...	読み込み中...	加载中...
+i18n.settings.tab.advanced	고급	Advanced	詳細設定	高级
+i18n.spec.editor.addRow	행 추가	Add row	行を追加	添加行
+i18n.spec.editor.desc	설명	Description	説明	说明
+i18n.spec.editor.key	항목(key)	Item (key)	項目(key)	项目(key)
+i18n.spec.editor.title	상세 스펙 편집	Edit detailed spec	詳細スペックの編集	编辑详细规格
+i18n.spec.editor.value	값(value)	Value	値(value)	值(value)
+i18n.studio.chrome.exitFullscreen	원래대로	Exit full view	元に戻す	还原
+i18n.studio.chrome.fullscreen	전체보기	Full view	全体表示	全屏查看
+i18n.studio.chrome.language	다국어	Language	言語	语言
+i18n.studio.chrome.logoutConfirm	로그아웃하시겠습니까?	Do you want to log out?	ログアウトしますか？	确定要退出登录吗？
+i18n.tabs.openList	열린 탭 목록	Open tabs	開いているタブ一覧	已打开标签列表
+i18n.tabs.openList.count	열린 탭 목록 ({n})	Open tabs ({n})	開いているタブ一覧 ({n})	已打开标签列表 ({n})

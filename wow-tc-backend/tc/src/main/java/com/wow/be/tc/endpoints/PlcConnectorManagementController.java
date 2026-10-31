@@ -1,6 +1,7 @@
 package com.wow.be.tc.endpoints;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,10 @@ import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PageResponse;
 import com.wow.be.tc.ToolControlException;
+import com.wow.be.tc.interfs.PointInfo;
+import com.wow.be.tc.plc.protocol.PlcDrivers;
+import com.wow.be.tc.plc.protocol.PlcResult;
+import com.wow.be.tc.plc.protocol.ProtocolDescriptor;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistInfo;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistoryService;
 import com.wow.be.tc.plc.management.PlcConnectionState;
@@ -223,6 +228,38 @@ public class PlcConnectorManagementController {
 		return plcConnectorManagementService.testConnectionByIpAddress(ip, port);
 	}
 	
+	/**
+	 * 인터페이스 없이 점을 바로 읽어 본다 — 커넥터 화면의 시험 읽기(docs/plc-protocol-design.md §16). 게시된 커넥터만.
+	 * 본문 {@code { "points": [ { "name", "address", "type", "count", "length" } ] }} → {@code { "values", "plcStatus", "elapsedMs" }}.
+	 * PLC 가 오류로 답하면 200 + plcStatus(code ≠ 0).
+	 */
+	@Requires(action = 'X')
+	@RequestMapping(value="/test-read/byName/{plcConnectorName}", method=RequestMethod.POST)
+	@ResponseStatus(value=HttpStatus.OK)
+	@ResponseBody
+	public Map<String, Object> testRead(@PathVariable("plcConnectorName") String plcConnectorName, @RequestBody TestReadRequest request)
+			throws ToolControlException {
+		long t0=System.currentTimeMillis();
+		PlcResult result=plcConnectorManagementService.testRead(plcConnectorName, request!=null ? request.points() : null);
+		Map<String, Object> body=new LinkedHashMap<>();
+		body.put("values", result.values());
+		body.put("plcStatus", result.status());
+		body.put("elapsedMs", System.currentTimeMillis()-t0);
+		return body;
+	}
+
+	/** 지원하는 프로토콜과 설정 항목·주소 영역(화면의 커넥터·점 폼용, docs/plc-protocol-design.md §16) */
+	@RequestMapping(value="/protocols", method=RequestMethod.GET)
+	@ResponseStatus(value=HttpStatus.OK)
+	@ResponseBody
+	public List<ProtocolDescriptor> protocols() {
+		return PlcDrivers.describeAll();
+	}
+
+	/** 시험 읽기 본문 */
+	public record TestReadRequest(List<PointInfo> points) {
+	}
+
 	@Requires(action = 'R')
 	@RequestMapping(value="/search/connection-history", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)

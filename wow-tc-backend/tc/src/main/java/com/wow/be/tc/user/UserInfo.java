@@ -89,4 +89,10 @@ public class UserInfo extends AbstractInfo implements UserDetails {
 	public boolean isEnabled() {
 		return enabled;
 	}
+
+	/** 화면(MES shared 셸)의 이름 — {@link #passwordMustChange} 와 같다 */
+	@com.fasterxml.jackson.annotation.JsonProperty(value = "passwordChangeRequired", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+	public boolean getPasswordChangeRequired() {
+		return passwordMustChange;
+	}
 }

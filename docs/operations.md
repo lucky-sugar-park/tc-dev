@@ -38,6 +38,8 @@
 | `TC_DELIVERY_ALLOWED_URL_PREFIXES` | 운영 권장 | 결과(callback·WebHook)를 보내도 되는 주소 앞부분(쉼표 목록). 비우면 모든 주소 허용(경고) |
 | `PLC_REQUEST_TIMEOUT_MS` | | PLC 요청 시간 초과(기본 20000) |
 | `TC_SERVER_PORT` | | 기본 8087 |
+| `TC_UI_DIR` | 화면을 쓰면 | 빌드한 화면(wow-tc-frontend `dist`) 폴더. tc 가 `/` 에서 서빙한다 — **화면을 바꿀 때는 이 폴더만 바꾸고 재기동하지 않는다**. 다중화면 인스턴스마다 같은 내용. [frontend-design.md](frontend-design.md) §4.3 |
+| `TC_UI_SEED_ENABLED` | | 기본 true — 기동 때 화면 문구(4개 언어)·공통 코드 씨앗 중 없는 줄만 넣는다. 관리 화면에서 고친 값은 덮지 않는다 |
 | `TC_SECRET_KEY` | DB_TABLE 전달을 쓰면 | 외부 DB 연결 비밀번호 암호화 키(Base64 32바이트). **바꾸거나 잃으면 저장된 비밀번호를 다시 입력해야 한다** — DB 백업과 따로 보관. [db-table-delivery.md](db-table-delivery.md) §3.1 |
 
 비밀값은 저장소에 두지 않는다. 로컬 개발은 `application-local.yml`(gitignored, 실행 jar 에서 빠짐)을 쓴다.
@@ -69,6 +71,7 @@
 | `006_db_table_delivery.sql` | 결과 기록용 DB 연결 표, 전달 정의 `TABLE_NAME` 칼럼 |
 | `007_plc_async_columns.sql` | 지운 비동기 큐 설정 칼럼(`plc_connector.async_*`)을 NULL 허용으로. **DROP 은 주석 — 백업 확인 뒤 따로 실행** |
 | `008_plc_protocol.sql` | PLC 프로토콜 일반화 — 커넥터 `protocol`·`settings_json`, 인터페이스 `mode`·`read_back`(기존은 RAW), 점 표 `interface_point` |
+| `009_ui_support.sql` | 새 화면 — 다국어 `i18n_item`, 공통 코드 `common_code`, 북마크 `bookmark`(mes-dev 와 같은 칼럼). 씨앗은 앱이 넣는다 |
 
 ```bash
 mysql -u root -p tc < migration/002_api_client.sql

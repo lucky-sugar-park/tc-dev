@@ -21,6 +21,12 @@ public final class PlcDrivers {
 	private PlcDrivers() {
 	}
 
+	/** 지원하는 프로토콜 설명 — 화면용 */
+	public static List<ProtocolDescriptor> describeAll() {
+		return DRIVERS.values().stream().map(PlcDriver::describe)
+			.sorted(java.util.Comparator.comparing(d -> !DEFAULT_PROTOCOL.equals(d.protocol()))).toList();
+	}
+
 	/** @throws IllegalArgumentException 모르는 프로토콜(400) */
 	public static PlcDriver of(String protocol) {
 		PlcDriver driver = DRIVERS.get(protocol == null || protocol.isBlank() ? DEFAULT_PROTOCOL : protocol);

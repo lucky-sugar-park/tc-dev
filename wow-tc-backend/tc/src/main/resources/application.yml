@@ -72,6 +72,8 @@ app:
       - POST /api/auth/login
       - POST /api/auth/reissue
       - GET /api/health
+      # 화면 문구 — 로그인 화면이 먼저 부른다(docs/frontend-design.md §2.2)
+      - GET /api/i18n/messages
     # /v3/api-docs 경로용 — tc 의 springdoc 은 /api-docs·/swagger-ui 를 쓰고 이 둘은 /api 밖의 GET 이라 이 값과 관계없이 열린다
     swagger-public: false
     # tc 는 actuator 를 쓰지 않는다
@@ -100,6 +102,11 @@ springdoc:
 # Tool Control
 #============================================================================
 tc:
+  ui:
+    # 화면(빌드한 wow-tc-frontend) 폴더 — 값이 있으면 / 에서 서빙한다. 화면 배포는 폴더만 바꾸고 재기동하지 않는다(docs/frontend-design.md §4.3)
+    dir: ${TC_UI_DIR:}
+    # 기동 때 화면 문구(다국어)·공통 코드 씨앗 중 없는 줄만 넣는다(ui-seed/). 고친 값은 덮지 않는다
+    seed-enabled: ${TC_UI_SEED_ENABLED:true}
   shutdown:
     # 종료 신호 후 강제 종료(System.exit)까지 기다리는 시간(ms) — ForceShutdownHook
     grace-period: 7000
