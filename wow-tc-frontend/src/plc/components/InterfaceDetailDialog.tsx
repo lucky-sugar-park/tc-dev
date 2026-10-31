@@ -55,10 +55,7 @@ export function InterfaceDetailDialog({ name, connectors, onClose }: {
               <Field label={t('i18n.tc.interface.name', '이름(opcode)')}>{info.name}</Field>
               <Field label={t('i18n.tc.interface.ifType', '타입')}>{info.interfaceType}</Field>
               <Field label={t('i18n.tc.interface.use', '사용')}>{yes(info.use)}</Field>
-              <Field label={t('i18n.tc.interface.sync', '동기')}>{yes(info.sync)}</Field>
-              <Field label={t('i18n.tc.interface.reply', '응답')}>{yes(info.reply)}</Field>
               {info.interfaceType === 'WRITE' && <Field label={t('i18n.tc.interface.readBack', '쓴 뒤 다시 읽기')}>{yes(info.readBack)}</Field>}
-              <Field label="WebHook">{(info.webHookNameList ?? []).join(', ') || '—'}</Field>
               <Field label={t('i18n.tc.common.updated', '고친 때')}>{fmtTime(info.updatedDate)}</Field>
             </Box>
             <Field label={t('i18n.tc.common.description', '설명')}>{info.description || '—'}</Field>

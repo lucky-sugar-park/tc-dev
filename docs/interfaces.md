@@ -17,7 +17,7 @@
 | `points` | 점 목록(아래) |
 | `readBack` | WRITE — 쓴 뒤 같은 점을 다시 읽어 응답 `data` 에 넣는다 |
 | `settings` | 이 인터페이스에만 쓸 프로토콜 설정(커넥터 값 덮어쓰기·전용 옵션) — 비우면 커넥터 설정 그대로 |
-| `use`·`sync`·`reply`·`webHookNameList`·`description` | 사용 여부, 동기 응답, 회신, WebHook, 설명 |
+| `use`·`description` | 사용 여부, 설명 |
 
 ## 2. 점
 
@@ -36,6 +36,7 @@
 - **WRITE**: 요청 `data` 에서 점 이름의 값을 꺼내 쓴다(빠지면 400).
 - 드라이버는 **가까운 점끼리 한 요청으로 묶는다**(같은 디바이스·영역, 빈 칸 8워드까지 — 인터페이스 settings `mergeGap` 으로 바꾼다).
 - 응답에는 `plcStatus`(MELSEC 종료 코드·Modbus 예외 코드)가 함께 온다.
+- 동기·비동기는 부르는 쪽이 API 로 고른다 — `/request-and-reply`(결과를 응답 본문으로), `/request`(접수만, 결과는 callback·전달 정의로). 결과를 WebHook·DB 표로 보내는 것은 인터페이스가 아니라 **전달 정의**(전달 화면)가 정한다.
 - 실제로 보낼 요청은 화면의 **요청 미리보기**(등록·수정 대화상자, 상세 보기) 또는 `POST /api/v1/ifsvc/management/plan` 으로 본다.
 
 ## 3. 프로토콜별로

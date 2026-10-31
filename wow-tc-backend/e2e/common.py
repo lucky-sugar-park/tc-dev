@@ -62,7 +62,7 @@ def d100_interface(name, interface_type="READ", plc_name="plc-e2e", description=
     return {"name": name, "plcName": plc_name, "interfaceType": interface_type,
             "points": [{"name": "d100", "address": "D100", "type": "INT16", "description": "D100"},
                        {"name": "d101", "address": "D101", "type": "INT16", "description": "D101"}],
-            "use": True, "sync": True, "reply": True, "webHookNameList": [], "description": description}
+            "use": True, "description": description}
 
 
 def tc_pid():

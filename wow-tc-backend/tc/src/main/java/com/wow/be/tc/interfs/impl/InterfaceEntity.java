@@ -58,15 +58,6 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 	@Column(name="IN_USE")
 	private Boolean use;
 	
-	@Column(name="SYNC")
-	private Boolean sync;
-	
-	@Column(name="REPLY")
-	private Boolean reply;
-	
-	@Column(name="WEB_HOOK_LIST")
-	private String webHookNameList;
-	
 	@Column(name="DESCRIPTION", length=2048)
 	private String description;
 
@@ -90,17 +81,9 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		InterfaceInfo info=new InterfaceInfo();
 		info.setId(this.getId()!=null && this.getId()>0?this.getId():-1);
 		info.setName(this.getName());
-		info.setReply(this.getReply()==null?false:this.getReply());
 		info.setPlcName(this.getPlcName());
 		info.setInterfaceType(InterfaceType.valueOf(this.getInterfaceType()));
-		info.setSync(this.getSync()==null?false:this.getSync());
 		info.setUse(this.getUse()==null?false:this.getUse());
-		if(webHookNameList!=null) {
-			String[] webHookNameArr=this.webHookNameList.split(",");
-			for(String webHookName:webHookNameArr) {
-				info.addWebHookName(webHookName.trim());
-			}			
-		}
 		info.setDescription(this.getDescription());
 		info.setReadBack(this.readBack!=null && this.readBack);
 		Map<String, Object> settings=new LinkedHashMap<>();
@@ -134,7 +117,6 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		if(info.getName()!=null && !"".equals(info.getName())) {
 			this.setName(info.getName());
 		}
-		this.setReply(info.isReply());
 		
 		if(info.getPlcName()!=null && !"".equals(info.getPlcName())) {
 			this.setPlcName(info.getPlcName());
@@ -144,19 +126,7 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		}
 
 		this.setUse(info.isUse());
-		this.setSync(info.isSync());
 
-		// WebHook 이 없는 인터페이스(빈 목록)도 등록할 수 있어야 한다. 빈 목록이면 substring(0,-1) 로 예외가 났다.
-		if(info.getWebHookNameList()!=null && !info.getWebHookNameList().isEmpty()) {
-			StringBuilder nameList=new StringBuilder();
-			for(String webHookName:info.getWebHookNameList()) {
-				nameList.append(webHookName+",");
-			}
-			this.setWebHookNameList(nameList.substring(0, nameList.length()-1));
-		} else {
-			this.setWebHookNameList(null);
-		}
-		
 		if(info.getDescription()!=null && !"".equals(info.getDescription())) {
 			this.setDescription(info.getDescription());
 		}

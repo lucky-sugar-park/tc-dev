@@ -55,6 +55,24 @@ function Gated({ config }: LayoutContext): ReactElement {
 
 const EMPTY_MENU: MenuNode[] = [];
 
+/**
+ * 내용이 같으면 앞의 참조를 그대로 — 토큰을 다시 받을 때마다 shared 가 /api/menus·/api/ui-routes 를 다시 받아 새 배열을 주는데,
+ * 프레임워크 AppRouter 가 uiRoutes 가 바뀌면 화면 컴포넌트(lazy)를 새로 만들어 화면 전체가 다시 그려졌다("로딩…" 깜빡임, 열린 대화상자·입력이 사라짐).
+ */
+function useStableValue<T>(value: T): T {
+  const ref = useRef(value);
+  if (ref.current !== value && !sameJson(ref.current, value)) ref.current = value;
+  return ref.current;
+}
+
+function sameJson(a: unknown, b: unknown): boolean {
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;  // 순환 참조 등 — 다르다고 본다
+  }
+}
+
 function groupOfPath(menu: MenuNode[], pathname: string): string | undefined {
   const hit = (node: MenuNode): boolean => node.path === pathname || (node.children ?? []).some(hit);
   return menu.find((g) => hit(g))?.key;
@@ -73,13 +91,13 @@ function Shell({ config }: LayoutContext): ReactElement {
   const { status: permStatus, perms, load: loadPermissions } = usePermissions();
   const permissionsStatus = permStatus === 'idle' ? 'loading' : permStatus;
 
-  const backendMenu = useBackendMenu();
+  const backendMenu = useStableValue(useBackendMenu());
   const fullMenu = backendMenu && backendMenu.length ? backendMenu : config.menu;
   const menu = useMemo(
     () => (permissionsStatus === 'ready' ? applyPermissionFilter(fullMenu, perms) : EMPTY_MENU),
     [permissionsStatus, fullMenu, perms],
   );
-  const uiRoutes = useUiRoutes();
+  const uiRoutes = useStableValue(useUiRoutes());
   const tabHostRef = useRef<TabHostController>(null);
   // 탭을 옮겨 다녀도 화면 상태를 지킨다(화면이 tabRetention 을 정하면 그것) — MES 의 운영 옵션 정책은 쓰지 않는다
   const retentionOf = useCallback(

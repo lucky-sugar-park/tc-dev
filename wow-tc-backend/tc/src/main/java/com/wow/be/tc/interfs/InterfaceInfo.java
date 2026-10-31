@@ -1,6 +1,5 @@
 package com.wow.be.tc.interfs;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -39,22 +38,6 @@ public class InterfaceInfo extends AbstractInfo {
 	
 	private boolean use;
 	
-	/**
-	 * 비동기 응답은 WebHook을 통해서 해야 함
-	 */
-	private boolean sync;
-	
-	/**
-	 * 결과 응답여부 (false 면 PLC에 요청 후 처리 결과를 반환하지 않는다)
-	 */
-	private boolean reply;
-	
-	/**
-	 * 지정하지 않으면 -1로 세팅됨.
-	 * sync==true 이면 webHook이 필요 없음 (-1)
-	 */
-	private List<String> webHookNameList;
-	
 	private String description;
 
 	/** 점 목록(이름·주소·형 …) — 프로토콜 드라이버가 요청 프레임으로 묶는다. 수정 때 null 이면 저장된 점을 그대로 둔다 */
@@ -69,14 +52,6 @@ public class InterfaceInfo extends AbstractInfo {
 	 */
 	private Map<String, Object> settings;
 	
-	public InterfaceInfo() {
-		this.webHookNameList=new ArrayList<>();
-	}
-
-	public void addWebHookName(String webHookName) {
-		webHookNameList.add(webHookName);
-	}
-
 	@Override
 	public String toPlainText() {
 		return new StringBuilder().toString();

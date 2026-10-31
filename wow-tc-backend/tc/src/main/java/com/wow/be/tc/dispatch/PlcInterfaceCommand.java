@@ -34,26 +34,24 @@ import lombok.extern.slf4j.Slf4j;
  * <ol>
  *   <li>인터페이스와 PLC 커넥터를 찾는다</li>
  *   <li>점 목록과 유효 설정으로 PLC 작업({@link PlcOperation})을 만든다</li>
- *   <li>{@link #beforeExchange} → 프로토콜 드라이버로 읽기·쓰기 → {@link #afterExchange}</li>
+ *   <li>프로토콜 드라이버로 읽기·쓰기(쓰기에 readBack 이면 다시 읽기)</li>
  *   <li>PLC 상태가 정상이 아니면 응답을 업무 실패({@code ERR_502_TC_PLC_ERROR})로 표시한다</li>
  * </ol>
  *
  * <p>결과 전달(callback·WebHook)과 감사 기록은 커맨드 밖({@code ResultDeliveryService}, {@code AuditDispatchInterceptor})에서 한다.
- *
- * <p>의존성은 필드 주입이다 — 하위 클래스가 생성자를 다시 쓰지 않아도 되게 하기 위해서다.
  */
 @Slf4j
 @Component
 public class PlcInterfaceCommand extends AbstractMessageCommand<TcMessageRequest, TcMessageResponse> {
 
 	@Autowired
-	protected InterfaceService interfaceService;
+	private InterfaceService interfaceService;
 
 	@Autowired
-	protected PlcConnectorManagementService plcConnectorService;
+	private PlcConnectorManagementService plcConnectorService;
 
 	@Autowired
-	protected PlcResponseService plcResponseService;
+	private PlcResponseService plcResponseService;
 
 	@Override
 	protected TcMessageResponse createResponse(TcMessageRequest request) {
@@ -64,11 +62,7 @@ public class PlcInterfaceCommand extends AbstractMessageCommand<TcMessageRequest
 	protected void doExecute(TcMessageRequest request, TcMessageResponse response) throws MesGeneralException {
 		PlcExchangeContext ctx = prepare(request, response);
 
-		beforeExchange(ctx);
-
 		exchange(ctx);
-
-		afterExchange(ctx);
 
 		log.debug("PLC 교환 완료: opcode={}, transactionId={}, success={}",
 			request.getOpcode(), request.getTransactionId(), response.getSuccess());
@@ -112,16 +106,8 @@ public class PlcInterfaceCommand extends AbstractMessageCommand<TcMessageRequest
 		}
 	}
 
-	/** PLC 교환 전에 호출된다. 요청 데이터를 고치거나, 조건이 맞지 않으면 예외로 막는다. */
-	protected void beforeExchange(PlcExchangeContext ctx) throws MesGeneralException {
-	}
-
-	/** PLC 응답을 해석한 뒤 호출된다. 응답 data 를 가공하거나 더한다. */
-	protected void afterExchange(PlcExchangeContext ctx) throws MesGeneralException {
-	}
-
 	/** 인터페이스·PLC 커넥터·어댑터를 찾고 점 목록으로 PLC 작업을 만든다. */
-	protected PlcExchangeContext prepare(TcMessageRequest request, TcMessageResponse response) throws MesGeneralException {
+	private PlcExchangeContext prepare(TcMessageRequest request, TcMessageResponse response) throws MesGeneralException {
 		String opcode = request.getOpcode();
 
 		InterfaceInfo iInfo = interfaceService.findInterfaceByName(opcode);

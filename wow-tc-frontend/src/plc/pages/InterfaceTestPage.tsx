@@ -58,7 +58,6 @@ export default function InterfaceTestPage(): ReactElement {
       const full = await interfaceApi.find(i.name);
       setSelected(full);
       setJson(JSON.stringify(template(full), null, 2));
-      setReply(full.reply !== false);
     } catch (e) {
       showToast(extractApiError(e), 'error');
     }

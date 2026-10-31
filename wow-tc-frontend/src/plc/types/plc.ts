@@ -97,9 +97,6 @@ export type InterfaceInfo = {
   /** 인터페이스 settings — 비면 커넥터 설정 그대로 */
   settings?: Record<string, unknown>;
   use?: boolean;
-  sync?: boolean;
-  reply?: boolean;
-  webHookNameList?: string[];
   description?: string;
   updatedBy?: string;
   updatedDate?: string;

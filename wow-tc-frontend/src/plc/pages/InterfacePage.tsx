@@ -17,7 +17,7 @@ import { useCan, usePerm } from '../../shared/usePerm';
 import { InterfaceAuditDialog } from '../components/InterfaceAuditDialog';
 import { InterfaceDetailDialog } from '../components/InterfaceDetailDialog';
 import { InterfaceFormDialog } from '../components/InterfaceFormDialog';
-import { connectorApi, fetchProtocols, fetchWebhookNames, interfaceApi } from '../services/plcApi';
+import { connectorApi, fetchProtocols, interfaceApi } from '../services/plcApi';
 import type { InterfaceInfo, PlcConnectorInfo, ProtocolDescriptor } from '../types/plc';
 
 const SCREEN = 'tc.plc.interface';
@@ -35,7 +35,6 @@ export default function InterfacePage(): ReactElement {
   const [rows, setRows] = useState<InterfaceInfo[]>([]);
   const [connectors, setConnectors] = useState<PlcConnectorInfo[]>([]);
   const [protocols, setProtocols] = useState<ProtocolDescriptor[]>([]);
-  const [webhooks, setWebhooks] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'READ' | 'WRITE'>('ALL');
   const [plcFilter, setPlcFilter] = useState('');
@@ -50,13 +49,10 @@ export default function InterfacePage(): ReactElement {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [list, cons, protos, hooks] = await Promise.all([
-        interfaceApi.list(), connectorApi.list(), fetchProtocols(), fetchWebhookNames().catch(() => [] as string[]),
-      ]);
+      const [list, cons, protos] = await Promise.all([interfaceApi.list(), connectorApi.list(), fetchProtocols()]);
       setRows(list);
       setConnectors(cons);
       setProtocols(protos);
-      setWebhooks(hooks);
       clear();
     } catch (e) {
       fail(extractApiError(e), { hasData: rowsRef.current.length > 0, retry: () => { void loadRef.current(); } });
@@ -199,7 +195,7 @@ export default function InterfacePage(): ReactElement {
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} isInactive={(r) => !r.use} />
       </Box>
-      <InterfaceFormDialog open={form.open} initial={form.initial} connectors={connectors} protocols={protocols} webhooks={webhooks}
+      <InterfaceFormDialog open={form.open} initial={form.initial} connectors={connectors} protocols={protocols}
         error={form.error} onClose={() => setForm({ open: false })} onSubmit={(info) => { void save(info); }} />
       <InterfaceAuditDialog name={auditOf} onClose={() => setAuditOf(null)} />
       <InterfaceDetailDialog name={detailOf} connectors={connectors} onClose={() => setDetailOf(null)} />

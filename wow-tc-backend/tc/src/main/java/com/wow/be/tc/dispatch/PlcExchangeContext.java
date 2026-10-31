@@ -11,7 +11,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * {@link PlcInterfaceCommand} 가 한 번의 PLC 교환에 쓰는 정보. 하위 커맨드의 전·후처리 훅에 넘긴다.
+ * {@link PlcInterfaceCommand} 가 한 번의 PLC 교환에 쓰는 정보.
  */
 @Getter
 @AllArgsConstructor
@@ -28,9 +28,8 @@ public class PlcExchangeContext {
 
 	private final ProgrammableControllerAdapter adapter;
 
-	/** 점 목록으로 만든 작업. {@code beforeExchange} 에서 바꿀 수 있다(새 작업으로) */
-	@Setter
-	private PlcOperation operation;
+	/** 점 목록으로 만든 작업 */
+	private final PlcOperation operation;
 
 	/** 작업 결과 — 교환 뒤에 채워진다 */
 	@Setter

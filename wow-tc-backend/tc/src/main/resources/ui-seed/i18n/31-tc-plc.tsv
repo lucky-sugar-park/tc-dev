@@ -79,12 +79,9 @@ i18n.tc.interface.plc	PLC 커넥터	PLC connector	PLCコネクタ	PLC连接器
 i18n.tc.interface.points	점	Points	ポイント	点
 i18n.tc.interface.readBack	쓴 뒤 다시 읽기	Read back after write	書き込み後に再読み取り	写入后回读
 i18n.tc.interface.readHelp	읽은 값을 data 의 점 이름으로 돌려준다	Returns values in data by point name	読み取った値をポイント名でdataに返す	按点名在 data 中返回读取值
-i18n.tc.interface.reply	응답	Reply	応答	应答
 i18n.tc.interface.search	이름·설명	Name, description	名前・説明	名称、说明
-i18n.tc.interface.sync	동기	Synchronous	同期	同步
 i18n.tc.interface.ifType	타입	Type	タイプ	类型
 i18n.tc.interface.use	사용	In use	使用	使用
-i18n.tc.interface.webhookHelp	응답을 보낼 WebHook(전달 정의는 전달 화면에서)	WebHooks to send results to (delivery rules on the Delivery screen)	結果を送るWebHook（配信定義は配信画面で）	发送结果的 WebHook（投递规则在投递页面）
 i18n.tc.interface.writeHelp	요청 data 의 점 이름 값을 쓴다	Writes the values in request data by point name	要求dataのポイント名の値を書き込む	按点名写入请求 data 中的值
 i18n.tc.interface.detail	상세 보기	Details	詳細	详情
 i18n.tc.interface.headerHelp	프레임·국 번호 같은 헤더 값은 커넥터 설정에서 오고, 명령·주소·길이는 드라이버가 점에서 만듭니다	Header values such as frame and station come from the connector settings; command, address and length are built from the points	フレーム・局番などのヘッダ値はコネクタ設定から、コマンド・アドレス・長さはドライバがポイントから作ります	帧、站号等报头值来自连接器设置，命令、地址、长度由驱动根据点生成

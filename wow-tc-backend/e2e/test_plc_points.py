@@ -57,7 +57,7 @@ def plc(opcode, data=None):
 def register(name, if_type, points, read_back=False):
     return call("POST", "/api/v1/ifsvc/management/register", {
         "name": name, "plcName": PLC, "interfaceType": if_type, "points": points,
-        "readBack": read_back, "use": True, "sync": True, "reply": True, "description": "e2e points"})
+        "readBack": read_back, "use": True, "description": "e2e points"})
 
 
 def find(name):

@@ -124,7 +124,7 @@ check("다른 인스턴스의 조회에도 연결 상태(주인이 남긴 값)",
 # 1-1. 방금 등록한 인터페이스도 같은 원격 어댑터로 — 점 묶기·응답 검증을 주인이 한다
 pts_name = f"e2e.rmt.pts.{int(time.time())}"
 s, b = call(OWNER, "POST", "/api/v1/ifsvc/management/register", {
-    "name": pts_name, "plcName": "plc-e2e", "interfaceType": "READ", "use": True, "sync": True, "reply": True,
+    "name": pts_name, "plcName": "plc-e2e", "interfaceType": "READ", "use": True,
     "points": [{"name": "d100", "address": "D100", "type": "INT16"}, {"name": "d101", "address": "D101", "type": "INT16"}]})
 SEQ[0] += 1
 s, pb = call(OTHER, "POST", "/api/v1/ifsvc/request-and-reply", {"transactionId": f"t-rmt-pts-{SEQ[0]}", "messageId": "m",

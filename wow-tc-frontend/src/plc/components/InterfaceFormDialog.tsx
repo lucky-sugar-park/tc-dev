@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactElement } from 'react';
 import {
-  Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogContent, FormControlLabel, MenuItem, Stack, Tab, Tabs, TextField, Typography,
+  Alert, Box, Button, Checkbox, Dialog, DialogContent, FormControlLabel, MenuItem, Stack, Tab, Tabs, TextField, Typography,
 } from '@mui/material';
 import { DialogFooter, DialogTitleClose, DraggablePaper, useI18n } from 'wow-mes-frontend-shared';
 import { PointsEditor, emptyPoint } from './PointsEditor';
@@ -15,12 +15,11 @@ type TabKey = 'basic' | 'settings' | 'points' | 'plan';
  * 비우면 커넥터 값) · 점 · 요청 미리보기. 헤더 바이트·데이터 길이는 없다(옛 4단계 마법사 대신) — 프레임·국 번호는 커넥터 설정과 이 인터페이스의
  * settings 에서, 명령·주소·길이는 드라이버가 점에서 만든다. 검증은 서버(커넥터의 프로토콜 드라이버).
  */
-export function InterfaceFormDialog({ open, initial, connectors, protocols, webhooks, onClose, onSubmit, error }: {
+export function InterfaceFormDialog({ open, initial, connectors, protocols, onClose, onSubmit, error }: {
   open: boolean;
   initial?: InterfaceInfo;
   connectors: PlcConnectorInfo[];
   protocols: ProtocolDescriptor[];
-  webhooks: string[];
   onClose: () => void;
   onSubmit: (info: InterfaceInfo) => void;
   error?: string | null;
@@ -43,8 +42,8 @@ export function InterfaceFormDialog({ open, initial, connectors, protocols, webh
   useEffect(() => {
     if (!open) return;
     setV(initial ? { ...initial, points: initial.points ?? [] } : {
-      name: '', plcName: connectors[0]?.name, interfaceType: 'READ', use: true, sync: true, reply: true,
-      readBack: false, webHookNameList: [], description: '', points: [emptyPoint()], settings: {},
+      name: '', plcName: connectors[0]?.name, interfaceType: 'READ', use: true,
+      readBack: false, description: '', points: [emptyPoint()], settings: {},
     });
     setNameError(null);
     setTab('basic');
@@ -115,18 +114,12 @@ export function InterfaceFormDialog({ open, initial, connectors, protocols, webh
               </Box>
               <Stack direction="row" sx={{ flexWrap: 'wrap', columnGap: 2 }}>
                 <FormControlLabel control={<Checkbox checked={!!v.use} onChange={(e) => set({ use: e.target.checked })} />} label={t('i18n.tc.interface.use', '사용')} />
-                <FormControlLabel control={<Checkbox checked={!!v.sync} onChange={(e) => set({ sync: e.target.checked })} />} label={t('i18n.tc.interface.sync', '동기')} />
-                <FormControlLabel control={<Checkbox checked={!!v.reply} onChange={(e) => set({ reply: e.target.checked })} />} label={t('i18n.tc.interface.reply', '응답')} />
                 {v.interfaceType === 'WRITE' && (
                   <FormControlLabel control={<Checkbox checked={!!v.readBack} onChange={(e) => set({ readBack: e.target.checked })} />}
                     label={t('i18n.tc.interface.readBack', '쓴 뒤 다시 읽기')} />
                 )}
               </Stack>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-                <Autocomplete multiple options={webhooks} value={v.webHookNameList ?? []} onChange={(_e, val) => set({ webHookNameList: val })}
-                  renderInput={(p) => <TextField {...p} label="WebHook" helperText={t('i18n.tc.interface.webhookHelp', '응답을 보낼 WebHook(전달 정의는 전달 화면에서)')} />} />
-                <TextField label={t('i18n.tc.common.description', '설명')} value={v.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
-              </Box>
+              <TextField label={t('i18n.tc.common.description', '설명')} value={v.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
             </>
           )}
           {tab === 'settings' && (

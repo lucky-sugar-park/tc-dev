@@ -75,6 +75,7 @@
 | `009_ui_support.sql` | 새 화면 — 다국어 `i18n_item`, 공통 코드 `common_code`, 북마크 `bookmark`(mes-dev 와 같은 칼럼). 씨앗은 앱이 넣는다 |
 | `010_interface_settings.sql` | 인터페이스 settings(`interface.settings_json`) — 커넥터 설정 덮어쓰기·인터페이스 전용 옵션 |
 | `011_remove_raw.sql` | RAW 인터페이스 정의를 없앤다 — 점으로 정의하지 않은 인터페이스와 응답 인터페이스 삭제, `header_prop`·`data_prop` 표와 `interface` 의 옛 칼럼 DROP(결정 I7). **운영 데이터가 없을 때 만든 것 — 데이터가 있으면 먼저 백업** |
+| `012_interface_cleanup.sql` | `interface` 의 `sync`·`reply`·`web_hook_list` 칼럼 DROP(읽는 곳이 없음 — 동기는 API 가, WebHook 은 전달 정의가 정한다), 없는 인터페이스를 가리키는 스케줄 Job 을 SELECT 로 보여 준다(고치지 않음) |
 
 ```bash
 mysql -u root -p tc < migration/002_api_client.sql

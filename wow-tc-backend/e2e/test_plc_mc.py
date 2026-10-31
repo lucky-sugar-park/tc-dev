@@ -95,7 +95,7 @@ MISSING = f"e2e.mc.missing.{RUN}"
 try:
     for name, address in ((PTS, "D100"), (MISSING, "W0")):
         s, b = call("POST", "/api/v1/ifsvc/management/register", {"name": name, "plcName": PLC, "interfaceType": "READ",
-                                                                  "use": True, "sync": True, "reply": True,
+                                                                  "use": True,
                                                                   "points": [{"name": "v", "address": address, "type": "INT16"}]})
         created.append(name)
 

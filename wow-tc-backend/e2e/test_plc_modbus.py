@@ -92,7 +92,7 @@ created = []
 
 
 def register(name, if_type, points, read_back=False):
-    body = {"name": name, "plcName": PLC, "interfaceType": if_type, "use": True, "sync": True, "reply": True,
+    body = {"name": name, "plcName": PLC, "interfaceType": if_type, "use": True,
             "readBack": read_back, "description": "e2e modbus"}
     if points is not None:
         body["points"] = points

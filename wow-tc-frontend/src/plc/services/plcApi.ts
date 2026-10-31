@@ -80,11 +80,6 @@ export const interfaceApi = {
   },
 };
 
-export async function fetchWebhookNames(): Promise<string[]> {
-  const rows = (await apiClient.get<{ name: string }[]>('/v1/webhook/search/all')).data;
-  return rows.map((r) => r.name).sort();
-}
-
 // ── PLC 요청(인터페이스 시험) ──
 
 export type TcResponse = {
