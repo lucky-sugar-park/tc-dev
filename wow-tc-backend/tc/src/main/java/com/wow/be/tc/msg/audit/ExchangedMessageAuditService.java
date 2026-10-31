@@ -8,6 +8,7 @@ import com.wow.be.framework.Condition.RangeInfo;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PageResponse;
 import com.wow.be.framework.persist.RangeResponse;
+import com.wow.be.tc.ToolControlException;
 
 public interface ExchangedMessageAuditService {
 
@@ -19,7 +20,7 @@ public interface ExchangedMessageAuditService {
 	
 	public abstract long deleteMessageAudits(Date timestamp);
 
-	public abstract ExchangedMessageAuditInfo findMessageAuditById(long id);
+	public abstract ExchangedMessageAuditInfo findMessageAuditById(long id) throws ToolControlException;
 
 	/** 있는 것만 돌려준다(없는 ID 는 빠진다). */
 	public abstract List<ExchangedMessageAuditInfo> findMessageAuditsByIds(List<Long> ids);

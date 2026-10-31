@@ -21,6 +21,7 @@ import com.wow.be.framework.persist.RangeResponse;
 import com.wow.be.framework.persist.Rangeable;
 import com.wow.be.framework.sse.EventPusher;
 import com.wow.be.framework.sse.PushEventPayload;
+import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditEvent;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditService;
@@ -89,9 +90,10 @@ public class DefaultExchangedMessageAuditService implements ExchangedMessageAudi
 	}
 
 	@Override
-	public ExchangedMessageAuditInfo findMessageAuditById(long id) {
+	public ExchangedMessageAuditInfo findMessageAuditById(long id) throws ToolControlException {
 		log.debug("");
-		ExchangedMessageAuditEntity entity=exchangedMessageAuditRepository.findById(id).get();
+		ExchangedMessageAuditEntity entity=exchangedMessageAuditRepository.findById(id)
+			.orElseThrow(() -> ToolControlException.of(ToolControlException.NOT_FOUND, "송수신 기록이 없습니다: " + id));
 		return entity.info();
 	}
 

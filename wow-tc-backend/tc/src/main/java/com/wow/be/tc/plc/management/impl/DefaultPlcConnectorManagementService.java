@@ -6,7 +6,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Properties;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -105,25 +105,18 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	@Override
 	public void deletePlcConnectorByName(String plcConnectorName) {
 		log.debug("DefaultPlcConnectorManagementService.deletePlcConnectorByName(String plcConnectorName)...");
-		PlcConnectorEntity e=this.findPlcConnectorEntityByName(plcConnectorName);
-		if(e!=null) {
-			changeRecorder.deleted(TargetType.PLC_CONNECTOR, String.valueOf(e.getId()), e.getName(), e.info());
-		}
+		this.findPlcConnectorEntityByName(plcConnectorName).ifPresent(e->
+			changeRecorder.deleted(TargetType.PLC_CONNECTOR, String.valueOf(e.getId()), e.getName(), e.info()));
 		plcConnectorRepository.deleteByName(plcConnectorName);
 	}
 
 	@Override
 	public PlcConnectorInfo findPlcConnectorById(long id) {
 		log.debug("DefaultPlcConnectorManagementService.findPlcConnectorById(long id)...");
-		try {
-			PlcConnectorInfo info=plcConnectorRepository.findById(id).get().info();
-			return info;
-		} catch (NoSuchElementException e) {
-			return null;
-		}
+		return plcConnectorRepository.findById(id).map(PlcConnectorEntity::info).orElse(null);
 	}
 	
-	private PlcConnectorEntity findPlcConnectorEntityByName(String name) {
+	private Optional<PlcConnectorEntity> findPlcConnectorEntityByName(String name) {
 		log.debug("DefaultPlcConnectorManagementService.findPlcConnectorEntityByName(String name)...");
 		
 		PlcConnectorEntity probe=new PlcConnectorEntity();
@@ -133,19 +126,26 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		matcher=matcher.withMatcher("name", ExampleMatcher.GenericPropertyMatchers.exact());
 		Example<PlcConnectorEntity> example=Example.of(probe, matcher);
 
-		return plcConnectorRepository.findOne(example).get();
+		return plcConnectorRepository.findOne(example);
+	}
+
+	private PlcConnectorEntity requirePlcConnectorEntity(long id) throws ToolControlException {
+		return plcConnectorRepository.findById(id).orElseThrow(() -> notFound(String.valueOf(id)));
+	}
+
+	private PlcConnectorEntity requirePlcConnectorEntityByName(String name) throws ToolControlException {
+		return findPlcConnectorEntityByName(name).orElseThrow(() -> notFound(name));
+	}
+
+	private static ToolControlException notFound(String idOrName) {
+		return ToolControlException.of(ToolControlException.NOT_FOUND, "PLC 커넥터가 없습니다: " + idOrName);
 	}
 
 	@Override
 	public PlcConnectorInfo findPlcConnectorByName(String name) {
 		log.debug("DefaultPlcConnectorManagementService.findPlcConnectorByName(String name)...");
 
-		try {
-			PlcConnectorEntity entity=this.findPlcConnectorEntityByName(name);
-			return entity.info();
-		} catch (NoSuchElementException e) {
-			return null;
-		}
+		return this.findPlcConnectorEntityByName(name).map(PlcConnectorEntity::info).orElse(null);
 	}
 	
 	public List<PlcConnectorInfo> searchAllPlcConnectores() {
@@ -188,17 +188,17 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	
 	@Transactional
 	@Override
-	public boolean publishPlcConnector(long id) {
+	public boolean publishPlcConnector(long id) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.publishPlcConnector(long id)...");
-		PlcConnectorEntity entity=this.plcConnectorRepository.findById(id).get();
+		PlcConnectorEntity entity=requirePlcConnectorEntity(id);
 		return manageAndControlPlcConnector(entity, true, PlcConnectorInfoStatus.PUBLISHED, PlcConnectorOperStatus.RUNNING, PlcConnectorOperStatus.ERROR);
 	}
 	
 	@Transactional
 	@Override
-	public boolean publishPlcConnectorByName(String plcName) {
+	public boolean publishPlcConnectorByName(String plcName) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.publishPlcConnectorByName(String plcName)...");
-		PlcConnectorEntity entity=this.findPlcConnectorEntityByName(plcName);
+		PlcConnectorEntity entity=requirePlcConnectorEntityByName(plcName);
 		return manageAndControlPlcConnector(entity, true, PlcConnectorInfoStatus.PUBLISHED, PlcConnectorOperStatus.RUNNING, PlcConnectorOperStatus.ERROR);
 	}
 	
@@ -227,10 +227,10 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 				props.put("hostIp", pInfo.getHostIp());
 				props.put("targetPorts", pInfo.getPorts());
 				props.put("localVips", pInfo.getConnectionVips());
-				props.put("operStatus", successState.name());
 				props.put("asyncUse", pInfo.isAsyncRequestUse());
 				props.put("asyncTimerStartDelay", pInfo.getAsyncTimerStartDelay());
 				props.put("asyncTimerRunInterval", pInfo.getAsyncTimerRunInterval());
+				props.put("operStatus", successState.name());
 				props.put("messageFrameFormat", pInfo.getMessageFrameFormat().getName());
 				props.put("headerReqTemplate", pInfo.getCommProtocolHeadersResTemplate());
 				props.put("headerResTemplate", pInfo.getCommProtocolHeadersResTemplate());
@@ -272,16 +272,16 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	
 	@Transactional
 	@Override
-	public boolean releasePlcConnector(long id) {
+	public boolean releasePlcConnector(long id) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.releasePlcConnector(long id)...");
-		PlcConnectorEntity entity=this.plcConnectorRepository.findById(id).get();
+		PlcConnectorEntity entity=requirePlcConnectorEntity(id);
 		return manageAndControlPlcConnector(entity, false, PlcConnectorInfoStatus.RELEASED, PlcConnectorOperStatus.STOPPED, PlcConnectorOperStatus.ERROR);
 	}
 	
 	@Override
-	public boolean releasePlcConnectorByName(String plcName) {
+	public boolean releasePlcConnectorByName(String plcName) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.releasePlcConnectorByName(String plcName)...");
-		PlcConnectorEntity entity=this.findPlcConnectorEntityByName(plcName);
+		PlcConnectorEntity entity=requirePlcConnectorEntityByName(plcName);
 		return manageAndControlPlcConnector(entity, false, PlcConnectorInfoStatus.RELEASED, PlcConnectorOperStatus.STOPPED, PlcConnectorOperStatus.ERROR);
 	}
 	
@@ -290,9 +290,9 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	 */
 	@Transactional
 	@Override
-	public boolean pausePlcConnector(long id) {
+	public boolean pausePlcConnector(long id) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.pausePlcConnector(long id)...");
-		PlcConnectorEntity entity=this.plcConnectorRepository.findById(id).get();
+		PlcConnectorEntity entity=requirePlcConnectorEntity(id);
 		return manageAndControlPlcConnector(entity, true, PlcConnectorInfoStatus.RELEASED, PlcConnectorOperStatus.PAUSED, PlcConnectorOperStatus.ERROR);
 	}
 	
@@ -301,9 +301,9 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	 */
 	@Transactional
 	@Override
-	public boolean pausePlcConnectorByName(String plcConnectorName) {
+	public boolean pausePlcConnectorByName(String plcConnectorName) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.pausePlcConnectorByName(String plcConnectorName)...");
-		PlcConnectorEntity entity=this.findPlcConnectorEntityByName(plcConnectorName);
+		PlcConnectorEntity entity=requirePlcConnectorEntityByName(plcConnectorName);
 		return manageAndControlPlcConnector(entity, true, PlcConnectorInfoStatus.RELEASED, PlcConnectorOperStatus.PAUSED, PlcConnectorOperStatus.ERROR);
 	}
 	
@@ -312,9 +312,9 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	 */
 	@Transactional
 	@Override
-	public boolean resumePlcConnector(long id) {
+	public boolean resumePlcConnector(long id) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.resumePlcConnector(long id)...");
-		PlcConnectorEntity entity=this.plcConnectorRepository.findById(id).get();
+		PlcConnectorEntity entity=requirePlcConnectorEntity(id);
 		return manageAndControlPlcConnector(entity, true, PlcConnectorInfoStatus.RELEASED, PlcConnectorOperStatus.RESUMED, PlcConnectorOperStatus.ERROR);
 	}
 	
@@ -323,23 +323,23 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	 */
 	@Transactional
 	@Override
-	public boolean resumePlcConnectorByName(String plcConnectorName) {
+	public boolean resumePlcConnectorByName(String plcConnectorName) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.resumePlcConnectorByName(String plcConnectorName)...");
-		PlcConnectorEntity entity=this.findPlcConnectorEntityByName(plcConnectorName);
+		PlcConnectorEntity entity=requirePlcConnectorEntityByName(plcConnectorName);
 		return manageAndControlPlcConnector(entity, true, PlcConnectorInfoStatus.RELEASED, PlcConnectorOperStatus.RESUMED, PlcConnectorOperStatus.ERROR);
 	}
 
 	@Override
-	public Map<String, String> testConnection(long id) {
+	public Map<String, String> testConnection(long id) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.testConnection(long id)...");
-		PlcConnectorInfo plcInfo=this.findPlcConnectorById(id);
+		PlcConnectorInfo plcInfo=requirePlcConnectorEntity(id).info();
 		return testConnection(plcInfo);
 	}
 
 	@Override
-	public Map<String, String> testConnectionByName(String name) {
+	public Map<String, String> testConnectionByName(String name) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.testConnectionByName(String name)...");
-		PlcConnectorInfo plcInfo=this.findPlcConnectorByName(name);
+		PlcConnectorInfo plcInfo=requirePlcConnectorEntityByName(name).info();
 		return testConnection(plcInfo);
 	}
 	

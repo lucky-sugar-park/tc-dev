@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
+import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.interfs.HeaderTemplateInfo;
 import com.wow.be.tc.interfs.InterfaceInfo;
 import com.wow.be.tc.interfs.InterfaceService;
@@ -49,7 +50,7 @@ public class InterfaceManagementController {
 	@Requires(action = 'U')
 	@RequestMapping(value="/update/apply-use/{id}/{use}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
-	public InterfaceInfo applyInterfaceUse(@PathVariable("id") long id, @PathVariable("use") boolean use) {
+	public InterfaceInfo applyInterfaceUse(@PathVariable("id") long id, @PathVariable("use") boolean use) throws ToolControlException {
 		log.debug("");
 		return interfaceService.applyInterfaceUse(id, use);
 	}
@@ -89,7 +90,7 @@ public class InterfaceManagementController {
 	@RequestMapping(value="/find/{id}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public InterfaceInfo findInterface(@PathVariable(value="id") long id) {
+	public InterfaceInfo findInterface(@PathVariable(value="id") long id) throws ToolControlException {
 		log.debug("");
 		return interfaceService.findInterfaceById(id);
 	}

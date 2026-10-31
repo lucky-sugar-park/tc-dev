@@ -658,8 +658,9 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 	
 	public List<ScheduleJobDetailInfo> searchScheduleJobDetailsByJobName(String scheduleJobName) {
 		log.debug("");
-		String jobId=this.findScheduleJobByName(scheduleJobName).getId();
-		return this.searchScheduleJobDetails(jobId);
+		ScheduleJobInfo job=this.findScheduleJobByName(scheduleJobName);
+		// 없는 작업은 작업 ID 로 찾을 때와 같이 빈 목록
+		return job==null ? new ArrayList<>() : this.searchScheduleJobDetails(job.getId());
 	}
 	
 	@Override

@@ -19,6 +19,7 @@ import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PageResponse;
 import com.wow.be.framework.persist.RangeResponse;
+import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditService;
 
@@ -65,7 +66,7 @@ public class InterfaceAuditController {
 	@RequestMapping(value="/find/{id}", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public ExchangedMessageAuditInfo findMessageAudit(@PathVariable("id") long id) {
+	public ExchangedMessageAuditInfo findMessageAudit(@PathVariable("id") long id) throws ToolControlException {
 		log.debug("");
 		return exchangedMessageAuditService.findMessageAuditById(id);
 	}

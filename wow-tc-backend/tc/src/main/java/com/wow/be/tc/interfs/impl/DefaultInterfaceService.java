@@ -22,6 +22,7 @@ import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PersistentService;
+import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.confighist.ConfigChangeInfo.Action;
 import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
 import com.wow.be.tc.confighist.ConfigChangeRecorder;
@@ -114,9 +115,9 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	
 	@Override
 	@Transactional
-	public InterfaceInfo applyInterfaceUse(long id, boolean use) {
+	public InterfaceInfo applyInterfaceUse(long id, boolean use) throws ToolControlException {
 		log.debug("");
-		InterfaceEntity entity=interfaceRepository.findById(id).get();
+		InterfaceEntity entity=requireInterfaceEntity(id);
 		entity.setUse(use);
 		interfaceRepository.save(entity);
 		changeRecorder.record(TargetType.INTERFACE, String.valueOf(id), entity.getName(), use ? Action.ENABLE : Action.DISABLE, null, null, null);
@@ -175,9 +176,13 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 
 	@Override
 	@Transactional
-	public InterfaceInfo findInterfaceById(long id) {
+	public InterfaceInfo findInterfaceById(long id) throws ToolControlException {
 		log.debug("");
-		return interfaceRepository.findById(id).get().info();
+		return requireInterfaceEntity(id).info();
+	}
+
+	private InterfaceEntity requireInterfaceEntity(long id) throws ToolControlException {
+		return interfaceRepository.findById(id).orElseThrow(() -> ToolControlException.of(ToolControlException.NOT_FOUND, "인터페이스가 없습니다: " + id));
 	}
 
 	@Override

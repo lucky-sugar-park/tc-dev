@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PageResponse;
+import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistInfo;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistoryService;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
@@ -105,7 +106,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/control/publish/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public Map<String, Boolean> publishPlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) {
+	public Map<String, Boolean> publishPlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.publishPlcConnector(long plcConnectorId)...");
 		boolean result=plcConnectorManagementService.publishPlcConnector(plcConnectorId);
 		return Collections.singletonMap("success", result);
@@ -115,7 +116,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/control/publish/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public Map<String, Boolean> publishPlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) {
+	public Map<String, Boolean> publishPlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.publishPlcConnectorByName(String plcConnectorName)...");
 		boolean result=plcConnectorManagementService.publishPlcConnectorByName(plcConnectorName);
 		return Collections.singletonMap("success", result);
@@ -125,7 +126,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/control/release/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public Map<String, Boolean> releasePlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) {
+	public Map<String, Boolean> releasePlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.releasePlcConnector(long plcConnectorId)...");
 		boolean result=plcConnectorManagementService.releasePlcConnector(plcConnectorId);
 		return Collections.singletonMap("success", result);
@@ -135,7 +136,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/control/release/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public Map<String, Boolean> releasePlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) {
+	public Map<String, Boolean> releasePlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.releasePlcConnectorByName(String plcConnectorName)...");
 		boolean result=plcConnectorManagementService.releasePlcConnectorByName(plcConnectorName);
 		return Collections.singletonMap("success", result);
@@ -145,7 +146,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/control/pause/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public Map<String, Boolean> pausePlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) {
+	public Map<String, Boolean> pausePlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.pausePlcConnector(long plcConnectorId)...");
 		boolean result=plcConnectorManagementService.pausePlcConnector(plcConnectorId);
 		return Collections.singletonMap("success", result);
@@ -155,7 +156,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/control/pause/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public Map<String, Boolean> pausePlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) {
+	public Map<String, Boolean> pausePlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.pausePlcConnectorByName(String plcConnectorName)...");
 		boolean result=plcConnectorManagementService.pausePlcConnectorByName(plcConnectorName);
 		return Collections.singletonMap("success", result);
@@ -165,7 +166,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/control/resume/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public Map<String, Boolean> resumePlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) {
+	public Map<String, Boolean> resumePlcConnector(@PathVariable("plcConnectorId") long plcConnectorId) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.resumePlcConnector(long plcConnectorId)...");
 		boolean result=plcConnectorManagementService.resumePlcConnector(plcConnectorId);
 		return Collections.singletonMap("success", result);
@@ -175,7 +176,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/control/resume/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public Map<String, Boolean> resumePlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) {
+	public Map<String, Boolean> resumePlcConnectorByName(@PathVariable("plcConnectorName") String plcConnectorName) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.resumePlcConnectorByName(String plcConnectorName)...");
 		boolean result=plcConnectorManagementService.resumePlcConnectorByName(plcConnectorName);
 		return Collections.singletonMap("success", result);
@@ -185,7 +186,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/test-connection/{plcConnectorId}", method=RequestMethod.POST)
 	@ResponseStatus(value=HttpStatus.OK)
 	@ResponseBody
-	public Map<String, String> testConnection(@PathVariable("plcConnectorId") long plcConnectorId) {
+	public Map<String, String> testConnection(@PathVariable("plcConnectorId") long plcConnectorId) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.testConnection(long plcConnectorId)...");
 		return plcConnectorManagementService.testConnection(plcConnectorId);
 	}
@@ -194,7 +195,7 @@ public class PlcConnectorManagementController {
 	@RequestMapping(value="/test-connection/byName/{plcConnectorName}", method=RequestMethod.POST)
 	@ResponseStatus(value=HttpStatus.OK)
 	@ResponseBody
-	public Map<String, String> testConnectionByName(@PathVariable("plcConnectorName") String plcConnectorName) {
+	public Map<String, String> testConnectionByName(@PathVariable("plcConnectorName") String plcConnectorName) throws ToolControlException {
 		log.debug("PlcConnectorManagementController.testConnectionByName(String plcConnectorName)...");
 		return plcConnectorManagementService.testConnectionByName(plcConnectorName);
 	}

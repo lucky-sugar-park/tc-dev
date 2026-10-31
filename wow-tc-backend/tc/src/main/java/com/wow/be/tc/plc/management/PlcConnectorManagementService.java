@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition;
+import com.wow.be.tc.ToolControlException;
 
 public interface PlcConnectorManagementService {
 
@@ -29,25 +30,25 @@ public interface PlcConnectorManagementService {
 	
 	public abstract List<PlcConnectorInfo> searchPlcConnectores(Condition cond, PageInfo pageInfo);
 	
-	public abstract boolean publishPlcConnector(long id);
+	public abstract boolean publishPlcConnector(long id) throws ToolControlException;
 	
-	public abstract boolean publishPlcConnectorByName(String plcConnectorName);
+	public abstract boolean publishPlcConnectorByName(String plcConnectorName) throws ToolControlException;
 	
-	public abstract boolean releasePlcConnector(long id);
+	public abstract boolean releasePlcConnector(long id) throws ToolControlException;
 	
-	public abstract boolean releasePlcConnectorByName(String plcConnectorName);
+	public abstract boolean releasePlcConnectorByName(String plcConnectorName) throws ToolControlException;
 	
-	public abstract boolean pausePlcConnector(long id);
+	public abstract boolean pausePlcConnector(long id) throws ToolControlException;
 	
-	public abstract boolean pausePlcConnectorByName(String plcConnectorName);
+	public abstract boolean pausePlcConnectorByName(String plcConnectorName) throws ToolControlException;
 	
-	public abstract boolean resumePlcConnector(long id);
+	public abstract boolean resumePlcConnector(long id) throws ToolControlException;
 	
-	public abstract boolean resumePlcConnectorByName(String plcConnectorName);
+	public abstract boolean resumePlcConnectorByName(String plcConnectorName) throws ToolControlException;
 	
-	public abstract Map<String, String> testConnection(long id);
+	public abstract Map<String, String> testConnection(long id) throws ToolControlException;
 	
-	public abstract Map<String, String> testConnectionByName(String name);
+	public abstract Map<String, String> testConnectionByName(String name) throws ToolControlException;
 	
 	public abstract Map<String, String> testConnectionByIpAddress(String ip, int port);
 	

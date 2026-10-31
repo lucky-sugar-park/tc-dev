@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition;
+import com.wow.be.tc.ToolControlException;
 
 public interface InterfaceService {
 
@@ -11,7 +12,7 @@ public interface InterfaceService {
 	
 	public abstract InterfaceInfo updateInterface(InterfaceInfo info);
 	
-	public abstract InterfaceInfo applyInterfaceUse(long id, boolean use);
+	public abstract InterfaceInfo applyInterfaceUse(long id, boolean use) throws ToolControlException;
 	
 	public abstract void applyInterfaceUseByBatch(List<Long> ids, boolean use);
 	
@@ -23,7 +24,7 @@ public interface InterfaceService {
 	
 	public abstract List<InterfaceInfo> searchInterface(Condition cond, PageInfo pageInfo);
 	
-	public abstract InterfaceInfo findInterfaceById(long id);
+	public abstract InterfaceInfo findInterfaceById(long id) throws ToolControlException;
 	
 	public abstract InterfaceInfo findInterfaceByName(String name);
 	
