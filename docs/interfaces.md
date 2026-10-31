@@ -26,7 +26,7 @@
 | 필드 | 내용 | 예 |
 |---|---|---|
 | `name` | 요청·응답 `data` 의 키 | `temp` |
-| `address` | 프로토콜별 주소 — MELSEC `D100`·`M10`·`X1F`(16진)·`ZR20000`, Modbus `HR1`·`40001`·`IR10`·`CO1`·`DI5` | `D5004` |
+| `address` | 프로토콜별 주소 — MELSEC `D100`·`M10`·`X1F`(16진)·`ZR20000`, Modbus `HR1`·`40001`·`IR10`·`CO1`·`DI5`. 워드 안 비트 `D100.3`·`HR1.15` 는 C단계 예정(읽기 전용, [word-bit-points.md](word-bit-points.md)) | `D5004` |
 | `type` | `BOOL`·`INT16`·`UINT16`·`INT32`·`UINT32`·`INT64`·`FLOAT32`·`FLOAT64`·`STRING`·`BYTES` | `FLOAT32` |
 | `count` | 배열 길이(기본 1) — 값이 JSON 배열 | `5` |
 | `length` | `STRING`·`BYTES` 의 바이트 수 | `16` |

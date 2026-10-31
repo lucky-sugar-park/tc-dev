@@ -67,7 +67,7 @@ check("PLC 커넥터 게시 시도 CONTROL 기록(publish 또는 publish-failed)
 
 # ── 인터페이스 사용 여부 일괄 ──
 s, i1 = call("GET", "/api/v1/ifsvc/management/find/byName/plc.fake.read")
-s, i2 = call("GET", "/api/v1/ifsvc/management/find/byName/plc.fake.read.reply")
+s, i2 = call("GET", "/api/v1/ifsvc/management/find/byName/plc.e2e.d100.read")
 call("POST", "/api/v1/ifsvc/management/update/apply-use/byBatch/false", [i1["id"], i2["id"]])
 call("POST", "/api/v1/ifsvc/management/update/apply-use/byBatch/true", [i1["id"], i2["id"]])
 h1, h2 = hist("INTERFACE", str(i1["id"])), hist("INTERFACE", str(i2["id"]))

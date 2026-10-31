@@ -185,7 +185,7 @@ try:
                 {"interfaceInfo": dict(draft, interfaceType="WRITE", points=pts[:2]), "data": {"a": 7}})
     reqs = b.get("requests", []) if isinstance(b, dict) else []
     check("미리보기 WRITE 200 — 이어진 워드 한 번(1401), 빠진 값은 0 으로 채웠다고 알림", s == 200 and len(reqs) == 1
-          and reqs[0].get("function", "").startswith("1401/0000") and reqs[0].get("frameHex", "").endsWith("07000000")
+          and reqs[0].get("function", "").startswith("1401/0000") and reqs[0].get("frameHex", "").endswith("07000000")
           and any("b" in n for n in b.get("notes", [])), (s, b))
     s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, plcName=f"no-such-{RUN}")})
     check("미리보기 없는 커넥터 400", s == 400 and "커넥터" in str(b), (s, b))

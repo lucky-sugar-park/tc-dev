@@ -50,6 +50,9 @@ def setup():
                      "published": False, "status1": "REGISTERED", "status2": "STOPPED"})
         s, b = call("POST", "/api/v1/plc-connector/register", info)
         print("connector register", s, b if s != 200 else "")
+    # 인터페이스는 커넥터와 따로 본다 — 커넥터만 남고 인터페이스가 지워졌을 수 있다(예: migration 011 이 RAW 정의를 지움)
+    s, b = call("GET", "/api/v1/ifsvc/management/find/byName/plc.fake.read")
+    if s != 200 or not isinstance(b, dict) or not b.get("name"):
         d = common.d100_interface("plc.fake.read", plc_name="plc-fake", description="fake PLC D100..D101")
         s, b = call("POST", "/api/v1/ifsvc/management/register", d)
         print("interface register", d["name"], s, "" if s == 200 else b)

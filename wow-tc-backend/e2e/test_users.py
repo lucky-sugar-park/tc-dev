@@ -146,8 +146,15 @@ s, b, _ = call("DELETE", "/api/v1/users/tc-tester", None, ADMIN)
 check("자기 자신 삭제 → 409", s == 409, (s, b))
 s, b, _ = call("POST", f"/api/v1/users/{ad}/disable", None, ADMIN)
 check("다른 관리자 사용 중지 200", s == 200 and b.get("enabled") is False, (s, b))
-s, b, _ = call("PUT", "/api/v1/users/tc-tester", {"name": "tc tester", "userRoles": ["ROLE_VIEWER"]}, ADMIN)
-check("마지막 활성 관리자의 관리자 역할 제거 → 409", s == 409, (s, b))
+# 시험 관리자 말고도 활성 관리자가 있으면(로컬에 사람 계정 등) 역할 제거가 실제로 성공해 이후 시험이 모두 403 이 된다 — 건너뛴다
+_, users, _ = call("GET", "/api/v1/users", None, ADMIN)
+others = [u["id"] for u in users if isinstance(u, dict) and u.get("id") != "tc-tester" and u.get("enabled")
+          and "ROLE_ADMIN" in (u.get("userRoles") or [])] if isinstance(users, list) else ["?"]
+if others:
+    print(f"SKIP 마지막 활성 관리자의 관리자 역할 제거 → 409 — 다른 활성 관리자가 있다: {others}")
+else:
+    s, b, _ = call("PUT", "/api/v1/users/tc-tester", {"name": "tc tester", "userRoles": ["ROLE_VIEWER"]}, ADMIN)
+    check("마지막 활성 관리자의 관리자 역할 제거 → 409", s == 409, (s, b))
 s, b, _ = call("GET", "/api/v1/users", None, tok[ad])
 check("사용 중지된 관리자의 토큰 즉시 무효(401)", s == 401, (s, b))
 s, _, _ = login(ad, pws[ad])
