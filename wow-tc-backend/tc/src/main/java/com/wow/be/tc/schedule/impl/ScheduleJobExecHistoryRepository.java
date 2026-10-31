@@ -14,7 +14,7 @@ public interface ScheduleJobExecHistoryRepository extends JpaRepository<Schedule
 
 	@Query("DELETE FROM ScheduleJobExecHistoryEntity AS a WHERE a.jobName = :jobName")
 	@Modifying
-	public void deleteByScheduleJobName(String jobName);
+	public void deleteByScheduleJobName(@Param("jobName") String jobName);
 	
 	@Query("DELETE FROM ScheduleJobExecHistoryEntity AS a WHERE a.executionTime BETWEEN :from AND :to")
 	@Modifying

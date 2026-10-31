@@ -22,5 +22,5 @@ public interface InterfaceRepository extends JpaRepository<InterfaceEntity, Long
 	
 	@Query("UPDATE InterfaceEntity AS a SET a.use = :use WHERE a.id IN :ids")
 	@Modifying
-	public void updateApplyUseByBatch(@Param("ids") List<Long> ids, boolean use);
+	public void updateApplyUseByBatch(@Param("ids") List<Long> ids, @Param("use") boolean use);
 }
