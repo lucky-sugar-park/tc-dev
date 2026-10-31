@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactElement } from 'react';
 import { Alert, Box, Button, Dialog, DialogContent, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { DialogFooter, DialogTitleClose, DraggablePaper, useI18n } from 'wow-mes-frontend-shared';
-import type { PlcConnectorInfo, ProtocolDescriptor, ProtocolSetting } from '../types/plc';
+import { SettingsFields, settingText, settingsFromText } from './SettingsFields';
+import type { PlcConnectorInfo, ProtocolDescriptor } from '../types/plc';
 
 type Form = {
   name: string;
@@ -13,12 +14,6 @@ type Form = {
   manufacturer: string;
   description: string;
   settings: Record<string, string>;
-};
-
-const toText = (v: unknown, s?: ProtocolSetting): string => {
-  if (v === null || v === undefined) return '';
-  if (s?.hex && typeof v === 'number' && v > 9) return `0x${v.toString(16).toUpperCase()}`;
-  return String(v);
 };
 
 const list = (s: string): string[] => s.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
@@ -53,7 +48,7 @@ export function ConnectorFormDialog({ open, initial, protocols, onClose, onSubmi
       connLimitPerPort: initial?.connLimitPerPort && initial.connLimitPerPort > 0 ? String(initial.connLimitPerPort) : '1',
       manufacturer: initial?.manufacturer ?? '',
       description: initial?.description ?? '',
-      settings: Object.fromEntries((desc?.settings ?? []).map((s) => [s.key, toText(initial?.settings?.[s.key], s)])),
+      settings: Object.fromEntries((desc?.settings ?? []).map((s) => [s.key, settingText(initial?.settings?.[s.key], s)])),
     });
     setErrors({});
   }, [open, initial, protocols]);
@@ -72,11 +67,7 @@ export function ConnectorFormDialog({ open, initial, protocols, onClose, onSubmi
     const vips = list(f.connectionVips);
     if (!vips.length) errs.connectionVips = t('i18n.tc.connector.vipsRule', '로컬 주소를 하나 이상(포트 수와 같게)');
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    const settings: Record<string, unknown> = {};
-    for (const s of desc?.settings ?? []) {
-      const v = f.settings[s.key]?.trim();
-      if (v) settings[s.key] = s.type === 'NUMBER' && /^-?\d+$/.test(v) ? Number(v) : v;
-    }
+    const settings = settingsFromText(desc?.settings ?? [], f.settings);
     onSubmit({
       ...(initial ?? {}),
       connection: undefined,
@@ -127,21 +118,8 @@ export function ConnectorFormDialog({ open, initial, protocols, onClose, onSubmi
           </Box>
           <Divider />
           <Typography variant="subtitle2">{t('i18n.tc.connector.settings', '프로토콜 설정')} — {desc?.label}</Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 2 }}>
-            {(desc?.settings ?? []).map((s) => (
-              s.type === 'ENUM' ? (
-                <TextField key={s.key} select label={s.key} value={f.settings[s.key] ?? ''} helperText={s.description}
-                  onChange={(e) => set({ settings: { ...f.settings, [s.key]: e.target.value } })}>
-                  <MenuItem value="">{t('i18n.tc.connector.default', '기본')} ({String(s.defaultValue)})</MenuItem>
-                  {(s.options ?? []).map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
-                </TextField>
-              ) : (
-                <TextField key={s.key} label={s.key} value={f.settings[s.key] ?? ''} helperText={s.description}
-                  placeholder={`${t('i18n.tc.connector.default', '기본')} ${toText(s.defaultValue, s)}${s.min != null ? ` (${s.min}~${s.max})` : ''}`}
-                  onChange={(e) => set({ settings: { ...f.settings, [s.key]: e.target.value } })} />
-              )
-            ))}
-          </Box>
+          <SettingsFields schema={desc?.settings ?? []} values={f.settings} onChange={(settings) => set({ settings })}
+            fallbackLabel={(s) => `${t('i18n.tc.connector.default', '기본')} ${settingText(s.defaultValue, s)}`} />
         </Stack>
       </DialogContent>
       <DialogFooter onClose={onClose}><Button type="submit" variant="contained">{t('i18n.common.save', '저장')}</Button></DialogFooter>

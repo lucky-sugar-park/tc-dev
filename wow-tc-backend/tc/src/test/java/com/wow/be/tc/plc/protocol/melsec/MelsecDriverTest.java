@@ -234,4 +234,28 @@ class MelsecDriverTest {
 		assertThat(plan).filteredOn(r -> r.target().equals("D200")).singleElement()
 			.satisfies(r -> assertThat(r.frameHex()).endsWith("C80000A80100" + "0700"));
 	}
+
+	@Test
+	void 인터페이스_설정_검증과_덮어쓰기() {
+		assertThat(driver.normalizeInterfaceSettings(Map.of("stationNo", "0x01", "mergeGap", 0, "pcNo", "")))
+			.containsExactlyInAnyOrderEntriesOf(Map.of("stationNo", 1, "mergeGap", 0));
+		assertThatThrownBy(() -> driver.normalizeInterfaceSettings(Map.of("frame", "4E_BINARY"))).hasMessageContaining("없는 항목");
+		assertThatThrownBy(() -> driver.normalizeInterfaceSettings(Map.of("stationNo", 300))).hasMessageContaining("0~255");
+		Map<String, Object> eff = driver.effectiveSettings(binary, Map.of("stationNo", 2, "networkNo", 1));
+		assertThat(eff).containsEntry("stationNo", 2).containsEntry("networkNo", 1).containsEntry("frame", "3E_BINARY");
+		// 요청 머리: 서브헤더 5000, 네트워크 01, PC FF, I/O 03FF, 국 02
+		List<PlannedRequest> plan = driver.plan(new PlcOperation(MelsecDriver.PROTOCOL, eff, PlcOperation.Kind.READ,
+			List.of(point("a", "D100", PointType.INT16)), Map.of(), "t"));
+		assertThat(plan.get(0).frameHex()).startsWith("500001FFFF0302");
+	}
+
+	@Test
+	void mergeGap_0_이면_빈_칸을_건너_묶지_않는다() {
+		List<PointInfo> points = List.of(point("a", "D0", PointType.INT16), point("b", "D3", PointType.INT16), point("c", "D4", PointType.INT16));
+		assertThat(driver.plan(new PlcOperation(MelsecDriver.PROTOCOL, binary, PlcOperation.Kind.READ, points, Map.of(), "t"))).hasSize(1);
+		List<PlannedRequest> split = driver.plan(new PlcOperation(MelsecDriver.PROTOCOL, driver.effectiveSettings(binary, Map.of("mergeGap", 0)),
+			PlcOperation.Kind.READ, points, Map.of(), "t"));
+		assertThat(split).extracting(PlannedRequest::target).containsExactly("D0", "D3");
+		assertThat(split.get(1).points()).containsExactly("b", "c");
+	}
 }

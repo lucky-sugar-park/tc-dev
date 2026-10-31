@@ -94,6 +94,11 @@ export function RawInterfaceDialog({ name, canConvert, onClose, onConverted }: {
             {tab === 3 && preview && (
               <Stack spacing={1}>
                 {preview.warnings.map((w) => <Alert key={w} severity="warning">{w}</Alert>)}
+                {preview.settings && Object.keys(preview.settings).length > 0 && (
+                  <Alert severity="info">
+                    {t('i18n.tc.convert.settings', '인터페이스 설정으로 둘 값')}: {Object.entries(preview.settings).map(([k, val]) => `${k}=${String(val)}`).join(', ')}
+                  </Alert>
+                )}
                 {preview.replyName && (
                   <Alert severity="info">
                     {t('i18n.tc.convert.reply', '옛 응답 인터페이스 {reply} 는 POINTS 가 쓰지 않는다.').replace('{reply}', preview.replyName)}

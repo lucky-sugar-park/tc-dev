@@ -186,6 +186,23 @@ try:
     s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, points=[{"name": "x", "address": "Q1", "type": "INT16"}])})
     check("미리보기 잘못된 주소 400", s == 400, (s, b))
 
+    # 9. 인터페이스 settings(docs/interface-detail-design.md §3, B단계) — 커넥터 값 덮어쓰기, 저장·조회, 미리보기에 반영, 잘못된 키 거절
+    s, b = call("POST", "/api/v1/ifsvc/management/plan",
+                {"interfaceInfo": dict(draft, points=pts[:1], settings={"stationNo": "0x02", "mergeGap": 0})})
+    reqs = b.get("requests", []) if isinstance(b, dict) else []
+    check("settings 미리보기 — 유효 설정에 stationNo=2, 프레임 머리 국 번호 02", s == 200 and b.get("settings", {}).get("stationNo") == 2
+          and reqs and reqs[0].get("frameHex", "").startswith("500000FFFF0302"), (s, b))
+    s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, settings={"frame": "4E_BINARY"})})
+    check("settings 에 덮어쓸 수 없는 키(frame) 400", s == 400 and "없는 항목" in str(b), (s, b))
+    name = f"e2e.pts.settings.{RUN}"
+    s, b = call("POST", "/api/v1/ifsvc/management/register", dict(draft, name=name, points=pts[:1], use=True, sync=True, reply=True,
+                                                              settings={"monitoringTimer": 32}))
+    created.append(name)
+    got = find(name)
+    check("settings 등록·조회 — monitoringTimer 32", s == 200 and isinstance(got, dict) and got.get("settings") == {"monitoringTimer": 32}, (s, got))
+    s, r = plc(name)
+    check("settings 인터페이스 읽기 200(감시 타이머만 바뀜)", s == 200 and r.get("success") is True, (s, r))
+
     # 7. RAW 결함 M2 — READ 인터페이스에 쓰기 명령(1401)이면 PLC 로 보내지 않고 409
     bad = json.load(open(os.path.join(HERE, "fixture-if-read.json"), encoding="utf-8"))
     bad["name"] = f"e2e.raw.badcmd.{RUN}"

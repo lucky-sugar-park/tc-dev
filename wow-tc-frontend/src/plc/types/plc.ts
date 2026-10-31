@@ -55,6 +55,8 @@ export type ProtocolDescriptor = {
   protocol: string;
   label: string;
   settings: ProtocolSetting[];
+  /** 인터페이스 settings 항목 — 커넥터 값 덮어쓰기와 인터페이스 전용(docs/interface-detail-design.md §3) */
+  interfaceSettings: ProtocolSetting[];
   areas: ProtocolArea[];
   examples: string[];
   rawSupported: boolean;
@@ -96,6 +98,8 @@ export type InterfaceInfo = {
   mode?: 'RAW' | 'POINTS';
   points?: PointInfo[];
   readBack?: boolean;
+  /** 인터페이스 settings — 비면 커넥터 설정 그대로 */
+  settings?: Record<string, unknown>;
   replyName?: string;
   headerProps?: PropInfo[];
   dataProps?: PropInfo[];
@@ -114,6 +118,8 @@ export type PointsConversionInfo = {
   dryRun: boolean;
   applied: boolean;
   points: PointInfo[];
+  /** 변환이 만든 인터페이스 settings — 헤더 값이 커넥터와 다를 때 */
+  settings?: Record<string, unknown>;
   warnings: string[];
   replyName?: string;
   replyUsedBy: string[];

@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,14 +33,19 @@ final class RawToPointsConverter {
 	private RawToPointsConverter() {
 	}
 
-	/** @param points 만든 점 @param warnings 값 표현이 달라지는 것 등 */
-	record Result(List<PointInfo> points, List<String> warnings) {
+	/**
+	 * @param points   만든 점
+	 * @param settings 인터페이스 settings — 머리의 네트워크·PC·I/O·국 번호·감시 타이머 중 커넥터와 다른 것(비면 커넥터 그대로)
+	 * @param warnings 값 표현이 달라지는 것 등
+	 */
+	record Result(List<PointInfo> points, Map<String, Object> settings, List<String> warnings) {
 	}
 
 	/**
 	 * @param iface     바꿀 인터페이스(RAW, READ·WRITE)
 	 * @param reply     읽기면 응답 인터페이스(데이터 속성), 쓰기면 null 이어도 된다
-	 * @param settings  커넥터의 정규화한 MELSEC 설정 — 머리의 네트워크·PC·I/O·국 번호가 같아야 한다(POINTS 는 커넥터 설정으로 보낸다)
+	 * @param settings  커넥터의 정규화한 MELSEC 설정 — 머리의 네트워크·PC·I/O·국 번호·감시 타이머가 다르면 인터페이스 settings 로 옮긴다
+	 *                  (POINTS 는 커넥터 설정 ⊕ 인터페이스 settings 로 보낸다, docs/interface-detail-design.md §3)
 	 */
 	static Result convert(InterfaceInfo iface, InterfaceInfo reply, Map<String, Object> settings) {
 		if (iface.getInterfaceType() != InterfaceType.READ && iface.getInterfaceType() != InterfaceType.WRITE) {
@@ -50,14 +56,12 @@ final class RawToPointsConverter {
 		if ((h[0] & 0xFF) != 0x50 || h[1] != 0x00) {
 			throw new IllegalArgumentException("3E BINARY 요청 머리(서브헤더 5000)가 아닙니다: " + hex(h, 0, 2));
 		}
-		check(settings, "networkNo", h[2] & 0xFF, "네트워크 번호");
-		check(settings, "pcNo", h[3] & 0xFF, "PC 번호");
-		check(settings, "ioNo", le(h, 4, 2), "요구 I/O 번호");
-		check(settings, "stationNo", h[6] & 0xFF, "요구 국 번호");
-		int timer = le(h, 9, 2);
-		if (settings.get("monitoringTimer") instanceof Number t && t.intValue() != timer) {
-			warnings.add(String.format("감시 타이머가 커넥터 설정(0x%04X)으로 바뀝니다(지금 0x%04X)", t.intValue(), timer));
-		}
+		Map<String, Object> overrides = new LinkedHashMap<>();
+		keep(settings, overrides, warnings, "networkNo", h[2] & 0xFF, "네트워크 번호");
+		keep(settings, overrides, warnings, "pcNo", h[3] & 0xFF, "PC 번호");
+		keep(settings, overrides, warnings, "ioNo", le(h, 4, 2), "요구 I/O 번호");
+		keep(settings, overrides, warnings, "stationNo", h[6] & 0xFF, "요구 국 번호");
+		keep(settings, overrides, warnings, "monitoringTimer", le(h, 9, 2), "감시 타이머");
 		int command = le(h, 11, 2);
 		int sub = le(h, 13, 2);
 		boolean read = iface.getInterfaceType() == InterfaceType.READ;
@@ -105,7 +109,7 @@ final class RawToPointsConverter {
 		if (offset != words * 2) {
 			throw new IllegalArgumentException("데이터 속성 길이 합(" + offset + "바이트)이 머리의 워드 수(" + words + "워드 = " + words * 2 + "바이트)와 다릅니다");
 		}
-		return new Result(points, warnings);
+		return new Result(points, overrides, warnings);
 	}
 
 	private static PointType type(PropInfo p, MelsecDevice device, List<String> warnings) {
@@ -183,10 +187,12 @@ final class RawToPointsConverter {
 		return h;
 	}
 
-	private static void check(Map<String, Object> settings, String key, int actual, String what) {
+	/** 머리 값이 커넥터 설정과 다르면 인터페이스 settings 로 남긴다 — 다른 PLC 로 중계하던 정의도 같은 곳으로 보낸다 */
+	private static void keep(Map<String, Object> settings, Map<String, Object> overrides, List<String> warnings, String key, int actual,
+			String what) {
 		if (settings.get(key) instanceof Number n && n.intValue() != actual) {
-			throw new IllegalArgumentException(String.format("%s가 커넥터 설정과 다릅니다(헤더 0x%X, 커넥터 %s 0x%X) — POINTS 는 커넥터 설정으로 보내므로 먼저 맞추세요",
-				what, actual, key, n.intValue()));
+			overrides.put(key, actual);
+			warnings.add(String.format("%s(헤더 0x%X)가 커넥터 설정(0x%X)과 달라 인터페이스 설정 %s 로 둡니다", what, actual, n.intValue(), key));
 		}
 	}
 

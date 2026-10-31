@@ -1,6 +1,6 @@
 # 인터페이스 세부 정의 설계 (MELSEC · Modbus TCP · OPC UA)
 
-> 상태: **설계 확정, A단계 구현** (2026-10-31, v0.4.0 — 사용자가 "문서화 후 A단계부터" 결정). 대상: `wow-tc-backend/tc`, `wow-tc-frontend`, (D단계) `vplc`.
+> 상태: **설계 확정, A·B단계 구현** (2026-10-31, v0.4.0 — 사용자가 "문서화 후 A단계부터" 결정). 대상: `wow-tc-backend/tc`, `wow-tc-frontend`, (D단계) `vplc`.
 > 관련: [plc-protocol-design.md](plc-protocol-design.md) §4(데이터 모델)·§5(드라이버 경계), [frontend-design.md](frontend-design.md) §5·§9.
 
 ## 1. 왜
@@ -24,7 +24,7 @@
 
 | | 인터페이스마다 달라야 하는 것 | 점마다 필요한 것 |
 |---|---|---|
-| **MELSEC MC** | 다른 PLC 로 중계(`networkNo`·`stationNo`·`pcNo`·`ioNo`), 느린 명령의 `monitoringTimer`, 묶기 끄기(값을 같은 요청으로 읽어야 할 때·`mergeGap`) | 워드 안 비트(`D100.3`), 문자열 인코딩(ASCII·Shift-JIS·UTF-16LE) |
+| **MELSEC MC** | 다른 PLC 로 중계(`networkNo`·`stationNo`·`pcNo`·`ioNo`), 느린 명령의 `monitoringTimer`, 묶을 때 빈 칸을 건너뛰지 않기(빈 주소를 읽으면 오류인 장비·`mergeGap`) | 워드 안 비트(`D100.3`), 문자열 인코딩(ASCII·Shift-JIS·UTF-16LE) |
 | **Modbus TCP** | **`unitId`**(게이트웨이 한 대 뒤에 RTU 장비 여러 대 — 흔하다), 쓰기 FC 강제(`writeFunction`: FC6 만·FC16 만 받는 장비), 장비별 요청 한도(`maxRegistersPerRequest`), `mergeGap` | 레지스터 안 비트(`HR40001.3`), 문자열 바이트 교환 |
 | **OPC UA** | 읽기 방식(`accessMode` READ·SUBSCRIBE), `samplingIntervalMs`·`publishingIntervalMs`·데드밴드, 돌려줄 시각(source·server) | NodeId(주소 칸 그대로), 노드 형 확인 — **노드 찾아보기(browse) 화면** |
 | **공통** | — | 배율·오프셋·단위, 쓰기 값 범위(min·max) |
@@ -73,8 +73,8 @@ B·C 는 tc 재기동이 필요하다(MES 요청이 끊긴다) — 한 번의 �
 |---|---|---|---|
 | I1 | 인터페이스 settings 저장 | **JSON 칼럼 하나**(`SETTINGS_JSON`) + 드라이버 검증 | 제안(B 전에 확정) |
 | I2 | 비트 표기 | **주소 문법**(`D100.3`, `HR40001.3`) — 형은 BOOL | 제안(C 전에 확정) |
-| I3 | 배율·단위 변환을 tc 가 할지 | 열린 질문 — MES 가 하고 있으면 tc 는 하지 않는다 | **사용자 확인 필요** |
-| I4 | OPC UA SUBSCRIBE 결과를 어디로 | 스케줄 Job 과 같은 **전달 정의 경로**(WebHook·DB_TABLE·CALLBACK_URL) | **사용자 확인 필요** |
+| I3 | 배율·단위 변환을 tc 가 할지 | **tc 가 한다** — 점마다 scale·offset·unit, 읽을 때 곱하고 쓸 때 거꾸로 푼다. MES 는 공학 단위 값을 받는다 | 확정(2026-10-31, C단계) |
+| I4 | OPC UA SUBSCRIBE 결과를 어디로 | 스케줄 Job 과 같은 **전달 정의 경로**(WebHook·DB_TABLE·CALLBACK_URL) | 확정(2026-10-31, D단계) |
 | I5 | RAW 편집 | **만들지 않는다**(변환으로 줄인다) | 확정 |
 | I6 | 미리보기의 쓰기 값 | 요청 `data` 를 주면 그 값, 없으면 **형의 0 값**(BOOL false·문자열 빈 값)으로 — 프레임 모양을 보이는 것이 목적 | 확정(A) |
 
@@ -126,3 +126,17 @@ B·C 는 tc 재기동이 필요하다(MES 요청이 끊긴다) — 한 번의 �
 | API | `POST /api/v1/ifsvc/management/plan`(`RequestPlanInfo`) — 로컬 tc 재기동 뒤 API 문서 등록·인증 없이 401 확인 |
 | 화면 | 인터페이스 ⋮ **상세 보기**(POINTS)·등록/수정 대화상자의 **요청 미리보기** — 저장 전 정의(D100 INT16)로 `0401/0000 · D100 · 1워드` 와 프레임이 나오는 것을 확인 |
 | 남은 것 | e2e `/plan` 5개 항목은 시험 관리자 계정이 있는 환경에서 돌린다. Playwright 항목은 아직 없다. 실제 PLC(4E 등)로 프레임 대조는 하지 않았다 |
+
+## 8. B단계 구현 — 인터페이스 settings (2026-10-31)
+
+| 것 | 내용 |
+|---|---|
+| 모델 | `InterfaceInfo.settings`(JSON, `INTERFACE.SETTINGS_JSON` — migration 010). 비면 커넥터 설정 그대로. RAW 는 settings 를 받지 않는다(400) |
+| 스키마 | `ProtocolDescriptor.interfaceSettings` — 서버 검증(`InterfaceSettings.normalize`)과 화면 폼이 같은 목록을 쓴다. 목록에 없는 키(`frame`·`addressBase`·`healthCheckIntervalSec` 처럼 연결에 묶인 것)는 400 |
+| MELSEC | 덮어쓰기 `networkNo`·`pcNo`·`ioNo`·`stationNo`·`monitoringTimer`·`maxWordsPerRequest`, 전용 `mergeGap`(0~64, 기본 8) |
+| Modbus | 덮어쓰기 `unitId`·`byteOrder`·`wordOrder`·`maxRegistersPerRequest`·`maxCoilsPerRequest`, 전용 `writeFunction`(AUTO·SINGLE·MULTIPLE — SINGLE 은 칸마다 FC5·6, MULTIPLE 은 하나여도 FC15·16)·`mergeGap`(레지스터·코일 같은 수, 비우면 8·16) |
+| 유효 설정 | `PlcDriver.effectiveSettings` = 커넥터 정규화 설정 ⊕ 인터페이스 settings. 실행(`PlcInterfaceCommand`)·미리보기가 같은 길이고, 작업(`PlcOperation.settings`)에 실려 원격 어댑터(다중화)에도 간다 |
+| 변환기 | RAW 머리의 네트워크·PC·I/O·국 번호·감시 타이머가 커넥터와 다르면 거절하던 것을 인터페이스 settings 로 옮긴다(경고에 적음). 적용하면 함께 저장 |
+| 화면 | 등록·수정 대화상자 탭 — 기본 · 프로토콜 설정(비운 칸에 "커넥터 값 …") · 점 · 요청 미리보기. 상세 보기에 "이 인터페이스의 설정", RAW 변환 미리보기에 옮길 설정. 커넥터 폼과 설정 칸을 공용(`SettingsFields`)으로 |
+| 시험 | 단위 107개 통과(설정 검증·덮어쓰기 프레임·mergeGap·writeFunction 실행·변환기). e2e `test_plc_points.py` 에 settings 4개, Playwright 에 설정 탭·상세 보기 — 둘 다 시험 계정이 있는 환경에서 돌린다 |
+| 운영 반영 | migration 010(로컬은 ddl-auto 로 생김), jar 교체·재기동 |

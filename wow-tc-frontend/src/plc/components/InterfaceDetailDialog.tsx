@@ -73,9 +73,15 @@ export function InterfaceDetailDialog({ name, connectors, onClose }: {
                   <Chip size="small" color={connector.published ? 'primary' : 'default'} variant="outlined" label={connector.published ? 'PUBLISHED' : 'RELEASED'} />
                 </Stack>
               ) : <Typography variant="body2" color="text.secondary">{info.plcName ?? '—'}</Typography>}
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" component="div">
                 {t('i18n.tc.interface.headerHelp', '프레임·국 번호 같은 헤더 값은 커넥터 설정에서 오고, 명령·주소·길이는 드라이버가 점에서 만듭니다')}
               </Typography>
+              <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5, mt: 0.5, alignItems: 'center' }}>
+                <Typography variant="caption">{t('i18n.tc.interface.ownSettings', '이 인터페이스의 설정')}:</Typography>
+                {Object.keys(info.settings ?? {}).length === 0
+                  ? <Typography variant="caption" color="text.secondary">{t('i18n.tc.interface.noOwnSettings', '없음 — 커넥터 설정 그대로')}</Typography>
+                  : Object.entries(info.settings ?? {}).map(([k, val]) => <Chip key={k} size="small" color="secondary" variant="outlined" label={`${k}=${String(val)}`} />)}
+              </Stack>
             </Box>
             <Divider />
             <Box>

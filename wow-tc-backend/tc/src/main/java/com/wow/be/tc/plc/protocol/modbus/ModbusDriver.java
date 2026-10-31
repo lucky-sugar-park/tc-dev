@@ -58,6 +58,12 @@ public class ModbusDriver implements PlcDriver {
 
 	static final int GAP_COILS = 16;
 
+	static final String WRITE_AUTO = "AUTO";
+
+	static final String WRITE_SINGLE = "SINGLE";
+
+	static final String WRITE_MULTIPLE = "MULTIPLE";
+
 	private static final Pattern NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_.\\-]{0,99}");
 
 	private static final String KEYS = "unitId, byteOrder, wordOrder, addressBase, maxRegistersPerRequest, maxCoilsPerRequest, healthCheckIntervalSec";
@@ -215,7 +221,7 @@ public class ModbusDriver implements PlcDriver {
 		ModbusFrames frames = new ModbusFrames(op.settings());
 		List<PlannedRequest> out = new ArrayList<>();
 		if (op.kind() == PlcOperation.Kind.READ) {
-			for (Block block : blocks(items, limits.readRegisters, limits.readCoils)) {
+			for (Block block : blocks(items, limits.readRegisters, limits.readCoils, limits.gapRegisters, limits.gapCoils)) {
 				int fc = block.table.readFunction;
 				out.add(PlannedRequest.of(out.size() + 1, "FC" + fc + " " + FUNCTION_NAMES.get(fc), target(block.table, block.first), block.units(),
 					unit(block.table), block.items.stream().map(i -> i.point.getName()).toList(), frames.read(fc, block.first, block.units())));
@@ -223,7 +229,7 @@ public class ModbusDriver implements PlcDriver {
 			return out;
 		}
 		for (Run run : runs(items, op.values(), orders(op.settings()), limits)) {
-			WriteRequest w = writeRequest(frames, run);
+			WriteRequest w = writeRequest(frames, run, limits.writeFunction);
 			out.add(PlannedRequest.of(out.size() + 1, "FC" + w.fc + " " + FUNCTION_NAMES.get(w.fc), target(run.table, run.start), run.units(),
 				unit(run.table), run.points, w.frame));
 		}
@@ -275,11 +281,24 @@ public class ModbusDriver implements PlcDriver {
 
 		final int writeCoils;
 
+		/** 읽기를 묶을 때 끼어도 되는 빈 칸 — 인터페이스 settings {@code mergeGap} 이 있으면 레지스터·코일 모두 그 값 */
+		final int gapRegisters;
+
+		final int gapCoils;
+
+		/** 쓰기 함수 — AUTO(하나면 FC5·6, 여럿이면 FC15·16), SINGLE(늘 FC5·6, 칸마다 한 번), MULTIPLE(늘 FC15·16) */
+		final String writeFunction;
+
 		Limits(Map<String, Object> s) {
 			readRegisters = intOf(s, "maxRegistersPerRequest", MAX_READ_REGISTERS);
 			readCoils = intOf(s, "maxCoilsPerRequest", MAX_READ_COILS);
 			writeRegisters = Math.min(readRegisters, MAX_WRITE_REGISTERS);
 			writeCoils = Math.min(readCoils, MAX_WRITE_COILS);
+			Object gap = s != null ? s.get("mergeGap") : null;
+			gapRegisters = gap instanceof Number n ? n.intValue() : GAP_REGISTERS;
+			gapCoils = gap instanceof Number n ? n.intValue() : GAP_COILS;
+			Object wf = s != null ? s.get("writeFunction") : null;
+			writeFunction = wf != null ? wf.toString() : WRITE_AUTO;
 		}
 	}
 
@@ -293,21 +312,31 @@ public class ModbusDriver implements PlcDriver {
 			}
 			runs.add(item.address.table().isBit() ? Run.bits(item, value) : Run.registers(item, value, orders));
 		}
-		return Run.merge(runs, limits.writeRegisters, limits.writeCoils);
+		List<Run> merged = Run.merge(runs, limits.writeRegisters, limits.writeCoils);
+		if (!WRITE_SINGLE.equals(limits.writeFunction)) {
+			return merged;
+		}
+		// FC5·6 만 받는 장비 — 칸마다 한 번
+		List<Run> singles = new ArrayList<>();
+		for (Run run : merged) {
+			singles.addAll(run.split());
+		}
+		return singles;
 	}
 
 	/** 쓰기 프레임과, 응답이 되돌려 줄 값(단일 쓰기는 값, 여러 개는 개수) */
 	private record WriteRequest(int fc, byte[] frame, int echo) {
 	}
 
-	private static WriteRequest writeRequest(ModbusFrames frames, Run run) {
+	private static WriteRequest writeRequest(ModbusFrames frames, Run run, String writeFunction) {
+		boolean multiple = WRITE_MULTIPLE.equals(writeFunction);
 		if (run.table.isBit()) {
-			boolean single = run.bits.length == 1;
+			boolean single = run.bits.length == 1 && !multiple;
 			return single
 				? new WriteRequest(5, frames.writeCoil(run.start, run.bits[0]), run.bits[0] ? 0xFF00 : 0x0000)
 				: new WriteRequest(15, frames.writeCoils(run.start, run.bits), run.bits.length);
 		}
-		boolean single = run.data.length == 2;
+		boolean single = run.data.length == 2 && !multiple;
 		return single
 			? new WriteRequest(6, frames.writeRegister(run.start, run.data), (run.data[0] & 0xFF) << 8 | (run.data[1] & 0xFF))
 			: new WriteRequest(16, frames.writeRegisters(run.start, run.data), run.data.length / 2);
@@ -316,7 +345,7 @@ public class ModbusDriver implements PlcDriver {
 	private PlcResult read(PlcOperation op, List<Item> items, ModbusFrames frames, Orders orders, Limits limits,
 			FrameExchanger exchanger) throws ToolControlException {
 		Map<String, Object> values = new LinkedHashMap<>();
-		for (Block block : blocks(items, limits.readRegisters, limits.readCoils)) {
+		for (Block block : blocks(items, limits.readRegisters, limits.readCoils, limits.gapRegisters, limits.gapCoils)) {
 			int fc = block.table.readFunction;
 			int quantity = block.units();
 			ModbusFrames.Reply reply = frames.reply(exchanger.exchange(op.reqId(), frames.read(fc, block.first, quantity)), fc);
@@ -345,7 +374,7 @@ public class ModbusDriver implements PlcDriver {
 			throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "쓰기 값이 잘못되었습니다: " + e.getMessage());
 		}
 		for (Run run : runs) {
-			WriteRequest w = writeRequest(frames, run);
+			WriteRequest w = writeRequest(frames, run, limits.writeFunction);
 			ModbusFrames.Reply reply = frames.reply(exchanger.exchange(op.reqId(), w.frame), w.fc);
 			if (reply.exception() != 0) {
 				return new PlcResult(Map.of(), status(reply.exception()));
@@ -387,6 +416,17 @@ public class ModbusDriver implements PlcDriver {
 			new ProtocolDescriptor.Setting("maxCoilsPerRequest", "NUMBER", MAX_READ_COILS, 1, MAX_READ_COILS, null, false, "요청 한 번의 최대 코일 수"),
 			new ProtocolDescriptor.Setting("healthCheckIntervalSec", "NUMBER", 30, 0, 3600, null, false,
 				"쉬는 연결 확인(레지스터 읽기) 주기(초), 0 이면 끔")),
+			// 인터페이스 settings — 게이트웨이 뒤 장치(unitId), 장치별 순서·한도, 쓰기 함수, 묶기(docs/interface-detail-design.md §2)
+			List.of(
+				new ProtocolDescriptor.Setting("unitId", "NUMBER", null, 0, 255, null, false, "단위 ID — 게이트웨이 한 대 뒤 장치가 여럿일 때"),
+				new ProtocolDescriptor.Setting("byteOrder", "ENUM", null, null, null, orders, false, "레지스터 안 바이트 순서"),
+				new ProtocolDescriptor.Setting("wordOrder", "ENUM", null, null, null, orders, false, "32·64비트 값의 워드 순서"),
+				new ProtocolDescriptor.Setting("maxRegistersPerRequest", "NUMBER", null, 1, MAX_READ_REGISTERS, null, false, "요청 한 번의 최대 레지스터 수"),
+				new ProtocolDescriptor.Setting("maxCoilsPerRequest", "NUMBER", null, 1, MAX_READ_COILS, null, false, "요청 한 번의 최대 코일 수"),
+				new ProtocolDescriptor.Setting("writeFunction", "ENUM", WRITE_AUTO, null, null, List.of(WRITE_AUTO, WRITE_SINGLE, WRITE_MULTIPLE), false,
+					"쓰기 함수 — AUTO 는 하나면 FC5·6 여럿이면 FC15·16, SINGLE 은 늘 FC5·6(칸마다), MULTIPLE 은 늘 FC15·16"),
+				new ProtocolDescriptor.Setting("mergeGap", "NUMBER", GAP_REGISTERS, 0, 64, null, false,
+					"읽기를 묶을 때 끼어도 되는 빈 칸 수(레지스터·코일) — 0 이면 바로 이어진 점만 묶는다. 비우면 레지스터 8·코일 16")),
 			List.of(new ProtocolDescriptor.Area("HR", "보유 레지스터", false, false, false, register),
 				new ProtocolDescriptor.Area("IR", "입력 레지스터(읽기만)", false, false, true, register),
 				new ProtocolDescriptor.Area("CO", "코일", true, false, false, List.of(PointType.BOOL)),
@@ -462,14 +502,14 @@ public class ModbusDriver implements PlcDriver {
 		}
 	}
 
-	static List<Block> blocks(List<Item> items, int maxRegisters, int maxCoils) {
+	static List<Block> blocks(List<Item> items, int maxRegisters, int maxCoils, int gapRegisters, int gapCoils) {
 		List<Item> sorted = new ArrayList<>(items);
 		sorted.sort(Comparator.comparing((Item i) -> i.address.table()).thenComparingInt(Item::first));
 		List<Block> blocks = new ArrayList<>();
 		Block current = null;
 		for (Item item : sorted) {
 			Table table = item.address.table();
-			int gap = table.isBit() ? GAP_COILS : GAP_REGISTERS;
+			int gap = table.isBit() ? gapCoils : gapRegisters;
 			int max = table.isBit() ? maxCoils : maxRegisters;
 			if (current != null && current.table == table && item.first() <= current.last + 1 + gap
 					&& Math.max(current.last, item.last()) - current.first + 1 <= max) {
@@ -529,6 +569,23 @@ public class ModbusDriver implements PlcDriver {
 
 		int units() {
 			return table.isBit() ? bits.length : data.length / 2;
+		}
+
+		/** 칸마다 하나씩 — 쓰기 함수 SINGLE */
+		List<Run> split() {
+			List<Run> out = new ArrayList<>();
+			for (int i = 0; i < units(); i++) {
+				Run one = new Run(table, start + i, null);
+				one.points.clear();
+				one.points.addAll(points);
+				if (table.isBit()) {
+					one.bits = new boolean[] { bits[i] };
+				} else {
+					one.data = new byte[] { data[i * 2], data[i * 2 + 1] };
+				}
+				out.add(one);
+			}
+			return out;
 		}
 
 		/** 같은 영역에서 바로 이어진 쓰기를 하나로(한도 안) */

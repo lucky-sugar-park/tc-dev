@@ -1,7 +1,12 @@
 package com.wow.be.tc.interfs.impl;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.wow.be.framework.persist.PersistentEntity;
 import com.wow.be.tc.Types.InterfaceType;
@@ -93,6 +98,10 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 	@Column(name="READ_BACK")
 	private Boolean readBack;
 
+	/** 인터페이스 settings(JSON) — 커넥터 설정을 덮어쓰는 것과 인터페이스 전용(docs/interface-detail-design.md §3). 비면 커넥터 설정 그대로 */
+	@Column(name="SETTINGS_JSON", columnDefinition="LONGTEXT")
+	private String settingsJson;
+
 	@OneToMany(fetch=FetchType.LAZY, mappedBy="interfs", cascade={ CascadeType.REMOVE })
 	private List<InterfacePointEntity> points;
 	
@@ -126,6 +135,15 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		info.setDescription(this.getDescription());
 		info.setMode(this.mode!=null?InterfaceMode.valueOf(this.mode):InterfaceMode.RAW);
 		info.setReadBack(this.readBack!=null && this.readBack);
+		Map<String, Object> settings=new LinkedHashMap<>();
+		try {
+			if(this.settingsJson!=null && !this.settingsJson.isBlank()) {
+				settings=new ObjectMapper().readValue(this.settingsJson, Map.class);
+			}
+		} catch (JsonProcessingException e) {
+			log.warn("인터페이스 설정 JSON 을 읽지 못했습니다: {}", this.name);
+		}
+		info.setSettings(settings);
 		if(info.getMode()==InterfaceMode.POINTS) {
 			List<PointInfo> pointInfos=new ArrayList<>();
 			for(InterfacePointEntity pentity:points) {
@@ -201,6 +219,12 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		}
 		this.setMode((info.getMode()!=null?info.getMode():InterfaceMode.RAW).name());
 		this.setReadBack(info.isReadBack());
+		try {
+			this.setSettingsJson(info.getSettings()!=null && !info.getSettings().isEmpty()
+				? new ObjectMapper().writeValueAsString(info.getSettings()) : null);
+		} catch (JsonProcessingException e) {
+			throw new IllegalArgumentException("인터페이스 설정을 저장할 수 없습니다: " + e.getMessage());
+		}
 		
 //		for(PropInfo pInfo : info.getHeaderProps()) {
 //			HeaderPropEntity entity=new HeaderPropEntity();

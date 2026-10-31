@@ -7,11 +7,14 @@ import java.util.List;
  * 검증은 여전히 드라이버가 한다 — 이것은 안내다.
  *
  * @param settings   커넥터 {@code settings} 항목
+ * @param interfaceSettings 인터페이스 {@code settings} 항목 — 커넥터 값을 덮어쓰는 것과 인터페이스 전용(docs/interface-detail-design.md §3).
+ *                   검증도 이 목록으로 한다({@link InterfaceSettings})
  * @param areas      주소 영역(MELSEC 디바이스, Modbus 영역)
  * @param examples   주소 예
  * @param rawSupported RAW 인터페이스(헤더·데이터 바이트 정의)를 받는가
  */
-public record ProtocolDescriptor(String protocol, String label, List<Setting> settings, List<Area> areas, List<String> examples,
+public record ProtocolDescriptor(String protocol, String label, List<Setting> settings, List<Setting> interfaceSettings, List<Area> areas,
+		List<String> examples,
 		boolean rawSupported) {
 
 	/**

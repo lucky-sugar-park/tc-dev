@@ -24,6 +24,20 @@ public interface PlcDriver {
 	 */
 	Map<String, Object> normalizeSettings(Map<String, Object> settings, String legacyFrameFormat);
 
+	/**
+	 * 인터페이스 settings 를 검증한다 — {@link ProtocolDescriptor#interfaceSettings()} 에 있는 키만, 범위·고를 값. 빈 값은 뺀다.
+	 * 잘못되면 {@link IllegalArgumentException}(400)
+	 */
+	default Map<String, Object> normalizeInterfaceSettings(Map<String, Object> settings) {
+		ProtocolDescriptor d = describe();
+		return InterfaceSettings.normalize(d.label(), d.interfaceSettings(), settings);
+	}
+
+	/** 작업에 실을 유효 설정 — 정규화한 커넥터 설정 위에 인터페이스 settings 를 덮는다 */
+	default Map<String, Object> effectiveSettings(Map<String, Object> connectorSettings, Map<String, Object> interfaceSettings) {
+		return InterfaceSettings.merge(connectorSettings, normalizeInterfaceSettings(interfaceSettings));
+	}
+
 	/** 점 하나를 검증한다(주소·형·길이·읽기/쓰기 가능). 잘못되면 {@link IllegalArgumentException}(400) */
 	void validatePoint(PointInfo point, InterfaceType interfaceType);
 

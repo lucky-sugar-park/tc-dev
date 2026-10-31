@@ -222,10 +222,11 @@ public class PlcInterfaceCommand extends AbstractMessageCommand<TcMessageRequest
 		Map<String, Object> settings;
 		try {
 			PlcDriver driver = PlcDrivers.of(pInfo.getProtocol());
-			settings = driver.normalizeSettings(pInfo.getSettings(),
-				pInfo.getMessageFrameFormat() != null ? pInfo.getMessageFrameFormat().name() : null);
+			// 유효 설정 = 커넥터 설정 ⊕ 인터페이스 settings(docs/interface-detail-design.md §3) — 원격 어댑터에도 작업에 실려 간다
+			settings = driver.effectiveSettings(driver.normalizeSettings(pInfo.getSettings(),
+				pInfo.getMessageFrameFormat() != null ? pInfo.getMessageFrameFormat().name() : null), iInfo.getSettings());
 		} catch (IllegalArgumentException e) {
-			throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED, "PLC 커넥터 설정이 잘못되었습니다: " + e.getMessage());
+			throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED, "PLC 커넥터·인터페이스 설정이 잘못되었습니다: " + e.getMessage());
 		}
 		PlcOperation.Kind kind = iInfo.getInterfaceType() == InterfaceType.WRITE ? PlcOperation.Kind.WRITE : PlcOperation.Kind.READ;
 		Map<String, Object> values = kind == PlcOperation.Kind.WRITE && request.getData() != null ? request.getData() : Map.of();

@@ -2,6 +2,7 @@ package com.wow.be.tc.interfs;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.wow.be.framework.AbstractInfo;
 import com.wow.be.tc.Types.InterfaceType;
@@ -100,6 +101,12 @@ public class InterfaceInfo extends AbstractInfo {
 
 	/** POINTS WRITE — 쓴 뒤 같은 점을 다시 읽어 응답 data 에 넣는다(결정 P8) */
 	private boolean readBack;
+
+	/**
+	 * 인터페이스 settings — 커넥터 설정을 덮어쓰는 것(MELSEC 국 번호, Modbus unitId …)과 인터페이스 전용(mergeGap, writeFunction).
+	 * 키는 프로토콜 설명의 interfaceSettings. 비면 커넥터 설정 그대로(docs/interface-detail-design.md §3)
+	 */
+	private Map<String, Object> settings;
 	
 	public InterfaceInfo() {
 		this.headerProps=new ArrayList<>();

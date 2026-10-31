@@ -116,6 +116,10 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		if(info.getMode()==InterfaceMode.POINTS && info.getPoints()==null && before!=null) {
 			info.setPoints(before.getPoints());
 		}
+		// settings 를 보내지 않은 수정(옛 화면·RAW 수정)은 저장된 값을 그대로 쓴다
+		if(info.getSettings()==null && before!=null) {
+			info.setSettings(before.getSettings());
+		}
 		validatePoints(info);
 		InterfaceEntity entity=new InterfaceEntity();
 		entity.from(info);
@@ -309,6 +313,9 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	void validatePoints(InterfaceInfo info) {
 		if(info.getMode()!=InterfaceMode.POINTS) {
 			rejectRawOnNonMelsec(info);
+			if(info.getSettings()!=null && !info.getSettings().isEmpty()) {
+				throw new IllegalArgumentException("RAW 인터페이스는 인터페이스 설정(settings)을 쓰지 않습니다 — 헤더 속성이 그 역할을 한다");
+			}
 			return;
 		}
 		if(info.getInterfaceType()!=InterfaceType.READ && info.getInterfaceType()!=InterfaceType.WRITE) {
@@ -329,6 +336,7 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 			throw new IllegalArgumentException("점은 인터페이스마다 " + MAX_POINTS + "개까지입니다: " + points.size());
 		}
 		PlcDriver driver=PlcDrivers.of(connector.getProtocol());
+		info.setSettings(driver.normalizeInterfaceSettings(info.getSettings()));
 		Set<String> names=new HashSet<>();
 		for(int i=0;i<points.size();i++) {
 			PointInfo point=points.get(i);
@@ -358,8 +366,9 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		validatePoints(info);
 		PlcConnectorInfo connector=plcConnectorService.findPlcConnectorByName(info.getPlcName());
 		PlcDriver driver=PlcDrivers.of(connector.getProtocol());
-		Map<String, Object> settings=driver.normalizeSettings(connector.getSettings(),
-			connector.getMessageFrameFormat()!=null ? connector.getMessageFrameFormat().name() : null);
+		// 유효 설정 = 커넥터 설정 ⊕ 인터페이스 settings(validatePoints 가 정규화했다) — 실행(PlcInterfaceCommand)과 같다
+		Map<String, Object> settings=driver.effectiveSettings(driver.normalizeSettings(connector.getSettings(),
+			connector.getMessageFrameFormat()!=null ? connector.getMessageFrameFormat().name() : null), info.getSettings());
 		boolean write=info.getInterfaceType()==InterfaceType.WRITE;
 		List<String> notes=new ArrayList<>();
 		Map<String, Object> values=Map.of();
@@ -429,13 +438,14 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		if(!dryRun) {
 			info.setMode(InterfaceMode.POINTS);
 			info.setPoints(result.points());
+			info.setSettings(result.settings());
 			// 헤더·데이터 속성은 바꾸지 않는다(oper 없음)
 			info.getHeaderProps().forEach(p->p.setOper(null));
 			info.getDataProps().forEach(p->p.setOper(null));
 			updateInterface(info);
 			log.info("RAW 인터페이스를 POINTS 로 바꿨습니다: {} (점 {}개)", info.getName(), result.points().size());
 		}
-		return new PointsConversionInfo(info.getName(), dryRun, !dryRun, result.points(), result.warnings(), replyName, usedBy);
+		return new PointsConversionInfo(info.getName(), dryRun, !dryRun, result.points(), result.settings(), result.warnings(), replyName, usedBy);
 	}
 
 	/** RAW(MC 헤더·데이터 바이트 정의)는 MELSEC 전용 — 다른 프로토콜 커넥터의 READ·WRITE 인터페이스면 400 */

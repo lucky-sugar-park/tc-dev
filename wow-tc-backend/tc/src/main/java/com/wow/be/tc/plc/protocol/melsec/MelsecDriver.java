@@ -178,7 +178,7 @@ public class MelsecDriver implements PlcDriver {
 		List<Item> items = items(op);
 		List<PlannedRequest> out = new ArrayList<>();
 		if (op.kind() == PlcOperation.Kind.READ) {
-			for (Block block : blocks(items, frames.maxWords)) {
+			for (Block block : blocks(items, frames.maxWords, mergeGap(op.settings()))) {
 				int start = readStart(block);
 				out.add(PlannedRequest.of(out.size() + 1, "0401/0000 일괄 읽기(워드)", target(block.device, start), block.words(), "워드",
 					block.items.stream().map(i -> i.point.getName()).toList(), readRequest(frames, block)));
@@ -200,6 +200,12 @@ public class MelsecDriver implements PlcDriver {
 			items.add(new Item(p, MelsecAddress.parse(p.getAddress())));
 		}
 		return items;
+	}
+
+	/** 읽기를 묶을 때 끼어도 되는 빈 워드 수 — 인터페이스 settings {@code mergeGap}, 없으면 {@link #MERGE_GAP} */
+	private static int mergeGap(Map<String, Object> settings) {
+		Object v = settings != null ? settings.get("mergeGap") : null;
+		return v instanceof Number n ? n.intValue() : MERGE_GAP;
 	}
 
 	/** 비트 디바이스도 워드로 읽으므로 시작은 워드 경계의 비트 번호 */
@@ -236,7 +242,7 @@ public class MelsecDriver implements PlcDriver {
 
 	private PlcResult read(PlcOperation op, List<Item> items, McFrames frames, FrameExchanger exchanger) throws ToolControlException {
 		Map<String, Object> values = new LinkedHashMap<>();
-		for (Block block : blocks(items, frames.maxWords)) {
+		for (Block block : blocks(items, frames.maxWords, mergeGap(op.settings()))) {
 			byte[] response = exchanger.exchange(op.reqId(), readRequest(frames, block));
 			McFrames.McReply reply = frames.reply(response);
 			if (reply.endCode() != 0) {
@@ -291,6 +297,16 @@ public class MelsecDriver implements PlcDriver {
 			new ProtocolDescriptor.Setting("maxWordsPerRequest", "NUMBER", MAX_WORDS, 1, MAX_WORDS, null, false, "요청 한 번의 최대 워드 수"),
 			new ProtocolDescriptor.Setting("healthCheckIntervalSec", "NUMBER", 30, 0, 3600, null, false,
 				"쉬는 연결 확인(루프백) 주기(초), 0 이면 끔")),
+			// 인터페이스 settings — 다른 PLC 로 중계(네트워크·국 번호), 느린 명령의 감시 타이머, 묶기(docs/interface-detail-design.md §2)
+			List.of(
+				new ProtocolDescriptor.Setting("networkNo", "NUMBER", null, 0, 0xFF, null, true, "네트워크 번호 — 다른 네트워크의 PLC 로 중계할 때"),
+				new ProtocolDescriptor.Setting("pcNo", "NUMBER", null, 0, 0xFF, null, true, "PC 번호"),
+				new ProtocolDescriptor.Setting("ioNo", "NUMBER", null, 0, 0xFFFF, null, true, "요구 I/O 번호"),
+				new ProtocolDescriptor.Setting("stationNo", "NUMBER", null, 0, 0xFF, null, true, "요구 국 번호 — 다른 국의 PLC 로 중계할 때"),
+				new ProtocolDescriptor.Setting("monitoringTimer", "NUMBER", null, 0, 0xFFFF, null, true, "CPU 감시 타이머(250ms 단위) — 느린 명령"),
+				new ProtocolDescriptor.Setting("maxWordsPerRequest", "NUMBER", null, 1, MAX_WORDS, null, false, "요청 한 번의 최대 워드 수"),
+				new ProtocolDescriptor.Setting("mergeGap", "NUMBER", MERGE_GAP, 0, 64, null, false,
+					"읽기를 묶을 때 끼어도 되는 빈 워드 수 — 0 이면 바로 이어진 점만 묶는다(빈 칸을 읽으면 안 되는 장비)")),
 			areas, List.of("D100", "M10", "X1F", "W1A", "ZR20000"), true);
 	}
 
@@ -363,14 +379,14 @@ public class MelsecDriver implements PlcDriver {
 		}
 	}
 
-	static List<Block> blocks(List<Item> items, int maxWords) {
+	static List<Block> blocks(List<Item> items, int maxWords, int gap) {
 		List<Item> sorted = new ArrayList<>(items);
 		sorted.sort(Comparator.comparing((Item i) -> i.address.device()).thenComparingInt(Item::firstWord));
 		List<Block> blocks = new ArrayList<>();
 		Block current = null;
 		for (Item item : sorted) {
 			if (current != null && current.device == item.address.device()
-					&& item.firstWord() <= current.lastWord + 1 + MERGE_GAP
+					&& item.firstWord() <= current.lastWord + 1 + gap
 					&& Math.max(current.lastWord, item.lastWord()) - current.firstWord + 1 <= maxWords) {
 				current.lastWord = Math.max(current.lastWord, item.lastWord());
 				current.items.add(item);

@@ -254,4 +254,35 @@ class ModbusDriverTest {
 		assertThat(wplan).extracting(PlannedRequest::function).containsExactly("FC5 Write Single Coil", "FC16 Write Multiple Registers");
 		assertThat(wplan.get(1).points()).containsExactly("a", "b");
 	}
+
+	@Test
+	void 인터페이스_설정_unitId_와_쓰기_함수() {
+		assertThat(driver.normalizeInterfaceSettings(Map.of("unitId", "5", "writeFunction", "multiple", "wordOrder", "little")))
+			.containsEntry("unitId", 5).containsEntry("writeFunction", "MULTIPLE").containsEntry("wordOrder", "LITTLE");
+		assertThatThrownBy(() -> driver.normalizeInterfaceSettings(Map.of("addressBase", 0))).hasMessageContaining("없는 항목");
+		assertThatThrownBy(() -> driver.normalizeInterfaceSettings(Map.of("writeFunction", "BOTH"))).hasMessageContaining("AUTO");
+
+		List<PointInfo> one = List.of(point("a", "HR10", PointType.INT16));
+		// unitId 5, 레지스터 하나를 FC16 으로
+		List<PlannedRequest> multiple = driver.plan(new PlcOperation(ModbusDriver.PROTOCOL,
+			driver.effectiveSettings(defaults, Map.of("unitId", 5, "writeFunction", "MULTIPLE")), PlcOperation.Kind.WRITE, one, Map.of("a", 7), "w"));
+		assertThat(multiple.get(0).function()).isEqualTo("FC16 Write Multiple Registers");
+		assertThat(multiple.get(0).frameHex()).isEqualTo("000000000009" + "05" + "10" + "0009" + "0001" + "02" + "0007");
+		// 이어진 레지스터 둘을 FC6 두 번으로
+		List<PointInfo> two = List.of(point("a", "HR10", PointType.INT16), point("b", "HR11", PointType.INT16));
+		List<PlannedRequest> single = driver.plan(new PlcOperation(ModbusDriver.PROTOCOL,
+			driver.effectiveSettings(defaults, Map.of("writeFunction", "SINGLE")), PlcOperation.Kind.WRITE, two, Map.of("a", 1, "b", 2), "w"));
+		assertThat(single).extracting(PlannedRequest::function).containsExactly("FC6 Write Single Register", "FC6 Write Single Register");
+		assertThat(single).extracting(PlannedRequest::target).containsExactly("HR9", "HR10");
+	}
+
+	@Test
+	void SINGLE_쓰기는_실행도_칸마다_FC6() throws ToolControlException {
+		Map<String, Object> s = driver.effectiveSettings(defaults, Map.of("writeFunction", "SINGLE"));
+		Fake fake = new Fake(reply("06 0009 0001"), reply("06 000A 0002"));
+		PlcResult r = driver.execute(new PlcOperation(ModbusDriver.PROTOCOL, s, PlcOperation.Kind.WRITE,
+			List.of(point("a", "HR10", PointType.INT16), point("b", "HR11", PointType.INT16)), Map.of("a", 1, "b", 2), "w"), fake::exchange);
+		assertThat(r.status().ok()).isTrue();
+		assertThat(fake.sent).containsExactly("000000000006010600090001", "000000000006010600 0A0002".replace(" ", ""));
+	}
 }

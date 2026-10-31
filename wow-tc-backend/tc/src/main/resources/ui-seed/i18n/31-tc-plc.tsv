@@ -99,6 +99,12 @@ i18n.tc.plan.target	시작	Start	開始	起始
 i18n.tc.plan.count	개수	Count	個数	数量
 i18n.tc.plan.points	담긴 점	Points	含まれるポイント	包含的点
 i18n.tc.plan.frame	프레임(16진)	Frame (hex)	フレーム(16進)	帧(十六进制)
+i18n.tc.interface.tabBasic	기본	Basic	基本	基本
+i18n.tc.interface.connectorValue	커넥터 값	Connector value	コネクタ値	连接器值
+i18n.tc.interface.settingsHelp	이 인터페이스에만 쓸 값. 비우면 커넥터 값을 씁니다(중계할 국 번호, 게이트웨이 뒤 장치 번호, 쓰기 함수, 묶기 등)	Values for this interface only. Leave empty to use the connector value (relay station, device behind a gateway, write function, grouping, etc.)	このインターフェース専用の値。空欄ならコネクタの値を使います(中継局番、ゲートウェイ配下の機器番号、書き込み関数、まとめ読みなど)	仅用于此接口的值。留空则使用连接器的值(中继站号、网关后的设备号、写功能码、合并等)
+i18n.tc.interface.ownSettings	이 인터페이스의 설정	This interface's settings	このインターフェースの設定	此接口的设置
+i18n.tc.interface.noOwnSettings	없음 — 커넥터 설정 그대로	None — connector settings as is	なし — コネクタ設定のまま	无 — 沿用连接器设置
+i18n.tc.convert.settings	인터페이스 설정으로 둘 값	Values kept as interface settings	インターフェース設定に置く値	保留为接口设置的值
 i18n.tc.raw.title	RAW 인터페이스	RAW interface	RAWインターフェース	RAW接口
 i18n.tc.raw.view	RAW 보기·변환	View RAW / convert	RAW表示・変換	查看RAW/转换
 i18n.tc.raw.help	MC 3E 프레임 바이트로 정의한 옛 인터페이스 — 여기서는 볼 수만 있다. POINTS 로 바꾸면 점 표로 고친다.	Legacy interface defined as MC 3E frame bytes — view only here. Convert to POINTS to edit it as points.	MC 3Eフレームのバイトで定義した旧インターフェース — ここでは表示のみ。POINTSに変換するとポイント表で編集できる。	用 MC 3E 帧字节定义的旧接口 — 此处只能查看。转换为 POINTS 后可按点表编辑。

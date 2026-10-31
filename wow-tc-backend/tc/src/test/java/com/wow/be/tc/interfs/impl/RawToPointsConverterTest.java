@@ -129,14 +129,17 @@ class RawToPointsConverterTest {
 	}
 
 	@Test
-	void 커넥터_설정과_다른_경로는_거절() {
+	void 커넥터_설정과_다른_경로는_인터페이스_설정으로_옮긴다() {
 		InterfaceInfo read = iface(InterfaceType.READ, header("0104", "640000", "A8", "0100"), new ArrayList<>());
 		Map<String, Object> other = new MelsecDriver().normalizeSettings(Map.of("stationNo", 1), null);
-		assertThatThrownBy(() -> RawToPointsConverter.convert(read, reply(prop("a", 1, PropType.SHORT, 2, null)), other))
-			.hasMessageContaining("국 번호");
+		RawToPointsConverter.Result r = RawToPointsConverter.convert(read, reply(prop("a", 1, PropType.SHORT, 2, null)), other);
+		assertThat(r.settings()).containsExactlyEntriesOf(Map.of("stationNo", 0));
+		assertThat(r.warnings()).anySatisfy(w -> assertThat(w).contains("국 번호").contains("stationNo"));
 		Map<String, Object> timer = new MelsecDriver().normalizeSettings(Map.of("monitoringTimer", 4), null);
-		assertThat(RawToPointsConverter.convert(read, reply(prop("a", 1, PropType.SHORT, 2, null)), timer).warnings())
-			.anySatisfy(w -> assertThat(w).contains("감시 타이머"));
+		assertThat(RawToPointsConverter.convert(read, reply(prop("a", 1, PropType.SHORT, 2, null)), timer).settings())
+			.containsOnlyKeys("monitoringTimer");
+		// 같으면 비어 있다
+		assertThat(RawToPointsConverter.convert(read, reply(prop("a", 1, PropType.SHORT, 2, null)), settings).settings()).isEmpty();
 	}
 
 	@Test
