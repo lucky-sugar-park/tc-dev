@@ -196,6 +196,21 @@ try:
     t.join(16)
     check("SSE: 연결(토큰 없이) 뒤 구독한 audit_message 를 받음", any(x.startswith("event:audit_message") for x in got), got[:6])
 
+    # 7-1. 송수신 기록 검색(화면용 /search/query) — 기간·거래 ID·종류·실패만
+    since = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - 600)) + "Z"
+    s, q, _ = call("POST", "/api/v1/ifsvc/audit/search/query", {"transactionId": f"t-ui-{RUN}", "from": since}, tok["ROLE_VIEWER"])
+    check("기록 검색: 거래 하나의 요청·응답(조회자도)", s == 200 and sorted({r["messageType"] for r in q["items"]}) == ["REQUEST", "RESPONSE"]
+          and q["total"] == len(q["items"]), (s, q if s != 200 else [r["messageType"] for r in q["items"]]))
+    s, q, _ = call("POST", "/api/v1/ifsvc/audit/search/query", {"failedOnly": True, "size": 20}, ADMIN)
+    check("기록 검색: 실패만 — 오류·ERR 응답·OK 아닌 전달", s == 200 and all(
+        r["messageType"] == "ERROR" or (r["messageType"] == "RESPONSE" and (r.get("description") or "").startswith("ERR"))
+        or (r["messageType"] == "DELIVERY" and not (r.get("description") or "").startswith("OK")) for r in q["items"]), (s, q))
+    s, q, _ = call("POST", "/api/v1/ifsvc/audit/search/query", {"messageTypes": ["REQUEST"], "opcode": "plc.e2e", "size": 5}, ADMIN)
+    check("기록 검색: 종류·opcode, 최신순·쪽 크기", s == 200 and len(q["items"]) <= 5 and all(r["messageType"] == "REQUEST" and "plc.e2e" in r["name"] for r in q["items"])
+          and [r["id"] for r in q["items"]] == sorted([r["id"] for r in q["items"]], reverse=True), (s, q))
+    s, q, _ = call("POST", "/api/v1/ifsvc/audit/search/query", {"from": "2026-12-31T00:00:00Z", "to": "2026-01-01T00:00:00Z"}, ADMIN)
+    check("기록 검색: 시작이 끝보다 늦으면 400", s == 400, (s, q))
+
     # 8. 홈 요약·시험 읽기·프로토콜
     s, b, _ = call("GET", "/api/v1/dashboard/summary", token=tok["ROLE_VIEWER"])
     check("홈 요약: 커넥터 건수·오늘 요청 건수·최근 오류", s == 200 and b["connectors"]["total"] >= 1 and b["connectors"]["published"] >= 1

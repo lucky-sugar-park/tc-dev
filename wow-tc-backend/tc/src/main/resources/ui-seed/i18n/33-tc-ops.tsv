@@ -1,0 +1,62 @@
+# tc 운영 화면 문구(5-5: 송수신 기록·메시지 모니터·스케줄 Job·설정 변경 이력) — 코드<TAB>ko<TAB>en<TAB>ja<TAB>zh
+i18n.tc.audit.failedOnly	실패만	Failed only	失敗のみ	仅失败
+i18n.tc.audit.from	부터	From	開始	从
+i18n.tc.audit.to	까지	To	終了	至
+i18n.tc.audit.principal	호출자	Caller	呼出元	调用者
+i18n.tc.audit.route	보낸 곳 → 받는 곳	Sender → Receiver	送信元 → 受信先	发送方 → 接收方
+i18n.tc.audit.selected	고른 기록	Selected records	選択した記録	已选记录
+i18n.tc.audit.transaction	거래	Transaction	取引	交易
+i18n.tc.audit.type	종류	Type	種類	类型
+i18n.tc.confighist.action	동작	Action	操作	操作
+i18n.tc.confighist.actor	바꾼 사람	Changed by	変更者	变更人
+i18n.tc.confighist.after	뒤	After	変更後	变更后
+i18n.tc.confighist.before	앞	Before	変更前	变更前
+i18n.tc.confighist.changed	바뀐 칸	Changed fields	変更項目	变更字段
+i18n.tc.confighist.target	대상	Target	対象	对象
+i18n.tc.confighist.targetId	대상 ID	Target ID	対象ID	对象ID
+i18n.tc.confighist.targetType	대상 종류	Target type	対象種類	对象类型
+i18n.tc.monitor.clear	비우기	Clear	クリア	清空
+i18n.tc.monitor.disconnected	실시간 연결 끊김 — 다시 잇는 중	Live connection lost — reconnecting	リアルタイム接続切断 — 再接続中	实时连接已断开 — 正在重连
+i18n.tc.monitor.filter	opcode·거래 ID·설명	opcode · transaction ID · description	opcode・取引ID・説明	opcode・交易ID・说明
+i18n.tc.monitor.live	실시간	Live	リアルタイム	实时
+i18n.tc.monitor.max	최대 행	Max rows	最大行数	最大行数
+i18n.tc.monitor.pause	멈춤	Pause	一時停止	暂停
+i18n.tc.monitor.received	받은 것 {n} · 실패 {f}	Received {n} · failed {f}	受信 {n}・失敗 {f}	已接收 {n}・失败 {f}
+i18n.tc.redeliver.accepted	보냄(접수)	Sent (accepted)	送信(受付)	已发送(受理)
+i18n.tc.redeliver.count	건	items	件	条
+i18n.tc.redeliver.deliveriesHelp	전달 기록을 같은 대상으로 다시 보냅니다(대상 주소·테이블은 지금 설정).	Resends the delivery records to the same targets (target address/table use the current settings).	配信記録を同じ対象へ再送します(対象アドレス・テーブルは現在の設定)。	将投递记录重新发送到相同目标(目标地址・表使用当前设置)。
+i18n.tc.redeliver.mixed	전달 기록(DELIVERY)만, 또는 응답·오류 기록만 고르세요.	Select only delivery (DELIVERY) records, or only response/error records.	配信記録(DELIVERY)のみ、または応答・エラー記録のみを選んでください。	请只选择投递记录(DELIVERY),或只选择响应・错误记录。
+i18n.tc.redeliver.noTargets	이 인터페이스에 쓰는 전달 정의가 없습니다.	No delivery rules use this interface.	このインターフェースを使う配信定義がありません。	没有使用此接口的投递规则。
+i18n.tc.redeliver.responsesHelp	응답을 보낼 곳을 고르세요 — 그 인터페이스의 지금 전달 정의. 전달 조건(성공·실패)은 보지 않습니다.	Choose where to send the response — the interface's current delivery rules. Delivery conditions (success/failure) are ignored.	応答の送信先を選んでください — そのインターフェースの現在の配信定義。配信条件(成功・失敗)は見ません。	请选择响应的发送目标 — 该接口当前的投递规则。不考虑投递条件(成功・失败)。
+i18n.tc.redeliver.send	다시 보내기	Resend	再送	重新发送
+i18n.tc.redeliver.title	결과 재전송	Resend results	結果再送	结果重发
+i18n.tc.schedule.add	스케줄 Job 등록	Add schedule job	スケジュールJob登録	添加计划任务
+i18n.tc.schedule.edit	스케줄 Job 수정	Edit schedule job	スケジュールJob編集	编辑计划任务
+i18n.tc.schedule.className	Job 클래스	Job class	Jobクラス	Job 类
+i18n.tc.schedule.confirmDelete	{name} 을(를) 지울까요? 예약도 지운다.	Delete {name}? Its schedule is removed too.	{name} を削除しますか?予約も削除されます。	删除 {name}?其调度也会被删除。
+i18n.tc.schedule.cronHelp	초 분 시 일 월 요일 — 예: 0 0/1 * * * ? (1분마다)	sec min hour day month weekday — e.g. 0 0/1 * * * ? (every minute)	秒 分 時 日 月 曜日 — 例: 0 0/1 * * * ? (1分ごと)	秒 分 时 日 月 星期 — 例: 0 0/1 * * * ? (每分钟)
+i18n.tc.schedule.daysRule	1일 이상	At least 1 day	1日以上	至少 1 天
+i18n.tc.schedule.history	실행 이력	Run history	実行履歴	执行历史
+i18n.tc.schedule.kind	종류	Kind	種類	类型
+i18n.tc.schedule.kind.plc	PLC 요청	PLC request	PLC要求	PLC 请求
+i18n.tc.schedule.kind.auditClean	송수신 기록 정리	Clean message records	送受信記録の整理	清理收发记录
+i18n.tc.schedule.kind.other	기타(클래스 직접)	Other (class name)	その他(クラス直接)	其他(直接指定类)
+i18n.tc.schedule.next	다음 실행	Next run	次回実行	下次执行
+i18n.tc.schedule.plcHelp	주기마다 이 인터페이스로 PLC 요청 — 결과는 전달 정의대로	Sends a PLC request through this interface each cycle — results follow the delivery rules	周期ごとにこのインターフェースでPLC要求 — 結果は配信定義どおり	每个周期通过此接口发送 PLC 请求 — 结果按投递规则处理
+i18n.tc.schedule.ranAt	실행 시각	Run at	実行時刻	执行时间
+i18n.tc.schedule.remark	비고	Remark	備考	备注
+i18n.tc.schedule.repeat	반복 간격(ms)	Repeat interval (ms)	繰り返し間隔(ms)	重复间隔(ms)
+i18n.tc.schedule.repeatRule	1000ms 이상	At least 1000 ms	1000ms以上	至少 1000ms
+i18n.tc.schedule.reschedule	다시 예약	Reschedule	再予約	重新调度
+i18n.tc.schedule.result	결과	Result	結果	结果
+i18n.tc.schedule.saveHelp	사용이면 저장하면서 이 주기로 (다시) 예약한다. 쓰지 않음으로 저장하면 예약을 취소한다.	When enabled, saving (re)schedules it with this cycle. Saving as disabled cancels the schedule.	使用にすると保存時にこの周期で(再)予約します。不使用で保存すると予約を取り消します。	启用时保存会按此周期(重新)调度。以停用保存会取消调度。
+i18n.tc.schedule.savingDays	보관 일수	Retention days	保管日数	保留天数
+i18n.tc.schedule.savingHelp	이보다 오래된 송수신 기록을 지운다	Deletes message records older than this	これより古い送受信記録を削除します	删除早于此的收发记录
+i18n.tc.schedule.search	이름·설명	Name · description	名前・説明	名称・说明
+i18n.tc.schedule.simple	간격	Interval	間隔	间隔
+i18n.tc.schedule.startDelay	시작 지연(ms)	Start delay (ms)	開始遅延(ms)	启动延迟(ms)
+i18n.tc.schedule.state	상태	State	状態	状态
+i18n.tc.schedule.stateAt	상태 바뀐 때	State changed at	状態変更日時	状态变更时间
+i18n.tc.schedule.trigger	주기	Trigger	周期	周期
+i18n.tc.schedule.unschedule	예약 취소	Unschedule	予約取消	取消调度
+i18n.tc.schedule.values	Job 값	Job values	Job値	Job 值

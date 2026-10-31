@@ -307,7 +307,8 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 
 			// update state			
 			String state=this.scheduleJobManager.getTriggerState(scheduleJob.getName(), scheduleJob.getGroupName());
-			this.updateScheduleJobState(scheduleJob.getName(), state);
+			// ID 로 — 예전에는 이름을 넘겨 findById 가 비어 500(No value present), 화면 상태가 바뀌지 않았다
+			this.updateScheduleJobState(scheduleJob.getId(), state);
 		}else {
 			log.warn("trigger {} does not exist.", scheduleJob.getName());
 		}
@@ -355,7 +356,8 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 			changeRecorder.controlled(TargetType.SCHEDULE_JOB, scheduleJob.getId(), scheduleJob.getName(), result ? "resume" : "resume-failed");
 			// update state			
 			String state=this.scheduleJobManager.getTriggerState(scheduleJob.getName(), scheduleJob.getGroupName());
-			this.updateScheduleJobState(scheduleJob.getName(), state);
+			// ID 로 — 예전에는 이름을 넘겨 findById 가 비어 500(No value present), 화면 상태가 바뀌지 않았다
+			this.updateScheduleJobState(scheduleJob.getId(), state);
 		}else {
 			log.warn("trigger {} does not exist.", scheduleJob.getName());
 		}
@@ -409,7 +411,7 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 			ScheduleJobInfo schedulerJob=(ScheduleJobInfo) iterator.next();
 
 			String state=this.scheduleJobManager.getTriggerState(schedulerJob.getName(), schedulerJob.getGroupName());
-			this.updateScheduleJobState(schedulerJob.getName(), state);
+			this.updateScheduleJobState(schedulerJob.getId(), state);
 		}
 		return result;
 	}
@@ -804,7 +806,8 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 			trigger=TriggerBuilder.newTrigger()
                       		      .withIdentity(schedulerJob.getName(), schedulerJob.getGroupName())
                       		      .startAt(new Date(Calendar.getInstance().getTimeInMillis() + startDelay))
-                      		      .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMilliseconds(repeatInterval).withRepeatCount(5))
+                      		      // 끝없이 — 예전 withRepeatCount(5) 는 간격 Job 이 6번 돌고 멈춰 트리거가 사라졌다(멈춤·재개도 "트리거 없음")
+                      		      .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMilliseconds(repeatInterval).repeatForever())
                       		      .forJob(jobDetail)
                       		      .build();
 		}

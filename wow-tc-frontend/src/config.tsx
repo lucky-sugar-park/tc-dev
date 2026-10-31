@@ -17,6 +17,10 @@ const PAGES: Record<string, Loader> = {
   'tc.delivery.rule': () => import('./delivery/pages/DeliveryRulePage'),
   'tc.delivery.webhook': () => import('./delivery/pages/WebHookPage'),
   'tc.delivery.dbconn': () => import('./delivery/pages/DbConnectionPage'),
+  'tc.ops.audit': () => import('./ops/pages/AuditPage'),
+  'tc.ops.monitor': () => import('./ops/pages/MessageMonitorPage'),
+  'tc.ops.schedule': () => import('./ops/pages/ScheduleJobPage'),
+  'tc.ops.confighist': () => import('./ops/pages/ConfigHistoryPage'),
 };
 
 const comingSoon = (m: ScreenMeta): Loader => () =>

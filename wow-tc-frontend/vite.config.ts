@@ -36,6 +36,10 @@ export default defineConfig({
       },
     },
   },
+  // 화면마다 지연 로드라 처음 연 화면이 새 의존성(아이콘 등)을 찾으면 개발 서버가 다시 묶고 페이지를 새로 고친다 — 시작할 때 모든 화면을 훑는다
+  optimizeDeps: {
+    entries: ['index.html', 'src/**/*.tsx'],
+  },
   build: {
     chunkSizeWarningLimit: 2000,
   },

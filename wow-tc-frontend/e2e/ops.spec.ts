@@ -1,0 +1,92 @@
+import { expect, test, type Page } from '@playwright/test';
+import { login, openScreen, searchFor } from './helpers';
+
+/**
+ * 운영 화면(5-5) — 송수신 기록·메시지 모니터·스케줄 Job·설정 변경 이력. 실제 PLC 읽기 요청(plc.e2e.d100.read)을 보낸다.
+ * 만드는 스케줄 Job(e2e-ui-job-*)은 긴 간격으로 만들고 끝에 지운다.
+ */
+const RUN = Date.now();
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
+
+/** 로그인한 화면의 토큰으로 PLC 읽기 요청을 하나 보낸다(개발 서버가 /api 를 tc 로 넘긴다) */
+async function sendRead(page: Page, transactionId: string): Promise<void> {
+  const token = await page.evaluate(() => JSON.parse(localStorage.getItem('wow-mes-session') ?? '{}').state?.token as string);
+  const res = await page.request.post('/api/v1/ifsvc/request-and-reply', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { transactionId, messageId: transactionId, opcode: 'plc.e2e.d100.read', sender: 'e2e-ui', receiver: 'tc', data: {} },
+  });
+  expect(res.status()).toBe(200);
+}
+
+test('메시지 모니터 — 보낸 요청이 바로 보이고, 누르면 거래 기록', async ({ page }) => {
+  await openScreen(page, '운영', '메시지 모니터');
+  await expect(page.getByText(/실시간/)).toBeVisible();
+  await page.waitForTimeout(1500); // SSE 구독이 서버에 등록될 때까지
+  const trx = `ui-mon-${RUN}`;
+  await sendRead(page, trx);
+  const row = page.getByRole('row').filter({ hasText: trx }).filter({ visible: true });
+  await expect(row.first()).toBeVisible({ timeout: 15_000 });
+  await row.first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText(`거래 — ${trx}`)).toBeVisible();
+  await expect(dialog.getByText('REQUEST', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('RESPONSE', { exact: true })).toBeVisible();
+});
+
+test('송수신 기록 — 기간·opcode 로 찾고 거래 보기', async ({ page }) => {
+  const trx = `ui-audit-${RUN}`;
+  await sendRead(page, trx);
+  await openScreen(page, '운영', '송수신 기록');
+  await page.getByRole('textbox', { name: '트랜잭션 ID' }).filter({ visible: true }).fill(trx);
+  await page.getByRole('button', { name: '검색' }).filter({ visible: true }).click();
+  const rows = page.getByRole('row').filter({ hasText: trx }).filter({ visible: true });
+  await expect(rows).toHaveCount(2);
+  await rows.first().click();
+  await expect(page.getByRole('dialog').getByText(`거래 — ${trx}`)).toBeVisible();
+});
+
+test('스케줄 Job·설정 변경 이력 — PLC 요청 Job 등록·멈춤·실행 이력·삭제, 이력에 남음', async ({ page }) => {
+  const name = `e2e-ui-job-${RUN}`;
+  await openScreen(page, '운영', '스케줄 Job');
+  await page.getByRole('button', { name: '추가' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('이름').fill(name);
+  await dialog.getByLabel('인터페이스(opcode)').fill('plc.e2e.d100.read');
+  await page.getByRole('option', { name: 'plc.e2e.d100.read', exact: true }).click();
+  await dialog.getByLabel('주기').click();
+  await page.getByRole('option', { name: '간격' }).click();
+  await dialog.getByLabel('반복 간격(ms)').fill('600000');
+  await dialog.getByRole('button', { name: '저장' }).click();
+  await expect(dialog).toBeHidden();
+
+  await searchFor(page, name);
+  const row = page.getByRole('row').filter({ hasText: name }).filter({ visible: true }).first();
+  await expect(row.getByText('PLC 요청')).toBeVisible();
+  await expect(row.getByText('600s')).toBeVisible();
+  await expect(row.getByText('NORMAL')).toBeVisible(); // 저장하면서 예약됐다
+  await row.getByRole('button', { name: '멈춤' }).or(row.getByRole('menuitem', { name: '멈춤' })).first().click();
+  await expect(row.getByText('PAUSED')).toBeVisible();
+  await row.locator('button[aria-haspopup="menu"]').click();
+  await page.getByRole('menuitem', { name: '실행 이력' }).click();
+  await expect(page.getByRole('dialog').getByText(`실행 이력 — ${name}`)).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await row.locator('button[aria-haspopup="menu"]').click();
+  await page.getByRole('menuitem', { name: '삭제' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /확인|삭제|OK/ }).last().click();
+  await expect(page.getByRole('row').filter({ hasText: name }).filter({ visible: true })).toHaveCount(0);
+
+  // 설정 변경 이력 — 이 Job 의 등록·삭제
+  await openScreen(page, '운영', '설정 변경 이력');
+  await page.getByLabel('대상 종류').filter({ visible: true }).click();
+  await page.getByRole('option', { name: 'SCHEDULE_JOB', exact: true }).click();
+  await page.getByRole('button', { name: '검색' }).filter({ visible: true }).click();
+  const hist = page.getByRole('row').filter({ hasText: name }).filter({ visible: true });
+  await expect(hist.filter({ hasText: 'CREATE' })).toHaveCount(1);
+  await expect(hist.filter({ hasText: 'DELETE' })).toHaveCount(1);
+  await hist.filter({ hasText: 'CREATE' }).first().click();
+  await expect(page.getByRole('dialog').getByLabel('뒤')).toHaveValue(new RegExp(name));
+});

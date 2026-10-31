@@ -134,6 +134,12 @@ check("스케줄 Job 실패 이력에 사유", "no.such.interface" in remark, re
 check("스케줄 Job 없는 인터페이스 → FAIL 이력", "FAIL" in bad_hist and "SUCCESS" not in bad_hist, bad_hist)
 p = sql("select distinct PRINCIPAL from EXCHANGED_MESSAGE_AUDIT where SENDER='Internal-Schedule-Job' and CREATED_DATE > now() - interval 1 minute")
 check("스케줄 Job 감사 PRINCIPAL = system", p == "system", p)
+def job_state(n):
+    return next((j.get("triggerState") for j in call("POST", "/api/v1/schedule-job/management/search", {"conditions": []})[1] if j["name"] == n), None)
+s, b = call("POST", f"/api/v1/schedule-job/monitoring/pauseScheduleJob/{ok_name}")
+check("스케줄 Job 멈춤 200, 상태 PAUSED(예전: 이름을 ID 로 넘겨 500)", s == 200 and job_state(ok_name) == "PAUSED", (s, b, job_state(ok_name)))
+s, b = call("POST", f"/api/v1/schedule-job/monitoring/resumeScheduleJob/{ok_name}")
+check("스케줄 Job 재개 200, 상태 NORMAL", s == 200 and job_state(ok_name) == "NORMAL", (s, b, job_state(ok_name)))
 for n in (ok_name, bad_name):
     s, b = call("DELETE", f"/api/v1/schedule-job/management/delete/byName/{n}")
     check(f"스케줄 Job 삭제 200: {n[:15]}", s == 200, (s, b))

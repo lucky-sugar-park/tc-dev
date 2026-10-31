@@ -46,14 +46,14 @@
 | 8 | framework 다음 버전 반영 | ✅ | framework-core **0.8.46** 배포·tc 반영 완료(2026-10-31). 명세 [framework-core-0.8.46-changes.md](framework-core-0.8.46-changes.md) §5 에 결과 |
 | 9 | 상태를 바꾸는 GET 을 POST·DELETE 로 (결정 D5) | ✅ | 29개 — 경로는 그대로, 삭제는 DELETE·제어·사용 변경·연결 시험은 POST, 예전 GET 은 405(2026-10-31). e2e `test_http_methods.py`. 새 프론트는 이 메서드로 만든다 |
 | 10 | DB_TABLE 결과 전달 채널 | ✅ | [db-table-delivery.md](db-table-delivery.md). 런타임 등록 DB 연결(비밀번호 AES-GCM, `TC_SECRET_KEY`), 결과 1건 = 1행(공통 칼럼 + `PAYLOAD` JSON), 테이블은 받는 쪽이 만들고 tc 는 검증, 실패도 기록. 운영 반영에 `TC_SECRET_KEY`·migration 006 필요 |
-| 11 | 결과 재전송 — 관리자가 감사 기록을 골라 수동으로(성공·실패 무관) | ✅ 백엔드 | [redelivery-design.md](redelivery-design.md)(2026-10-31). 자동 재시도(outbox) 대신. 새 표 없이 송수신 감사로 — DELIVERY 감사에 보낸 응답 전체를 남긴다. `POST /api/v1/ifsvc/redelivery/{deliveries,responses}`, 관리자만. 기존 버그(`WebHookManager` NPE)도 고침. 화면은 프론트 재작성 때. 운영 반영은 migration·재기동 없음(배포 때 함께) |
+| 11 | 결과 재전송 — 관리자가 감사 기록을 골라 수동으로(성공·실패 무관) | ✅ 백엔드 | [redelivery-design.md](redelivery-design.md)(2026-10-31). 자동 재시도(outbox) 대신. 새 표 없이 송수신 감사로 — DELIVERY 감사에 보낸 응답 전체를 남긴다. `POST /api/v1/ifsvc/redelivery/{deliveries,responses}`, 관리자만. 기존 버그(`WebHookManager` NPE)도 고침. 화면은 5-5 송수신 기록(결과 재전송). 운영 반영은 migration·재기동 없음(배포 때 함께) |
 
 ## 장기 과제
 
 | # | 일 | 상태 |
 |---|---|---|
 | 12 | PLC 보강: 주기적 연결 상태 확인, 4E 프레임, 응답 길이 검증, 포트 여러 개 병렬 시험 | ✅ 2026-10-31 — [plc-protocol-design.md](plc-protocol-design.md) §13. 실제 PLC 로 4E·루프백 확인은 남음 |
-| 13 | Modbus·OPC UA 어댑터(tc, vplc) | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md). 인터페이스를 MC 3E 프레임 바이트에서 논리 주소(점)로, 드라이버 경계, 다중화 계약을 작업 단위로. 결정 P1~P10 확정. **1~4단계 완료**(POINTS·MELSEC 드라이버 §12, MELSEC 보강 §13, Modbus TCP §14, 다중화 계약 `/execute`·RAW→POINTS 변환 §15). 5단계(새 프론트) 진행 중 — 설계 [frontend-design.md](frontend-design.md)(결정 F1~F10 확정), **5-1 백엔드 계약·5-2 셸·5-3 PLC·5-4 전달 화면 완료** |
+| 13 | Modbus·OPC UA 어댑터(tc, vplc) | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md). 인터페이스를 MC 3E 프레임 바이트에서 논리 주소(점)로, 드라이버 경계, 다중화 계약을 작업 단위로. 결정 P1~P10 확정. **1~4단계 완료**(POINTS·MELSEC 드라이버 §12, MELSEC 보강 §13, Modbus TCP §14, 다중화 계약 `/execute`·RAW→POINTS 변환 §15). 5단계(새 프론트) 진행 중 — 설계 [frontend-design.md](frontend-design.md)(결정 F1~F10 확정), **5-1 백엔드 계약·5-2 셸·5-3 PLC·5-4 전달·5-5 운영 화면 완료** |
 | 14 | 로컬 시험 데이터 정리(`plc-fake`, `e2e-*`·`hist-*`·`redis-down` 클라이언트, 시험 이력, 시험 DB `tc_boot`) | ⬜ |
 | 15 | 비동기 어댑터 큐(죽은 코드) 제거 | ✅ | 어댑터의 타이머·큐·`request(holder, callback)`, `PlcReqAndResHolder`·`PlcRequestCallback`, 커넥터 설정 `asyncRequestUse`·`asyncTimer*`(API 필드 포함) 제거(2026-10-31). DB 칼럼은 남긴다 — `migration/007` 이 NULL 허용으로, DROP 은 주석 |
 | 16 | 운영 환경의 실제 호출 시스템 API 키 전환(감사 `PRINCIPAL` 로 대상 확인 → 키 발급·교체 → 옛 계정 중지) | ⬜ 운영 작업 — 이 버전 배포 전 전환이 안 끝났으면 배포 직후 전환 스위치를 켠다 |
@@ -87,3 +87,4 @@
 - 2026-10-31: 5-2 — wow-tc-frontend 프로젝트(MES framework·shared 0.8.46), 셸 TcLayout·tc 로그인·정적 메뉴(화면 19개, 권한으로 가림)·홈(실데이터), tc-config.json(vplc 메뉴), 화면 문구 씨앗 30-tc-screens.tsv. 개발 서버·tc 서빙(재기동 없이) 확인.
 - 2026-10-31: 5-3 PLC 화면 — 커넥터(프로토콜별 설정 폼·게시/해제/멈춤·연결 시험·시험 읽기·연결 이력), 인터페이스(점 표 편집기·RAW 보기·POINTS 변환), 인터페이스 시험, 연결 모니터(SSE). 문구 31-tc-plc.tsv(4개 언어). Playwright e2e plc.spec.ts(6) 통과.
 - 2026-10-31: 5-4 전달 화면 — 전달 정의(유형별 대상·보낼 때·바뀔 때만), WebHook(보내 보기), 외부 DB 연결(비밀번호 저장 여부·연결 시험). 문구 32-tc-delivery.tsv(4개 언어). Playwright delivery.spec.ts(2), 화면 시험 8개 통과.
+- 2026-10-31: 5-5 운영 화면 — 송수신 기록(서버 조회 `audit/search/query`·거래 보기·결과 재전송), 메시지 모니터(SSE), 스케줄 Job(종류별 폼·멈춤/재개·실행 이력), 설정 변경 이력(앞뒤·바뀐 칸). 스케줄 버그 고침 — 멈춤·재개가 이름을 ID 로 넘겨 500, 간격 트리거가 6번 돌고 사라짐, 보관 기간 int 넘침. 문구 33-tc-ops.tsv. e2e test_ui_api 35·test_paths 19, Playwright 11개 통과. 운영 반영은 jar 교체(재기동 필요).

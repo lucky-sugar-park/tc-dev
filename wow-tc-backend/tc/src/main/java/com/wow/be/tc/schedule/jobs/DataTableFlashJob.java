@@ -98,7 +98,8 @@ public class DataTableFlashJob extends ScheduleJob {
 		case "flashBySavingPeriod":
 			int savingDays = Integer.parseInt((String)context.getMergedJobDataMap().get("savingDays"));
 			long current=new Date().getTime();
-			long beyondFrom=current-(savingDays*24*60*60*1000);
+			// long 으로 — int 곱은 25일부터 넘쳐 보관 기간이 엉뚱해졌다
+			long beyondFrom=current-savingDays*24L*60*60*1000;
 			long count = service.flushBySavingPeriod(targetName, new Date(beyondFrom));
 			context.setResult(beanName+":"+methodName+":"+targetName+", " + count + " records are flashed successfully.");
 			break;

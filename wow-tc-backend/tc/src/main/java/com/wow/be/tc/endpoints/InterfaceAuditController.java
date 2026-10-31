@@ -20,7 +20,9 @@ import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PageResponse;
 import com.wow.be.framework.persist.RangeResponse;
 import com.wow.be.tc.ToolControlException;
+import com.wow.be.tc.msg.audit.AuditQuery;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
+import com.wow.be.tc.msg.audit.impl.AuditQueryService;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,9 @@ public class InterfaceAuditController {
 
 	@Autowired
 	private ExchangedMessageAuditService exchangedMessageAuditService;
+
+	@Autowired
+	private AuditQueryService auditQueryService;
 	
 	@Requires(action = 'D')
 	@RequestMapping(value="/delete/{id}", method=RequestMethod.DELETE)
@@ -88,6 +93,17 @@ public class InterfaceAuditController {
 		return exchangedMessageAuditService.searchMessageAuditsToPageResponse(cond);
 	}
 	
+	/**
+	 * 화면용 검색 — 기간·opcode·거래 ID·종류·실패만·호출자, 최신순 쪽(docs/frontend-design.md §14). framework 일반 검색은 날짜 범위를 받지 못한다.
+	 */
+	@Requires(action = 'R')
+	@RequestMapping(value="/search/query", method=RequestMethod.POST)
+	@ResponseStatus(value = HttpStatus.OK)
+	@ResponseBody
+	public AuditQuery.Page query(@RequestBody AuditQuery query) {
+		return auditQueryService.search(query);
+	}
+
 	@Requires(action = 'R')
 	@RequestMapping(value="/search/range", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
