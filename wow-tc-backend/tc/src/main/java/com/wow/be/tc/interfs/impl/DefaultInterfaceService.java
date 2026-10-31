@@ -6,6 +6,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -33,6 +34,7 @@ import com.wow.be.tc.interfs.HeaderTemplateInfo;
 import com.wow.be.tc.interfs.InterfaceInfo;
 import com.wow.be.tc.interfs.InterfaceMode;
 import com.wow.be.tc.interfs.PointInfo;
+import com.wow.be.tc.interfs.PointsConversionInfo;
 import com.wow.be.tc.interfs.InterfaceService;
 import com.wow.be.tc.interfs.PropInfo;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
@@ -335,6 +337,61 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 			}
 			point.setOrder(i);
 		}
+	}
+
+	@Override
+	@Transactional
+	public PointsConversionInfo convertToPoints(long id, boolean dryRun) throws ToolControlException {
+		return convert(requireInterfaceEntity(id).info(), dryRun);
+	}
+
+	@Override
+	@Transactional
+	public PointsConversionInfo convertToPointsByName(String name, boolean dryRun) throws ToolControlException {
+		InterfaceInfo info=findInterfaceByName(name);
+		if(info==null) {
+			throw ToolControlException.of(ToolControlException.NOT_FOUND, "인터페이스가 없습니다: " + name);
+		}
+		return convert(info, dryRun);
+	}
+
+	/**
+	 * 헤더(3E BINARY)와 데이터 속성으로 점을 만들고, 미리보기가 아니면 mode=POINTS 로 저장한다. 헤더·데이터 속성과 응답 인터페이스 이름은
+	 * 그대로 둔다 — mode 를 RAW 로 되돌리면 예전대로 돈다. 변경 이력에 남는다(updateInterface).
+	 */
+	private PointsConversionInfo convert(InterfaceInfo info, boolean dryRun) {
+		if(info.getMode()==InterfaceMode.POINTS) {
+			throw new IllegalArgumentException("이미 POINTS 인터페이스입니다: " + info.getName());
+		}
+		PlcConnectorInfo connector=info.getPlcName()!=null ? plcConnectorService.findPlcConnectorByName(info.getPlcName()) : null;
+		if(connector==null) {
+			throw new IllegalArgumentException("인터페이스에 연결된 PLC 커넥터가 없습니다: " + info.getPlcName());
+		}
+		if(!MelsecDriver.PROTOCOL.equals(connector.getProtocol())) {
+			throw new IllegalArgumentException("MELSEC 커넥터의 RAW 인터페이스만 바꿉니다: " + connector.getProtocol());
+		}
+		String legacy=connector.getMessageFrameFormat()!=null ? connector.getMessageFrameFormat().name() : null;
+		Map<String, Object> settings=PlcDrivers.of(connector.getProtocol()).normalizeSettings(connector.getSettings(), legacy);
+		InterfaceInfo reply=info.getInterfaceType()==InterfaceType.READ ? findInterfaceByName(info.getReplyName()) : null;
+		RawToPointsConverter.Result result=RawToPointsConverter.convert(info, reply, settings);
+		PlcDriver driver=PlcDrivers.of(connector.getProtocol());
+		for(PointInfo point: result.points()) {
+			driver.validatePoint(point, info.getInterfaceType());
+		}
+		String replyName=info.getReplyName();
+		List<String> usedBy=replyName==null || replyName.isBlank() ? List.of() : interfaceRepository.findAll().stream()
+			.filter(e->replyName.equals(e.getReplyName()) && !e.getName().equals(info.getName()))
+			.map(InterfaceEntity::getName).sorted().toList();
+		if(!dryRun) {
+			info.setMode(InterfaceMode.POINTS);
+			info.setPoints(result.points());
+			// 헤더·데이터 속성은 바꾸지 않는다(oper 없음)
+			info.getHeaderProps().forEach(p->p.setOper(null));
+			info.getDataProps().forEach(p->p.setOper(null));
+			updateInterface(info);
+			log.info("RAW 인터페이스를 POINTS 로 바꿨습니다: {} (점 {}개)", info.getName(), result.points().size());
+		}
+		return new PointsConversionInfo(info.getName(), dryRun, !dryRun, result.points(), result.warnings(), replyName, usedBy);
 	}
 
 	/** RAW(MC 헤더·데이터 바이트 정의)는 MELSEC 전용 — 다른 프로토콜 커넥터의 READ·WRITE 인터페이스면 400 */

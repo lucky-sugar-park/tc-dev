@@ -250,7 +250,7 @@ POST /internal/plc/{name}/execute
 1. **모델·드라이버 경계 + MELSEC 이식**: `PlcDriver`·`PlcSession`·`ChannelPool`·`ValueCodec`, MELSEC 주소 파서·블록 묶기, POINTS 인터페이스·API(`INTERFACE_POINT`), 응답 `plcStatus`, 값 기반 변경 감지, 결함 M1~M3, RAW 호환. 커넥터 `protocol`·`settings` migration. — **완료(2026-10-31)**, §12.
 2. **MELSEC 보강(#12)**: 4E 프레임, 응답 길이 검증(M4), 주기적 루프백, 포트 여러 개 병렬 연결 시험. vplc 4E·루프백. — **완료(2026-10-31)**, §13.
 3. **Modbus TCP**: 드라이버·e2e 가짜 장비. — **완료(2026-10-31)**, §14.
-4. **다중화 계약 `/execute`**, 변환 도구(RAW → POINTS).
+4. **다중화 계약 `/execute`**, 변환 도구(RAW → POINTS). — **완료(2026-10-31)**, §15.
 5. **API 계약 고정 → 프론트 재작성**(커넥터·인터페이스 화면은 이 모델로). 시험 읽기 API(`POST /api/v1/plc-connector/{name}/test-read`, 점 목록을 받아 바로 읽기)를 화면용으로 둔다.
 6. **OPC UA**(2차, 프론트와 병행) → 구독(3차).
 
@@ -366,3 +366,52 @@ MELSEC 어댑터에 들어 있던 연결 관리를 프로토콜과 떼어 Modbus
 - e2e `fake_modbus.py`(가짜 장치, 시험이 :15200 에 띄움) + `test_plc_modbus.py`(23) — 커넥터 자동 설정·연결 시험, RAW 거절, 읽기·쓰기(readBack), 워드 순서 LITTLE, 예외 응답, 시간 초과에 연결 유지, 쉬는 연결 확인으로 닫고 다시 잇기.
 - 단위 93개, 정상 종료 포함 전체 e2e 통과(기본 모드). 두 인스턴스(소유권 켬)에서 test_plc_remote·test_plc_points·test_plc_modbus(A·B 양쪽으로) 통과, test_plc_ownership(한 대 시험) 통과. `test_plc_points` 의 "아직 없는 프로토콜" 예를 MODBUS_TCP → OPC_UA 로.
 - 남은 것: 실제 Modbus 장비 확인, vplc 의 Modbus 서버(지금은 e2e 가짜 장치뿐).
+
+## 15. 4단계 구현 — 다중화 계약 `/execute`, RAW → POINTS 변환 (2026-10-31)
+
+### 15.1 `/execute`
+
+```
+POST /internal/plc/{name}/execute     (서명·포트·주인 확인은 /exchange 와 같다)
+{ "op": "READ"|"WRITE", "protocol": "MODBUS_TCP", "settings": {...}, "points": [...], "values": {...}, "reqId": "...", "timeoutMs": 20000 }
+→ 200 { "values": {...}, "status": { "protocol", "code", "text" } }
+{ "op": "RAW", "frame": "<base64>", "reqId": "...", "timeoutMs": 20000 }
+→ 200 { "frame": "<base64>" }
+오류: 400(op·points 없음) · 409 ERR_409_TC_INTERFACE_CONFIG(점이 틀림) · 409 NOT_OWNER · 503 · 504 · 404(소유권 관리 꺼짐)
+```
+
+| 항목 | 내용 |
+|---|---|
+| 점·설정 | 요청을 받은 인스턴스가 보낸 점 정의와 커넥터 설정을 쓴다 — 주인은 인터페이스를 다시 읽지 않는다 |
+| PLC 상태 | PLC 가 오류로 답해도 200 + `status`(code ≠ 0) — 보낸 쪽이 지금처럼 `success=false`·`plcStatus` 로 만든다 |
+| 기다리는 시간 | RAW 는 PLC 시간 초과 + 2초. 점 작업은 주인이 묶은 프레임마다 시간 초과를 따로 세므로 `시간 초과 × min(점 수, 4) + 2초` |
+| 순차 재기동 | 받는 쪽: `/exchange` 를 계속 받는다(옛 인스턴스가 보낸다). 보내는 쪽: `/execute` 가 404 면(옛 인스턴스) 3단계까지처럼 프레임마다 `/exchange` 로 넘긴다. 404 는 PLC 로 보내기 전이라 WRITE 도 안전하다 |
+| 재전송 | 409 NOT_OWNER 만 주인을 다시 찾아 한 번(지금과 같음). 504·연결 오류는 다시 보내지 않는다 |
+
+OPC UA(넘길 바이트가 없다)도 이 계약에 담긴다 — 6단계에서 드라이버만 더한다.
+
+### 15.2 RAW → POINTS 변환
+
+```
+POST /api/v1/ifsvc/management/{id}/convert-to-points?dryRun=true|false        (권한 tc.interface U)
+POST /api/v1/ifsvc/management/convert-to-points/byName/{name}?dryRun=true|false
+→ 200 { name, dryRun, applied, points, warnings, replyName, replyUsedBy }
+```
+
+| 항목 | 내용 |
+|---|---|
+| 기본 | **미리보기**(`dryRun` 생략 = true) — 바꾸지 않고 만들 점과 경고만 |
+| 머리 읽기 | 헤더 속성 바이트를 순서대로 이어 3E BINARY 요청 머리(21바이트)로 읽는다 — 속성 이름이 아니라 자리로 본다. 명령 0401(READ)·1401(WRITE), 서브 명령 0000(워드 단위), 디바이스 코드, 시작 번호, 워드 수 |
+| 점 만들기 | 데이터 속성(읽기는 응답 인터페이스, 쓰기는 이 인터페이스)을 차례로 워드 자리에 놓는다. 이름은 데이터 속성 이름 그대로 — `data` 키가 바뀌지 않는다. SHORT(2)→INT16, INT(4)→INT32, LONG(8)→INT64, DOUBLE(4)→FLOAT32, STRING(n)→STRING n, BYTE(n)→BYTES n |
+| 경고 | STRING(끝 NUL 을 뺌, 짧은 쓰기 값 허용), BYTE(Base64 → 16진 문자열 — 외부 시스템 확인 필요), 감시 타이머가 커넥터 설정으로 바뀜 |
+| 거절(400, 사유) | 3E BINARY 가 아님(ASCII 헤더), 명령이 형과 맞지 않음, 비트 단위·비트 디바이스, 모르는 디바이스 코드, 워드 경계가 아닌 속성, 길이 합 ≠ 워드 수 × 2, 바꿀 수 없는 형(BOOLEAN, 길이가 다른 수), 네트워크·PC·I/O·국 번호가 커넥터 설정과 다름(POINTS 는 커넥터 설정으로 보낸다), MELSEC 커넥터가 아님, 이미 POINTS, READ·WRITE 가 아님 |
+| 적용 | `mode=POINTS` + 점 저장, 변경 이력(UPDATE)에 남는다. **헤더·데이터 속성과 응답 인터페이스 이름은 그대로** — `mode` 를 RAW 로 되돌리면 예전대로 돈다 |
+| 응답 인터페이스 | POINTS 는 쓰지 않는다. `replyUsedBy` 가 비면 지워도 된다(운영자가) |
+
+### 15.3 시험
+
+- 단위 `RawToPointsConverterTest`(6) — 읽기·쓰기, 여러 형·16진 디바이스, 거절 사유, 커넥터 경로 불일치, ASCII.
+- e2e `test_plc_convert.py`(14) — 미리보기·적용·같은 opcode 같은 값(읽기·쓰기)·되돌리기·거절·404. `test_plc_remote.py` 에 `/execute` 직접 호출(READ·RAW·잘못된 op·잘못된 주소·주인 아님·서명 없음) 6개.
+- 단위 99개, 정상 종료 포함 전체 e2e 통과. 두 인스턴스(소유권 켬, 서명 시험 포함)에서 test_plc_remote(17)·points·modbus·convert 를 A·B 양쪽으로 통과, test_plc_ownership(한 대) 통과.
+- **섞인 버전**: 옛 jar(0.2.0, `/exchange` 만 — `/execute` 는 404)를 주인으로, 새 jar 를 다른 인스턴스로 띄워 새 인스턴스로 test_plc_points(23) 통과 — `/exchange` 대체 경로 확인.
+- 함께 고친 것: 3E 에서 연결 확인이 시간 초과되면 끊김 사유가 "응답 시간 초과"로 남기도 했다(시간 초과로 닫는 사유와 연결 확인 사유가 경쟁). 연결 확인이 부를 때는 처음부터 LOOPBACK_FAILED 로 닫는다.

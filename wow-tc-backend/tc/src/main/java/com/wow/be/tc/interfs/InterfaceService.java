@@ -35,5 +35,14 @@ public interface InterfaceService {
 	public abstract void deleteInterfaceByBatch(List<Long> ids);
 	
 	public abstract List<HeaderTemplateInfo> searchHeaderTemplateByAll();
+
+	/**
+	 * RAW 인터페이스를 POINTS 로 바꾼다(docs/plc-protocol-design.md §8·§15). 알아볼 수 없으면 IllegalArgumentException(400, 사유).
+	 *
+	 * @param dryRun true 면 바꾸지 않고 만들 점·경고만 돌려준다
+	 */
+	public abstract PointsConversionInfo convertToPoints(long id, boolean dryRun) throws ToolControlException;
+
+	public abstract PointsConversionInfo convertToPointsByName(String name, boolean dryRun) throws ToolControlException;
 	
 }

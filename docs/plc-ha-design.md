@@ -237,6 +237,8 @@ POST /internal/plc/{plcName}/exchange
 응답: 200 { "frame": "<base64>" } | 409 NOT_OWNER | 503 PLC_UNAVAILABLE | 504 PLC_TIMEOUT
 ```
 
+> **2026-10-31 PLC 일반화 4단계부터** 작업 단위 `POST /internal/plc/{plcName}/execute` 를 쓴다(점·값·설정을 넘기고 값·PLC 상태를 받는다, RAW 는 `op: RAW` + 프레임) — [plc-protocol-design.md](plc-protocol-design.md) §15.1. 서명·포트·409 재전송 규칙은 아래 그대로. `/exchange` 는 순차 재기동 중 옛 인스턴스를 위해 남겨 두고, 보내는 쪽은 `/execute` 가 404 면 `/exchange` 로 넘긴다.
+
 - **별도 보안 체인을 둔다.** `/internal/**`는 사용자 JWT·API 키를 받지 않고 서명만 확인한다. 타임스탬프 ±30초 밖이면 거부해 재전송을 막는다.
 - `TC_INTERNAL_SECRET`은 모든 인스턴스가 같은 값을 쓴다. 바꾸려면 모두 재기동해야 하므로, 순차 재기동 중에 끊기지 않도록 **이전 값을 함께 허용하는 기간**을 둔다(`TC_INTERNAL_SECRET_PREVIOUS`).
 - **로드밸런서 밖에 둔다.** `/internal/**`를 외부에 노출하지 않도록 LB에서 막고, 가능하면 별도 관리 포트를 쓴다.

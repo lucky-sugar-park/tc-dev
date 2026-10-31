@@ -19,6 +19,7 @@ import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.interfs.HeaderTemplateInfo;
 import com.wow.be.tc.interfs.InterfaceInfo;
 import com.wow.be.tc.interfs.InterfaceService;
+import com.wow.be.tc.interfs.PointsConversionInfo;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -120,6 +121,28 @@ public class InterfaceManagementController {
 		return interfaceService.searchInterface(cond);
 	}
 	
+	/**
+	 * RAW 인터페이스를 POINTS 로 바꾼다(docs/plc-protocol-design.md §8·§15). 기본은 미리보기({@code dryRun=true}) — 만들 점과 경고만
+	 * 돌려준다. {@code dryRun=false} 면 바꾸고 변경 이력에 남긴다. 알아볼 수 없는 정의는 400(사유).
+	 */
+	@Requires(action = 'U')
+	@RequestMapping(value="/{id}/convert-to-points", method=RequestMethod.POST)
+	@ResponseStatus(value = HttpStatus.OK)
+	@ResponseBody
+	public PointsConversionInfo convertToPoints(@PathVariable("id") long id,
+			@RequestParam(value="dryRun", defaultValue="true") boolean dryRun) throws ToolControlException {
+		return interfaceService.convertToPoints(id, dryRun);
+	}
+
+	@Requires(action = 'U')
+	@RequestMapping(value="/convert-to-points/byName/{name}", method=RequestMethod.POST)
+	@ResponseStatus(value = HttpStatus.OK)
+	@ResponseBody
+	public PointsConversionInfo convertToPointsByName(@PathVariable("name") String name,
+			@RequestParam(value="dryRun", defaultValue="true") boolean dryRun) throws ToolControlException {
+		return interfaceService.convertToPointsByName(name, dryRun);
+	}
+
 	@RequestMapping(value="/search/header-templates/by-all", method=RequestMethod.GET)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody

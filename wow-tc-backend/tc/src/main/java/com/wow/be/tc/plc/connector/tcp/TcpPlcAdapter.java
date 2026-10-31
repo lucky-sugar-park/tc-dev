@@ -258,7 +258,8 @@ public abstract class TcpPlcAdapter implements ProgrammableControllerAdapter {
 			}
 			boolean ok = false;
 			try {
-				byte[] response = exchangeOn(ch, "health-check", wire.healthCheckRequest(), System.currentTimeMillis() + HEALTH_CHECK_TIMEOUT_MS);
+				byte[] response = exchangeOn(ch, "health-check", wire.healthCheckRequest(), System.currentTimeMillis() + HEALTH_CHECK_TIMEOUT_MS,
+					CAUSE_LOOPBACK_FAILED);
 				ok = wire.healthCheckOk(response);
 			} catch (ToolControlException e) {
 				ok = false;
@@ -396,7 +397,7 @@ public abstract class TcpPlcAdapter implements ProgrammableControllerAdapter {
 		TcpChannel ch = borrow(deadline);
 		boolean returned = false;
 		try {
-			byte[] response = exchangeOn(ch, reqId, reqData, deadline);
+			byte[] response = exchangeOn(ch, reqId, reqData, deadline, CAUSE_TIMEOUT);
 			returned = true;
 			return response;
 		} catch (ToolControlException e) {
@@ -413,8 +414,11 @@ public abstract class TcpPlcAdapter implements ProgrammableControllerAdapter {
 	/**
 	 * 정해진 채널로 요청 하나를 주고받는다. 번호가 없는 요청(3E)이 시간 초과면 그 연결을 닫는다(늦은 응답이 다음 요청의 결과가
 	 * 되지 않게). 번호가 있으면(4E·Modbus) 늦은 응답을 번호로 가려내므로 닫지 않는다. 채널을 대기열에 돌려놓는 일은 부르는 쪽이 한다.
+	 *
+	 * @param timeoutCause 시간 초과로 닫을 때 남길 사유 — 연결 확인이 부르면 LOOPBACK_FAILED. 예전에는 늘 TIMEOUT 으로 닫아, 연결
+	 *                     확인이 뒤이어 남긴 사유와 경쟁해 끊김 사유가 "응답 시간 초과"로 남기도 했다
 	 */
-	private byte[] exchangeOn(TcpChannel ch, String reqId, byte[] reqData, long deadline) throws ToolControlException {
+	private byte[] exchangeOn(TcpChannel ch, String reqId, byte[] reqData, long deadline, String timeoutCause) throws ToolControlException {
 		boolean keep = wire.hasSerial(reqData);
 		try {
 			CompletableFuture<byte[]> future = ch.begin(reqData);
@@ -439,7 +443,7 @@ public abstract class TcpPlcAdapter implements ProgrammableControllerAdapter {
 			} else {
 				// 늦게 온 응답이 다음 요청의 결과가 되지 않도록 이 연결을 버린다 — 재연결 스케줄러가 새로 잇는다
 				log.warn("PLC 응답 시간 초과로 연결을 닫습니다: {}, reqId={}", ch, reqId);
-				ch.close(CAUSE_TIMEOUT);
+				ch.close(timeoutCause);
 			}
 			throw ToolControlException.of(ToolControlException.PLC_TIMEOUT,
 				"PLC 응답 시간이 초과되었습니다(" + requestTimeoutMs + "ms): " + reqId);

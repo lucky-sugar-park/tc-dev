@@ -121,7 +121,7 @@ check("주인 인스턴스로 요청 → 200", s2 == 200 and b2.get("success") i
 conn_other = (call(OTHER, "GET", "/api/v1/plc-connector/find/byName/plc-e2e")[1] or {}).get("connection") or {}
 check("다른 인스턴스의 조회에도 연결 상태(주인이 남긴 값)", conn_other.get("instance") == owner, conn_other)
 
-# 1-1. POINTS 인터페이스(PLC 일반화)도 같은 원격 어댑터로 — 드라이버가 만든 프레임을 주인이 주고받는다
+# 1-1. POINTS 인터페이스(PLC 일반화)도 같은 원격 어댑터로 — 작업 단위(/execute)로 넘겨 점 묶기·응답 검증을 주인이 한다
 pts_name = f"e2e.rmt.pts.{int(time.time())}"
 s, b = call(OWNER, "POST", "/api/v1/ifsvc/management/register", {
     "name": pts_name, "plcName": "plc-e2e", "interfaceType": "READ", "mode": "POINTS", "use": True, "sync": True, "reply": True,
@@ -154,6 +154,29 @@ if SECRET:
     check("시각이 30초 밖 → 401", s == 401, (s, b))
     s, b = call(internal(OWNER), "POST", path, raw=body, headers=signed("plc-e2e", body, secret=b"wrong"), token=False)
     check("다른 비밀값 → 401", s == 401, (s, b))
+    # 작업 단위 계약(/execute, PLC 일반화 4단계)
+    ex = "/internal/plc/plc-e2e/execute"
+    pts = {"op": "READ", "protocol": "MELSEC_MC", "settings": {"frame": "3E_BINARY"}, "reqId": "e2e-ex",
+           "points": [{"name": "d100", "address": "D100", "type": "INT16"}, {"name": "d101", "address": "D101", "type": "INT16"}]}
+    eb = json.dumps(pts).encode()
+    s, b = call(internal(OWNER), "POST", ex, raw=eb, headers=signed("plc-e2e", eb), token=False)
+    check("/execute READ → 200 values·status(code 0), RAW 와 같은 값", s == 200 and b.get("values") == b2.get("data")
+          and (b.get("status") or {}).get("code") == 0 and (b.get("status") or {}).get("protocol") == "MELSEC_MC", (s, b, b2.get("data")))
+    frame = base64.b64encode(bytes.fromhex("500000FFFF0300 0C00 1000 0104 0000 640000 A8 0100".replace(" ", ""))).decode()
+    rb = json.dumps({"op": "RAW", "frame": frame, "reqId": "e2e-raw"}).encode()
+    s, b = call(internal(OWNER), "POST", ex, raw=rb, headers=signed("plc-e2e", rb), token=False)
+    answer = base64.b64decode(b.get("frame", "")) if s == 200 else b""
+    check("/execute RAW → 200 응답 프레임(D000, 종료 코드 0)", s == 200 and answer[:2] == b"\xD0\x00" and answer[9:11] == b"\x00\x00", (s, b))
+    bb = json.dumps({"op": "DELETE", "reqId": "e2e"}).encode()
+    s, b = call(internal(OWNER), "POST", ex, raw=bb, headers=signed("plc-e2e", bb), token=False)
+    check("/execute 모르는 op → 400", s == 400, (s, b))
+    wb = json.dumps(dict(pts, points=[{"name": "x", "address": "Q1", "type": "INT16"}])).encode()
+    s, b = call(internal(OWNER), "POST", ex, raw=wb, headers=signed("plc-e2e", wb), token=False)
+    check("/execute 잘못된 점 주소 → 409 ERR_409_TC_INTERFACE_CONFIG", s == 409 and b.get("errorCode") == "ERR_409_TC_INTERFACE_CONFIG", (s, b))
+    s, b = call(internal(OTHER), "POST", ex, raw=eb, headers=signed("plc-e2e", eb), token=False)
+    check("/execute 주인이 아닌 인스턴스 → 409 ERR_409_TC_NOT_OWNER", s == 409 and b.get("errorCode") == "ERR_409_TC_NOT_OWNER", (s, b))
+    s, b = call(internal(OWNER), "POST", ex, raw=eb, token=False)
+    check("/execute 서명 없음 → 401", s == 401, (s, b))
 else:
     print("SKIP 서명 시험 — TC_E2E_INTERNAL_SECRET_FILE 이 없습니다")
 s, _ = call(OWNER, "POST", path, raw=body, token=False)
