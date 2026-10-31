@@ -55,6 +55,12 @@ public class PlcConnectorInfo extends AbstractInfo {
 	
 	private List<String> memTypes;
 
+	/** {@code MELSEC_MC}(기본), {@code MODBUS_TCP}, {@code OPC_UA} — docs/plc-protocol-design.md §4.1 */
+	private String protocol;
+
+	/** 프로토콜별 설정. 등록·수정 때 드라이버가 검증하고 기본값을 채운다 */
+	private Map<String, Object> settings;
+
 	private String description;
 
 	public PlcConnectorInfo() {

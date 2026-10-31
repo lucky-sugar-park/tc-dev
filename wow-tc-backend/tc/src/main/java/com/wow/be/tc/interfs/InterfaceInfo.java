@@ -88,6 +88,18 @@ public class InterfaceInfo extends AbstractInfo {
 	private List<String> webHookNameList;
 	
 	private String description;
+
+	/**
+	 * 정의 방식 — {@code POINTS}(점 목록) 또는 {@code RAW}(헤더·데이터 바이트 속성, 호환). 등록 때 비우면 RAW,
+	 * 수정 때 비우면 저장된 값(docs/plc-protocol-design.md §4.2)
+	 */
+	private InterfaceMode mode;
+
+	/** POINTS 일 때의 점 목록. 수정 때 null 이면 저장된 점을 그대로 둔다 */
+	private List<PointInfo> points;
+
+	/** POINTS WRITE — 쓴 뒤 같은 점을 다시 읽어 응답 data 에 넣는다(결정 P8) */
+	private boolean readBack;
 	
 	public InterfaceInfo() {
 		this.headerProps=new ArrayList<>();

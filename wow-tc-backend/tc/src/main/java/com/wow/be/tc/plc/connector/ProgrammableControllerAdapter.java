@@ -5,6 +5,9 @@ import java.util.Properties;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.plc.PlcRequest;
 import com.wow.be.tc.plc.PlcResponse;
+import com.wow.be.tc.plc.protocol.PlcDrivers;
+import com.wow.be.tc.plc.protocol.PlcOperation;
+import com.wow.be.tc.plc.protocol.PlcResult;
 
 public interface ProgrammableControllerAdapter {
 	
@@ -42,6 +45,14 @@ public interface ProgrammableControllerAdapter {
 	 * @return 응답 프레임
 	 */
 	public abstract byte[] exchangeFrame(String reqId, byte[] frame) throws ToolControlException;
+
+	/**
+	 * 점 읽기·쓰기(POINTS 인터페이스) — 프로토콜 드라이버가 프레임을 만들고 해석하고, 교환은 이 어댑터의
+	 * {@link #exchangeFrame}(로컬 채널 또는 주인 인스턴스)로 한다(docs/plc-protocol-design.md §3·§5).
+	 */
+	public default PlcResult execute(PlcOperation operation) throws ToolControlException {
+		return PlcDrivers.of(operation.protocol()).execute(operation, this::exchangeFrame);
+	}
 
 	/** 응답 프레임을 응답 객체에 채운다(헤더·데이터 나누기, 종료 코드) */
 	public abstract void completeResponse(PlcResponse res, byte[] frame) throws ToolControlException;

@@ -2,6 +2,8 @@ package com.wow.be.tc.dispatch;
 
 import com.wow.be.framework.dispatch.ResponseMessage;
 
+import com.wow.be.tc.plc.protocol.PlcStatus;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -13,6 +15,7 @@ import lombok.ToString;
  *   <li>{@code success}/{@code errorCode}/{@code errorMessage} — tc 처리 결과. PLC 가 오류 코드를 돌려주면
  *       {@code success=false}, {@code errorCode=ERR_502_TC_PLC_ERROR} 다.</li>
  *   <li>{@link #resultCode}/{@link #resultDescription} — PLC 가 돌려준 종료 코드(MELSEC end code) 그대로. 레거시와 같은 이름이다.</li>
+ *   <li>{@link #plcStatus} — 프로토콜·상태 코드·설명(MELSEC 종료 코드, Modbus 예외 코드, OPC UA StatusCode). docs/plc-protocol-design.md §4.3</li>
  *   <li>{@code data} — 응답 인터페이스의 데이터 속성으로 해석한 값.</li>
  * </ul>
  */
@@ -28,4 +31,7 @@ public class TcMessageResponse extends ResponseMessage {
 	private Integer resultCode;
 
 	private String resultDescription;
+
+	/** PLC 가 돌려준 상태. PLC 와 통신하기 전에 실패하면 null */
+	private PlcStatus plcStatus;
 }

@@ -58,7 +58,7 @@ public class MelsecPlcRequest extends PlcRequest {
 		checkLength("plcNumber", super.getFrameFormat(), plcNumber.length(), 2);
 		sb.append(plcNumber);
 		
-		String opponentIONumber=(String) headers.get("oppornentIONumber");
+		String opponentIONumber=(String) headers.get("opponentIONumber");
 		checkLength("opponentIONumber", super.getFrameFormat(), opponentIONumber.length(), 4);
 		sb.append(opponentIONumber);
 		
@@ -133,9 +133,12 @@ public class MelsecPlcRequest extends PlcRequest {
 		
 		byte[] commandProp=(byte[]) headers.get("command");
 		checkLength("command", super.getFrameFormat(), commandProp.length, 2);
-		if((super.getReqType()==RequestType.READ && commandProp[0]!=0x01 && commandProp[1]!=0x04) ||
-		   (super.getReqType()==RequestType.WRITE && commandProp[0]!=0x01 && commandProp[1]!=0x14)) {
-			throw new ToolControlException("요청 유형에 맞지 않는 명령(command)입니다: " + super.getReqType());
+		// 0401 일괄 읽기(01 04), 1401 일괄 쓰기(01 14). 예전에는 && 로 묶어 READ 에 쓰기 명령이 와도 통과했다(결함 M2)
+		boolean read=commandProp[0]==0x01 && commandProp[1]==0x04;
+		boolean write=commandProp[0]==0x01 && commandProp[1]==0x14;
+		if((super.getReqType()==RequestType.READ && !read) || (super.getReqType()==RequestType.WRITE && !write)) {
+			throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED,
+				"요청 유형(" + super.getReqType() + ")에 맞지 않는 명령(command)입니다: " + java.util.HexFormat.of().formatHex(commandProp));
 		}
 		byte[] subCommandProp=(byte[]) headers.get("subCommand");
 		checkLength("subCommand", super.getFrameFormat(), subCommandProp.length, 2);
@@ -147,6 +150,15 @@ public class MelsecPlcRequest extends PlcRequest {
 		checkLength("deviceCode", super.getFrameFormat(), deviceCodeProp.length, 1);
 		
 		byte[] wordCountProp=(byte[]) headers.get("wordCount");
+		checkLength("wordCount", super.getFrameFormat(), wordCountProp.length, 2);
+		// 쓰기 데이터의 워드 수가 헤더의 wordCount 와 같아야 한다 — 다르면 PLC 가 엉뚱한 범위를 쓰거나 오류로 답한다(결함 M3)
+		if(write && super.getData()!=null) {
+			int wordCount=ByteUtil.bytesToInt(wordCountProp, ByteUtil.Endian.LITTLE);
+			if(super.getData().length!=wordCount*2) {
+				throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED,
+					"쓰기 데이터(" + super.getData().length + "바이트)가 헤더 wordCount(" + wordCount + "워드)와 맞지 않습니다: " + super.getReqName());
+			}
+		}
 		
 		int reqDataLenPropLen=reqDataLenProp.length;
 //		int wordCount=(super.getData()==null?0:super.getData().length)>>1;

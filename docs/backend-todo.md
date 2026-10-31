@@ -53,7 +53,7 @@
 | # | 일 | 상태 |
 |---|---|---|
 | 12 | PLC 보강: 주기적 연결 상태 확인, 4E 프레임, 응답 길이 검증, 포트 여러 개 병렬 시험 | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md) §6.1·§11 2단계. 프론트 재작성 전에 |
-| 13 | Modbus·OPC UA 어댑터(tc, vplc) | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md). 인터페이스를 MC 3E 프레임 바이트에서 논리 주소(점)로, 드라이버 경계, 다중화 계약을 작업 단위로. 결정 P1~P10 확정(2026-10-31). 다음은 §11 1단계(모델·드라이버 경계 + MELSEC 이식) |
+| 13 | Modbus·OPC UA 어댑터(tc, vplc) | 🔄 설계 — [plc-protocol-design.md](plc-protocol-design.md). 인터페이스를 MC 3E 프레임 바이트에서 논리 주소(점)로, 드라이버 경계, 다중화 계약을 작업 단위로. 결정 P1~P10 확정. **1단계 완료**(모델·드라이버·MELSEC POINTS, 결함 M1~M4, plc-protocol-design.md §12). 다음은 2단계(MELSEC 보강 #12) |
 | 14 | 로컬 시험 데이터 정리(`plc-fake`, `e2e-*`·`hist-*`·`redis-down` 클라이언트, 시험 이력, 시험 DB `tc_boot`) | ⬜ |
 | 15 | 비동기 어댑터 큐(죽은 코드) 제거 | ✅ | 어댑터의 타이머·큐·`request(holder, callback)`, `PlcReqAndResHolder`·`PlcRequestCallback`, 커넥터 설정 `asyncRequestUse`·`asyncTimer*`(API 필드 포함) 제거(2026-10-31). DB 칼럼은 남긴다 — `migration/007` 이 NULL 허용으로, DROP 은 주석 |
 | 16 | 운영 환경의 실제 호출 시스템 API 키 전환(감사 `PRINCIPAL` 로 대상 확인 → 키 발급·교체 → 옛 계정 중지) | ⬜ 운영 작업 — 이 버전 배포 전 전환이 안 끝났으면 배포 직후 전환 스위치를 켠다 |
@@ -79,3 +79,4 @@
 - 2026-10-31: 다중화 운영 절차(operations.md §4.2) — 준비·전환·순차 재기동·PLC 옮기기·확인·장애·비밀값 교체·되돌리기. 로컬 두 대로 순차 재기동(실패 0건/0.8초)·옮기기 확인. tc Redis 설정이 DB 번호를 받지 않아 MES 와 분리는 별도 인스턴스로.
 - 2026-10-31: v0.3.0 분기. 프론트 전에 PLC 일반화를 먼저 하기로(MELSEC 이 인터페이스 정의까지 묶여 있음). 설계 [plc-protocol-design.md](plc-protocol-design.md) 작성 — 결함 M1~M4(ASCII 프레임 오타, 명령 검사, 길이 수동 입력, 응답 길이 미검증) 포함.
 - 2026-10-31: PLC 일반화 결정 P1~P10 제안대로 확정. 설정은 모두 application.yml 에 — 코드에만 있던 tc.delivery·tc.plc.ownership·tc.plc.state·tc.instance·tc.internal·plc.request.timeout-ms 를 기본값과 함께 적고, 쓰지 않던 oper.duplication.mode 를 지움.
+- 2026-10-31: PLC 일반화 1단계 완료 — POINTS 인터페이스(점: 이름·주소·형), MELSEC 드라이버(3E BINARY·ASCII, 묶기, 비트 디바이스), 커넥터 protocol·settings, plcStatus, 값 기반 변경 감지, 결함 M1~M4, migration 008. 기존 결함 수정: 인터페이스 이름·일괄 삭제가 외래 키 오류로 500. 단위 75개, 정상 종료 포함 e2e·두 인스턴스 시험 통과. vplc 한계(만들지 않은 메모리에 무응답, 비트 쓰기·ASCII 데이터 미지원)는 2단계에서.

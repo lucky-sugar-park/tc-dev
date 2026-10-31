@@ -1,6 +1,7 @@
 package com.wow.be.tc.plc.management.impl;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,6 +11,7 @@ import com.wow.be.tc.Types.FrameFormat;
 import com.wow.be.tc.Types.PlcConnectorInfoStatus;
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
+import com.wow.be.tc.plc.protocol.PlcDrivers;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -88,6 +90,15 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 	@Column(name="MEM_TYPES")
 	private String memTypes;
 
+	/** MELSEC_MC, MODBUS_TCP, OPC_UA — 비면 MELSEC_MC(이 칼럼 전에 등록한 커넥터) */
+	@Column(name="PROTOCOL", length=32)
+	private String protocol;
+
+	/** 프로토콜별 설정 JSON(docs/plc-protocol-design.md §4.1) */
+	@Lob
+	@Column(name="SETTINGS_JSON", columnDefinition="LONGTEXT")
+	private String settingsJson;
+
 	@Column(name="DESCRIPTION", length=1024)
 	private String description;
 	
@@ -144,6 +155,17 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 			info.addMemType(memType.trim());
 		}
 		
+		info.setProtocol(this.protocol!=null && !this.protocol.isBlank()?this.protocol:PlcDrivers.DEFAULT_PROTOCOL);
+		Map<String, Object> settings=new LinkedHashMap<>();
+		try {
+			if(this.settingsJson!=null && !this.settingsJson.isBlank()) {
+				settings=om.readValue(this.settingsJson, Map.class);
+			}
+		} catch (JsonProcessingException e) {
+			log.warn("커넥터 설정 JSON 을 읽지 못했습니다: {}", this.name);
+		}
+		info.setSettings(settings);
+
 		info.setDescription(this.description);
 		info.setCreatedBy(super.getCreatedBy());
 		info.setCreatedDate(super.getCreatedDate());
@@ -227,6 +249,17 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 			}
 			String memTypeArr=sb.toString();
 			this.setMemTypes(memTypeArr.substring(0, memTypeArr.length()-1));
+		}
+
+		if(info.getProtocol()!=null && !info.getProtocol().isBlank()) {
+			this.setProtocol(info.getProtocol());
+		}
+		if(info.getSettings()!=null) {
+			try {
+				this.setSettingsJson(om.writeValueAsString(info.getSettings()));
+			} catch (JsonProcessingException e) {
+				throw new IllegalArgumentException("커넥터 설정을 저장할 수 없습니다: " + e.getMessage());
+			}
 		}
 		
 		if(info.getDescription()!=null && !"".equals(info.getDescription())) {

@@ -6,6 +6,8 @@ import java.util.List;
 import com.wow.be.framework.persist.PersistentEntity;
 import com.wow.be.tc.Types.InterfaceType;
 import com.wow.be.tc.interfs.InterfaceInfo;
+import com.wow.be.tc.interfs.InterfaceMode;
+import com.wow.be.tc.interfs.PointInfo;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -83,11 +85,22 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 	
 	@Column(name="DESCRIPTION", length=2048)
 	private String description;
+
+	/** RAW·POINTS — 비면 RAW(이 칼럼 전에 등록한 인터페이스) */
+	@Column(name="MODE", length=16)
+	private String mode;
+
+	@Column(name="READ_BACK")
+	private Boolean readBack;
+
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="interfs", cascade={ CascadeType.REMOVE })
+	private List<InterfacePointEntity> points;
 	
 	public InterfaceEntity() {
 		super();
 		headerProps=new ArrayList<>();
 		dataProps=new ArrayList<>();
+		points=new ArrayList<>();
 	}
 
 	@Override
@@ -111,6 +124,16 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 			}			
 		}
 		info.setDescription(this.getDescription());
+		info.setMode(this.mode!=null?InterfaceMode.valueOf(this.mode):InterfaceMode.RAW);
+		info.setReadBack(this.readBack!=null && this.readBack);
+		if(info.getMode()==InterfaceMode.POINTS) {
+			List<PointInfo> pointInfos=new ArrayList<>();
+			for(InterfacePointEntity pentity:points) {
+				pointInfos.add(pentity.info());
+			}
+			pointInfos.sort((a,b)->Integer.compare(a.getOrder(), b.getOrder()));
+			info.setPoints(pointInfos);
+		}
 		
 //		headerProps.sort((a,b)->{
 //			return a.getOrder()-b.getOrder();
@@ -176,6 +199,8 @@ public class InterfaceEntity extends PersistentEntity<InterfaceInfo> {
 		if(info.getDescription()!=null && !"".equals(info.getDescription())) {
 			this.setDescription(info.getDescription());
 		}
+		this.setMode((info.getMode()!=null?info.getMode():InterfaceMode.RAW).name());
+		this.setReadBack(info.isReadBack());
 		
 //		for(PropInfo pInfo : info.getHeaderProps()) {
 //			HeaderPropEntity entity=new HeaderPropEntity();

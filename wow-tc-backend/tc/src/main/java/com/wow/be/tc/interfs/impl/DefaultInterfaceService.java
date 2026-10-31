@@ -4,8 +4,10 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
@@ -23,13 +25,20 @@ import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.tc.ToolControlException;
+import com.wow.be.tc.Types.InterfaceType;
 import com.wow.be.tc.confighist.ConfigChangeInfo.Action;
 import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
 import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.interfs.HeaderTemplateInfo;
 import com.wow.be.tc.interfs.InterfaceInfo;
+import com.wow.be.tc.interfs.InterfaceMode;
+import com.wow.be.tc.interfs.PointInfo;
 import com.wow.be.tc.interfs.InterfaceService;
 import com.wow.be.tc.interfs.PropInfo;
+import com.wow.be.tc.plc.management.PlcConnectorInfo;
+import com.wow.be.tc.plc.management.PlcConnectorManagementService;
+import com.wow.be.tc.plc.protocol.PlcDriver;
+import com.wow.be.tc.plc.protocol.PlcDrivers;
 
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -50,13 +59,24 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	@Autowired
 	private ConfigChangeRecorder changeRecorder;
 
+	@Autowired
+	private InterfacePointRepository interfacePointRepository;
+
+	@Autowired
+	private PlcConnectorManagementService plcConnectorService;
+
 	@Override
 	@Transactional
 	public InterfaceInfo registerInterface(InterfaceInfo info) {
 		log.debug("");
+		if(info.getMode()==null) {
+			info.setMode(InterfaceMode.RAW);
+		}
+		validatePoints(info);
 		InterfaceEntity entity=new InterfaceEntity();
 		entity.from(info);
 		interfaceRepository.save(entity);
+		savePoints(entity.getId(), info);
 		
 		info.getHeaderProps().forEach((headerProp)->{
 			headerProp.setInterfaceId(entity.getId());
@@ -83,9 +103,18 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 	public InterfaceInfo updateInterface(InterfaceInfo info) {
 		log.debug("");
 		InterfaceInfo before=interfaceRepository.findById(info.getId()).map(InterfaceEntity::info).orElse(null);
+		if(info.getMode()==null) {
+			info.setMode(before!=null?before.getMode():InterfaceMode.RAW);
+		}
+		if(info.getMode()==InterfaceMode.POINTS && info.getPoints()==null && before!=null) {
+			info.setPoints(before.getPoints());
+		}
+		validatePoints(info);
 		InterfaceEntity entity=new InterfaceEntity();
 		entity.from(info);
 		interfaceRepository.save(entity);
+		interfacePointRepository.deleteByInterfaceId(info.getId());
+		savePoints(info.getId(), info);
 		// 헤더·데이터 항목의 변경(oper=N/U/D)도 이 한 건의 변경 후 값(요청 그대로)에 들어 있다
 		changeRecorder.updated(TargetType.INTERFACE, String.valueOf(info.getId()), info.getName(), before, info);
 		info.getHeaderProps().forEach(header->{
@@ -218,16 +247,20 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 		InterfaceInfo found=this.findInterfaceByName(name);
 		if(found!=null) {
 			changeRecorder.deleted(TargetType.INTERFACE, String.valueOf(found.getId()), found.getName(), found);
+			// 엔티티로 지워야 헤더·데이터 속성·점이 함께 지워진다 — JPQL 일괄 delete 는 cascade 를 타지 않아 외래 키 오류(500)였다
+			interfaceRepository.deleteById(found.getId());
 		}
-		interfaceRepository.deleteByName(name);
 	}
 	
 	@Override
 	@Transactional
 	public void deleteInterfaceByBatch(List<Long> ids) {
 		log.debug("");
-		interfaceRepository.findAllById(ids).forEach(this::recordDeleted);
-		interfaceRepository.deleteByBatch(ids);
+		// 엔티티로 지운다(cascade) — deleteInterfaceByName 과 같은 이유
+		interfaceRepository.findAllById(ids).forEach(e->{
+			recordDeleted(e);
+			interfaceRepository.delete(e);
+		});
 	}
 
 	private void recordDeleted(InterfaceEntity e) {
@@ -251,4 +284,56 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 
 		return templateList;
 	}
+
+	/** POINTS 인터페이스의 점을 저장한다(목록 순서가 점 순서) */
+	private void savePoints(Long interfaceId, InterfaceInfo info) {
+		if(info.getMode()!=InterfaceMode.POINTS || info.getPoints()==null) {
+			return;
+		}
+		for(PointInfo point:info.getPoints()) {
+			interfacePointRepository.save(InterfacePointEntity.of(interfaceId, point));
+		}
+	}
+
+	/**
+	 * POINTS 인터페이스 검증 — 연결된 커넥터의 프로토콜 드라이버가 점마다 주소·형을 본다(docs/plc-protocol-design.md §4.2).
+	 * 잘못되면 IllegalArgumentException(400).
+	 */
+	void validatePoints(InterfaceInfo info) {
+		if(info.getMode()!=InterfaceMode.POINTS) {
+			return;
+		}
+		if(info.getInterfaceType()!=InterfaceType.READ && info.getInterfaceType()!=InterfaceType.WRITE) {
+			throw new IllegalArgumentException("POINTS 인터페이스는 READ 또는 WRITE 입니다: " + info.getInterfaceType());
+		}
+		if(info.getPlcName()==null || info.getPlcName().isBlank()) {
+			throw new IllegalArgumentException("POINTS 인터페이스는 PLC 커넥터(plcName)가 필요합니다");
+		}
+		PlcConnectorInfo connector=plcConnectorService.findPlcConnectorByName(info.getPlcName());
+		if(connector==null) {
+			throw new IllegalArgumentException("PLC 커넥터가 없습니다: " + info.getPlcName() + " — 커넥터를 먼저 등록하세요(점 주소는 커넥터의 프로토콜로 검증한다)");
+		}
+		List<PointInfo> points=info.getPoints();
+		if(points==null || points.isEmpty()) {
+			throw new IllegalArgumentException("POINTS 인터페이스에 점(points)이 없습니다");
+		}
+		if(points.size()>MAX_POINTS) {
+			throw new IllegalArgumentException("점은 인터페이스마다 " + MAX_POINTS + "개까지입니다: " + points.size());
+		}
+		PlcDriver driver=PlcDrivers.of(connector.getProtocol());
+		Set<String> names=new HashSet<>();
+		for(int i=0;i<points.size();i++) {
+			PointInfo point=points.get(i);
+			if(point==null) {
+				throw new IllegalArgumentException("점 " + i + " 이 비었습니다");
+			}
+			driver.validatePoint(point, info.getInterfaceType());
+			if(!names.add(point.getName())) {
+				throw new IllegalArgumentException("점 이름이 겹칩니다: " + point.getName());
+			}
+			point.setOrder(i);
+		}
+	}
+
+	static final int MAX_POINTS=500;
 }

@@ -23,6 +23,7 @@ import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.tc.ToolControlException;
+import com.wow.be.tc.Types.FrameFormat;
 import com.wow.be.tc.Types.PlcConnectorInfoStatus;
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.connector.PlcAdapterManager;
@@ -36,6 +37,9 @@ import com.wow.be.tc.plc.management.PlcAdapterProps;
 import com.wow.be.tc.plc.management.PlcOwnershipManager;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.plc.management.PlcConnectorManagementService;
+import com.wow.be.tc.plc.protocol.PlcDriver;
+import com.wow.be.tc.plc.protocol.PlcDrivers;
+import com.wow.be.tc.plc.protocol.melsec.MelsecDriver;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -79,6 +83,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 	@Override
 	public void registerPlcConnector(PlcConnectorInfo plcInfo) {
 		log.debug("DefaultPlcConnectorManagementService.registerPlcConnector(PlcConnectorInfo plcInfo)...");
+		normalizeProtocol(plcInfo);
 		PlcConnectorEntity entity=new PlcConnectorEntity();
 		entity.from(plcInfo);
 		entity.setStatus1(PlcConnectorInfoStatus.REGISTERED.name());
@@ -93,6 +98,17 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		log.debug("DefaultPlcConnectorManagementService.updatePlcConnector(PlcConnectorInfo plcConnectorInfo)...");
 		PlcConnectorEntity entity=plcConnectorRepository.findById(plcConnectorInfo.getId()).get();
 		PlcConnectorInfo before=entity.info();
+		// 프로토콜·설정을 보내지 않은 수정은 저장된 값을 그대로 쓴다
+		if(plcConnectorInfo.getProtocol()==null || plcConnectorInfo.getProtocol().isBlank()) {
+			plcConnectorInfo.setProtocol(before.getProtocol());
+		}
+		if(plcConnectorInfo.getSettings()==null) {
+			plcConnectorInfo.setSettings(before.getSettings());
+		}
+		if(plcConnectorInfo.getMessageFrameFormat()==null) {
+			plcConnectorInfo.setMessageFrameFormat(before.getMessageFrameFormat());
+		}
+		normalizeProtocol(plcConnectorInfo);
 		entity.from(plcConnectorInfo);
 		// perform more sets and save it
 		PlcConnectorEntity saved=plcConnectorRepository.save(entity);
@@ -459,5 +475,20 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		long delCount=plcConnectionEventHistRepository.countByTimestamp(timestamp);
 		plcConnectionEventHistRepository.deleteByTimestamp(timestamp);
 		return delCount;
+	}
+
+	/**
+	 * 프로토콜 드라이버로 커넥터 설정을 검증하고 기본값을 채운다(잘못되면 IllegalArgumentException → 400).
+	 * MELSEC 은 어댑터의 응답 해석기가 {@code messageFrameFormat} 을 보므로 설정의 프레임과 맞춘다.
+	 */
+	static void normalizeProtocol(PlcConnectorInfo info) {
+		PlcDriver driver=PlcDrivers.of(info.getProtocol());
+		String legacy=info.getMessageFrameFormat()!=null ? info.getMessageFrameFormat().name() : null;
+		Map<String, Object> settings=driver.normalizeSettings(info.getSettings(), legacy);
+		info.setProtocol(driver.protocol());
+		info.setSettings(settings);
+		if(MelsecDriver.PROTOCOL.equals(driver.protocol())) {
+			info.setMessageFrameFormat(MelsecDriver.FRAME_3E_ASCII.equals(settings.get("frame")) ? FrameFormat.ASCII : FrameFormat.BINARY);
+		}
 	}
 }

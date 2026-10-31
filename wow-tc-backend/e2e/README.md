@@ -19,6 +19,7 @@
 | `test_plc_state.py` | PLC 연결 상태 분리(다중화 2단계) — 조회 응답의 `connection`(Redis), 상태 키 만료·5초 갱신, 해제·게시 때 의도(DB)와 연결 상태(Redis), 이벤트가 DB 상태를 고치지 않음 | 7 |
 | `test_plc_ownership.py` | PLC 소유권(다중화 3단계) — 임대·연장·키 사라지면 다시 잡기·남의 임대면 강등·이어받기·해제/게시·균형 규칙. **tc 를 `TC_PLC_OWNERSHIP_ENABLED=true` 로 띄웠을 때만**(아니면 건너뜀) | 17 |
 | `test_plc_remote.py` | 두 인스턴스 PLC 교환 전달(다중화 4단계) — 주인이 아닌 인스턴스로 온 요청, 감사 한 번, 내부 엔드포인트 서명·포트, `TC_E2E_FAILOVER=graceful\|kill` 이면 이어받기 시간. **두 번째 인스턴스(`TC_E2E_BASE_URL_B`)가 있을 때만**(아니면 건너뜀) | 10(+2~3) |
+| `test_plc_points.py` | POINTS 인터페이스(PLC 일반화 1단계) — RAW 와 같은 값, 여러 형 쓰기·readBack, 값 기반 변경 감지, plcStatus, 등록·쓰기 값 검증, 커넥터 설정 정규화, RAW READ 에 쓰기 명령 거절(M2), 인터페이스 삭제. 비트 디바이스는 vplc 에 M 메모리가 있을 때만 | 23(+1) |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |
 | `ShutdownViaJmx.java` | JMX 로 Spring Boot 정상 종료 요청(Windows 에서 SIGTERM 대신) | |

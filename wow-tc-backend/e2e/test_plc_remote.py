@@ -121,6 +121,17 @@ check("주인 인스턴스로 요청 → 200", s2 == 200 and b2.get("success") i
 conn_other = (call(OTHER, "GET", "/api/v1/plc-connector/find/byName/plc-e2e")[1] or {}).get("connection") or {}
 check("다른 인스턴스의 조회에도 연결 상태(주인이 남긴 값)", conn_other.get("instance") == owner, conn_other)
 
+# 1-1. POINTS 인터페이스(PLC 일반화)도 같은 원격 어댑터로 — 드라이버가 만든 프레임을 주인이 주고받는다
+pts_name = f"e2e.rmt.pts.{int(time.time())}"
+s, b = call(OWNER, "POST", "/api/v1/ifsvc/management/register", {
+    "name": pts_name, "plcName": "plc-e2e", "interfaceType": "READ", "mode": "POINTS", "use": True, "sync": True, "reply": True,
+    "points": [{"name": "d100", "address": "D100", "type": "INT16"}, {"name": "d101", "address": "D101", "type": "INT16"}]})
+SEQ[0] += 1
+s, pb = call(OTHER, "POST", "/api/v1/ifsvc/request-and-reply", {"transactionId": f"t-rmt-pts-{SEQ[0]}", "messageId": "m",
+                                                               "opcode": pts_name, "sender": "e2e", "receiver": "tc", "data": {}})
+check("POINTS 인터페이스도 주인이 아닌 인스턴스로 200, RAW 와 같은 값", s == 200 and pb.get("data") == b2.get("data"), (s, pb, b2.get("data")))
+call(OWNER, "DELETE", f"/api/v1/ifsvc/management/delete/byName/{pts_name}")
+
 # 2. 감사는 요청을 받은 인스턴스가 한 번만
 DB_PW = None
 for line in open(common.LOCAL_YML, encoding="utf-8"):

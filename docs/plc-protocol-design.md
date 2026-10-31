@@ -247,7 +247,7 @@ POST /internal/plc/{name}/execute
 
 ## 11. 순서
 
-1. **모델·드라이버 경계 + MELSEC 이식**: `PlcDriver`·`PlcSession`·`ChannelPool`·`ValueCodec`, MELSEC 주소 파서·블록 묶기, POINTS 인터페이스·API(`INTERFACE_POINT`), 응답 `plcStatus`, 값 기반 변경 감지, 결함 M1~M3, RAW 호환. 커넥터 `protocol`·`settings` migration.
+1. **모델·드라이버 경계 + MELSEC 이식**: `PlcDriver`·`PlcSession`·`ChannelPool`·`ValueCodec`, MELSEC 주소 파서·블록 묶기, POINTS 인터페이스·API(`INTERFACE_POINT`), 응답 `plcStatus`, 값 기반 변경 감지, 결함 M1~M3, RAW 호환. 커넥터 `protocol`·`settings` migration. — **완료(2026-10-31)**, §12.
 2. **MELSEC 보강(#12)**: 4E 프레임, 응답 길이 검증(M4), 주기적 루프백, 포트 여러 개 병렬 연결 시험. vplc 4E·루프백.
 3. **Modbus TCP**: 드라이버·e2e 가짜 장비.
 4. **다중화 계약 `/execute`**, 변환 도구(RAW → POINTS).
@@ -255,3 +255,37 @@ POST /internal/plc/{name}/execute
 6. **OPC UA**(2차, 프론트와 병행) → 구독(3차).
 
 각 단계는 운영 중 MELSEC 정의(RAW)가 그대로 도는 상태로 끝난다 — 배포 사이에 끊김 없이 넘어갈 수 있게.
+
+## 12. 1단계 구현 (2026-10-31)
+
+### 12.1 만든 것
+
+| 영역 | 내용 |
+|---|---|
+| 드라이버 경계 | `plc.protocol` 패키지 — `PlcDriver`(설정 정규화·점 검증·실행), `PlcOperation`(READ/WRITE, 점, 값, 커넥터 설정), `PlcResult`, `PlcStatus`, `FrameExchanger`, `ValueCodec`(형·바이트·워드 순서), `PlcDrivers`(프로토콜 → 드라이버) |
+| MELSEC | `MelsecDriver` — 디바이스 표(28종, 진법), 주소 파서, 읽기 묶기(같은 디바이스, 빈 칸 8워드까지, `maxWordsPerRequest` 까지), 이어진 워드 쓰기 묶기, 비트 디바이스는 워드로 읽고 비트 단위(1401/0001)로 씀, 3E BINARY·ASCII 프레임, 응답 검증(서브헤더·길이 칸·종료 코드·데이터 길이 — M4) |
+| 어댑터 | `ProgrammableControllerAdapter.execute(op)` 기본 구현 = 드라이버 + 자기 `exchangeFrame`. 로컬·원격(다중화) 어댑터가 같은 경로 — **POINTS 는 4단계(`/execute`) 전에도 다중화에서 동작** |
+| 커넥터 | `protocol`(기본 `MELSEC_MC`), `settings`(JSON). 등록·수정 때 드라이버가 검증·기본값(`frame` 3E_BINARY, `pcNo` 0xFF, `ioNo` 0x03FF, `monitoringTimer` 0x10, `maxWordsPerRequest` 960 …, 16진 `0x…` 입력 가능). 설정이 없는 옛 커넥터는 옛 `messageFrameFormat` 으로 채운다. MELSEC 은 어댑터의 응답 해석기가 보는 `messageFrameFormat` 을 설정의 프레임과 맞춘다 |
+| 인터페이스 | `mode`(RAW·POINTS, 비면 RAW), `points`(표 `INTERFACE_POINT`), `readBack`. 등록·수정 때 연결된 커넥터의 드라이버가 점을 검증(400). 수정 때 `points` 를 빼면 저장된 점 그대로, 주면 통째로 바꾼다 |
+| 명령 | POINTS 면 응답 인터페이스 없이 `adapter.execute`. `data` = 값, `plcStatus`, `resultCode`(= 상태 코드), 값 정규 JSON 으로 변경 감지(P10), WRITE+readBack 이면 다시 읽기. RAW 응답에도 `plcStatus` |
+| 결함 | M1(ASCII 오타), M2(명령 검사 → 409 `ERR_409_TC_INTERFACE_CONFIG`), M3(쓰기 데이터와 헤더 wordCount 불일치 → 409), M4(POINTS 응답 길이 검증) |
+| 이전 | `migration/008_plc_protocol.sql` — 커넥터 `protocol`·`settings_json`, 인터페이스 `mode`·`read_back`, 표 `interface_point`. 기존 인터페이스는 RAW 그대로 |
+
+### 12.2 구현하며 정한 것
+
+- **드라이버는 상태 없는 일반 클래스, 정적 표로 찾는다** — 어댑터가 리플렉션으로 만들어져 Spring 빈을 받지 못하고, 원격 어댑터도 같은 드라이버를 써야 해서다. 커넥터 설정은 작업(`PlcOperation`)에 실어 보낸다.
+- **`ChannelPool` 은 아직 떼지 않았다** — 두 번째 사용자(Modbus, 3단계)가 생길 때 뗀다. MELSEC 연결 관리는 지금 어댑터 그대로.
+- **워드 디바이스의 비트(`D100.3`)는 아직 없다** — 쓰기가 읽고-고치고-쓰기(경합)라 따로 설계한다. 지금은 BOOL 을 비트 디바이스(M, X, Y, B …)에만 쓴다.
+- **여러 프레임 쓰기는 원자적이지 않다** — 앞 프레임이 쓰인 뒤 다음 프레임에서 PLC 가 오류로 답하면 거기서 멈추고 오류를 돌려준다. 한 프레임 안(이어진 워드)은 PLC 가 한 번에 쓴다.
+- **ZR 은 10진 번호**로 본다(GX Works 표기). 현장 PLC 기종에 따라 다르면 디바이스 표만 고친다.
+- 점 이름은 `[A-Za-z_][A-Za-z0-9_.-]*`, 인터페이스마다 점 500개까지.
+
+### 12.3 함께 고친 기존 결함
+
+- **인터페이스 이름·일괄 삭제가 늘 500** — JPQL 일괄 `DELETE` 라 헤더·데이터 속성으로 cascade 되지 않아 외래 키 오류였다. 엔티티로 지우게 바꾸고 일괄 delete 쿼리를 지웠다(ID 삭제는 원래 됐다).
+
+### 12.4 시험
+
+- 단위 `ValueCodecTest`(형·바이트·워드 순서·배열·문자열·값 검증), `MelsecDriverTest`(주소, 점 검증, 설정, **D100 2워드 읽기 프레임이 RAW 정의와 같은 바이트**, 묶기, 비트 꺼내기, 쓰기 프레임 바이트, 종료 코드·길이 오류, ASCII 프레임).
+- e2e `test_plc_points.py`(23) — RAW 와 같은 값, 여러 형 쓰기·readBack, 변경 감지, plcStatus, 등록·쓰기 값 검증, 커넥터 설정, M2, 삭제. `test_plc_remote.py` 에 POINTS 원격 읽기.
+- **vplc 한계**: 만들지 않은 메모리 종류(시험 vplc 는 D 만)에는 답하지 않아 시간 초과가 난다(실제 PLC 는 오류 종료 코드). 비트 디바이스 e2e 는 vplc 에 M 메모리가 있을 때만 돌고, 비트 꺼내기는 단위 시험이 본다. vplc 는 비트 단위 쓰기·ASCII 응답 데이터도 지원하지 않는다 — 2단계(vplc 4E·루프백)에서 함께 손본다.
