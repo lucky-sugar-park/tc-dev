@@ -1,7 +1,7 @@
 import { apiClient } from 'wow-mes-frontend-shared';
 import { pageCondition } from '../../shared/format';
 import type {
-  ConnectionHistory, InterfaceInfo, PlcConnectionState, PlcConnectorInfo, PointInfo, PointsConversionInfo, ProtocolDescriptor, TestReadResult,
+  ConnectionHistory, InterfaceInfo, PlcConnectionState, PlcConnectorInfo, PointInfo, PointsConversionInfo, ProtocolDescriptor, RequestPlan, TestReadResult,
 } from '../types/plc';
 
 const C = '/v1/plc-connector';
@@ -76,6 +76,10 @@ export const interfaceApi = {
   },
   async convert(name: string, dryRun: boolean): Promise<PointsConversionInfo> {
     return (await apiClient.post<PointsConversionInfo>(`${M}/convert-to-points/byName/${enc(name)}?dryRun=${dryRun}`)).data;
+  },
+  /** 요청 미리보기 — 저장 전 정의도 된다. data 는 쓰기 값(없는 점은 0) */
+  async plan(interfaceInfo: InterfaceInfo, data?: Record<string, unknown>): Promise<RequestPlan> {
+    return (await apiClient.post<RequestPlan>(`${M}/plan`, { interfaceInfo, data })).data;
   },
 };
 

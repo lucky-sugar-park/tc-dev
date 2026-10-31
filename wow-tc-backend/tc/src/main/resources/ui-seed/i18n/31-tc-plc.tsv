@@ -5,7 +5,9 @@ i18n.common.delete	삭제	Delete	削除	删除
 i18n.common.edit	수정	Edit	編集	编辑
 i18n.common.save	저장	Save	保存	保存
 i18n.grid.footer.totalRows	총 {n}건	Total {n}	全{n}件	共{n}条
+i18n.tc.common.actions	작업	Actions	操作	操作
 i18n.tc.common.all	전체	All	すべて	全部
+i18n.tc.common.noData	데이터가 없습니다	No data	データがありません	暂无数据
 i18n.tc.common.description	설명	Description	説明	说明
 i18n.tc.common.required	필수입니다	Required	必須です	必填
 i18n.tc.common.searchPlaceholder	이름 검색	Search by name	名前で検索	按名称搜索
@@ -19,7 +21,14 @@ i18n.tc.connector.confirmStop	{name} 을(를) {op} 하면 이 PLC 로 가는 요
 i18n.tc.connector.connLimit	포트당 연결 수	Connections per port	ポートあたり接続数	每端口连接数
 i18n.tc.connector.default	기본	Default	既定	默认
 i18n.tc.connector.editPublished	게시 중인 커넥터는 저장한 뒤 해제·게시해야 새 설정으로 연결합니다.	A published connector uses new settings only after release and publish.	公開中のコネクタは保存後に解除・公開すると新しい設定で接続します。	已发布的连接器需在保存后释放并重新发布才会使用新设置。
-i18n.tc.connector.endpoint	PLC 주소:포트	PLC address:port	PLCアドレス:ポート	PLC地址:端口
+i18n.tc.connector.hostRequired	PLC 주소를 적어 주세요	Enter the PLC address	PLCアドレスを入力してください	请输入PLC地址
+i18n.tc.connector.listTitle	PLC 커넥터 목록	PLC connectors	PLCコネクタ一覧	PLC连接器列表
+i18n.tc.connector.portsInvalid	포트는 1~65535 숫자를 쉼표로 나눠 적습니다	Ports are numbers 1-65535 separated by commas	ポートは1~65535の数字をカンマ区切りで入力します	端口为1~65535的数字，用逗号分隔
+i18n.tc.connector.publishStatus	발행 상태	Publish status	発行状態	发布状态
+i18n.tc.connector.releasedHelp	게시(PUBLISHED)해야 PLC 에 연결합니다	Publish (PUBLISHED) to connect to the PLC	発行(PUBLISHED)するとPLCに接続します	发布(PUBLISHED)后才会连接PLC
+i18n.tc.connector.savedRepublish	저장했습니다 — 게시 중인 커넥터는 해제 후 다시 게시해야 연결에 반영됩니다	Saved — release and publish again to apply it to the connection	保存しました — 発行中のコネクタは解除して再発行すると接続に反映されます	已保存 — 已发布的连接器需取消发布后重新发布才会生效
+i18n.tc.connector.viewCard	카드로 보기	Card view	カード表示	卡片视图
+i18n.tc.connector.viewTable	표로 보기	Table view	表表示	表格视图
 i18n.tc.connector.frame	프레임·장치	Frame / unit	フレーム・装置	帧/设备
 i18n.tc.connector.host	PLC 주소	PLC address	PLCアドレス	PLC地址
 i18n.tc.connector.manufacturer	제조사	Manufacturer	メーカー	制造商
@@ -59,10 +68,12 @@ i18n.tc.point.wordOrder	워드 순서	Word order	ワード順	字序
 i18n.tc.point.connectorDefault	커넥터 기본	Connector default	コネクタ既定	连接器默认
 i18n.tc.point.readOnlyArea	읽기만 되는 영역	Read-only area	読み取り専用領域	只读区域
 # 인터페이스
+i18n.tc.interface.auditHistory	송수신 이력 보기	View message history	送受信履歴を見る	查看收发记录
+i18n.tc.interface.auditTitle	송수신 이력	Message history	送受信履歴	收发记录
 i18n.tc.interface.add	인터페이스 등록	Add interface	インターフェース登録	添加接口
 i18n.tc.interface.edit	인터페이스 수정	Edit interface	インターフェース編集	编辑接口
 i18n.tc.interface.confirmDelete	{name} 을(를) 지울까요? 이 opcode 로 오는 요청이 실패합니다.	Delete {name}? Requests with this opcode will fail.	{name} を削除しますか？このopcodeの要求は失敗します。	删除 {name}？使用此 opcode 的请求将失败。
-i18n.tc.interface.definition	점·응답	Points / reply	ポイント・応答	点/应答
+i18n.tc.interface.replyIf	응답 IF	Reply IF	応答IF	应答IF
 i18n.tc.interface.mode	정의	Definition	定義	定义
 i18n.tc.interface.name	이름(opcode)	Name (opcode)	名前(opcode)	名称(opcode)
 i18n.tc.interface.nameRule	영숫자·_ . - (opcode 로 쓰인다)	Letters, digits, _ . - (used as opcode)	英数字・_ . -（opcodeとして使用）	字母、数字、_ . -（用作 opcode）
@@ -73,10 +84,21 @@ i18n.tc.interface.readHelp	읽은 값을 data 의 점 이름으로 돌려준다	
 i18n.tc.interface.reply	응답	Reply	応答	应答
 i18n.tc.interface.search	이름·설명	Name, description	名前・説明	名称、说明
 i18n.tc.interface.sync	동기	Synchronous	同期	同步
-i18n.tc.interface.type	형	Type	型	类型
+i18n.tc.interface.ifType	타입	Type	タイプ	类型
 i18n.tc.interface.use	사용	In use	使用	使用
 i18n.tc.interface.webhookHelp	응답을 보낼 WebHook(전달 정의는 전달 화면에서)	WebHooks to send results to (delivery rules on the Delivery screen)	結果を送るWebHook（配信定義は配信画面で）	发送结果的 WebHook（投递规则在投递页面）
 i18n.tc.interface.writeHelp	요청 data 의 점 이름 값을 쓴다	Writes the values in request data by point name	要求dataのポイント名の値を書き込む	按点名写入请求 data 中的值
+i18n.tc.interface.detail	상세 보기	Details	詳細	详情
+i18n.tc.interface.headerHelp	프레임·국 번호 같은 헤더 값은 커넥터 설정에서 오고, 명령·주소·길이는 드라이버가 점에서 만듭니다	Header values such as frame and station come from the connector settings; command, address and length are built from the points	フレーム・局番などのヘッダ値はコネクタ設定から、コマンド・アドレス・長さはドライバがポイントから作ります	帧、站号等报头值来自连接器设置，命令、地址、长度由驱动根据点生成
+i18n.tc.plan.title	요청 미리보기	Request preview	リクエストプレビュー	请求预览
+i18n.tc.plan.help	이 정의로 PLC 에 보낼 요청 — 보내지 않습니다	Requests this definition sends to the PLC — nothing is sent	この定義でPLCに送るリクエスト — 送信はしません	此定义将发送到PLC的请求 — 不会实际发送
+i18n.tc.plan.run	미리보기	Preview	プレビュー	预览
+i18n.tc.plan.again	다시 보기	Refresh	再表示	刷新
+i18n.tc.plan.function	명령·함수	Command / function	コマンド・関数	命令/功能码
+i18n.tc.plan.target	시작	Start	開始	起始
+i18n.tc.plan.count	개수	Count	個数	数量
+i18n.tc.plan.points	담긴 점	Points	含まれるポイント	包含的点
+i18n.tc.plan.frame	프레임(16진)	Frame (hex)	フレーム(16進)	帧(十六进制)
 i18n.tc.raw.title	RAW 인터페이스	RAW interface	RAWインターフェース	RAW接口
 i18n.tc.raw.view	RAW 보기·변환	View RAW / convert	RAW表示・変換	查看RAW/转换
 i18n.tc.raw.help	MC 3E 프레임 바이트로 정의한 옛 인터페이스 — 여기서는 볼 수만 있다. POINTS 로 바꾸면 점 표로 고친다.	Legacy interface defined as MC 3E frame bytes — view only here. Convert to POINTS to edit it as points.	MC 3Eフレームのバイトで定義した旧インターフェース — ここでは表示のみ。POINTSに変換するとポイント表で編集できる。	用 MC 3E 帧字节定义的旧接口 — 此处只能查看。转换为 POINTS 后可按点表编辑。

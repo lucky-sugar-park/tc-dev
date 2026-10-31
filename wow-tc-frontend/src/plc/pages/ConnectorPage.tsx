@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Box, Chip, Tooltip, Typography } from '@mui/material';
-import { GridActionsCellItem, type GridColDef } from '@mui/x-data-grid-pro';
+import { Box, Chip, TablePagination, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material';
+import { GridActionsCellItem, type GridColDef, type GridPaginationModel } from '@mui/x-data-grid-pro';
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import ViewListIcon from '@mui/icons-material/ViewList';
 import EditIcon from '@mui/icons-material/Edit';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
@@ -15,9 +17,10 @@ import {
   useLoadFailure,
 } from 'wow-mes-frontend-shared';
 import { ListToolbar } from '../../shared/components/ListToolbar';
-import { StandardGrid } from '../../shared/components/StandardGrid';
+import { PAGE_SIZE_OPTIONS, StandardGrid } from '../../shared/components/StandardGrid';
 import { fmtTime, matches } from '../../shared/format';
 import { usePerm } from '../../shared/usePerm';
+import { ConnectorCards, type ConnectorAction } from '../components/ConnectorCards';
 import { ConnectorFormDialog } from '../components/ConnectorFormDialog';
 import { ConnectionHistoryDialog } from '../components/ConnectionHistoryDialog';
 import { TestReadDialog } from '../components/TestReadDialog';
@@ -28,6 +31,26 @@ import type { PlcConnectionState, PlcConnectorInfo, ProtocolDescriptor } from '.
 const SCREEN = 'tc.plc.connector';
 /** 연결 상태를 다시 읽는 간격 — SSE 는 PLC 를 연결한 인스턴스에서만 오므로 함께 쓴다 */
 const STATE_POLL_MS = 10_000;
+/** 카드·표 중 고른 보기 — 이 브라우저에만 기억한다 */
+const VIEW_KEY = 'tc.plc.connector.view';
+type View = 'card' | 'table';
+
+function loadView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'card' ? 'card' : 'table';
+  } catch {
+    return 'table';
+  }
+}
+
+/** 포트 칸 입력(쉼표로 나눔) → 포트 목록. 잘못되면 오류 */
+function parsePorts(text: string): number[] {
+  const ports = text.split(/[,\s]+/).filter(Boolean).map(Number);
+  if (ports.length === 0 || ports.some((p) => !Number.isInteger(p) || p < 1 || p > 65535)) {
+    throw new Error(`포트는 1~65535 숫자를 쉼표로 나눠 적습니다: ${text}`);
+  }
+  return ports;
+}
 
 /** 연결 상태 표시 */
 export function ConnectionChip({ info }: { info: { published?: boolean; connection?: PlcConnectionState | null } }): ReactElement {
@@ -58,6 +81,9 @@ export default function ConnectorPage(): ReactElement {
   const [form, setForm] = useState<{ open: boolean; initial?: PlcConnectorInfo; error?: string | null }>({ open: false });
   const [historyOf, setHistoryOf] = useState<string | null>(null);
   const [testReadOf, setTestReadOf] = useState<PlcConnectorInfo | null>(null);
+  const [view, setView] = useState<View>(loadView);
+  const [page, setPage] = useState<GridPaginationModel>({ page: 0, pageSize: PAGE_SIZE_OPTIONS[0] });
+  const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const { error, fail, clear, retry } = useLoadFailure();
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
@@ -166,17 +192,77 @@ export default function ConnectorPage(): ReactElement {
   };
 
   const filtered = useMemo(() => rows.filter((r) => matches(search, r.name, r.hostIp, r.description, r.protocol)), [rows, search]);
+  // 검색으로 줄어 지금 쪽이 비면 첫 쪽으로
+  useEffect(() => { setPage((p) => (p.page * p.pageSize >= filtered.length && p.page > 0 ? { ...p, page: 0 } : p)); }, [filtered.length]);
 
+  const changeView = (v: View | null) => {
+    if (!v) return;
+    setView(v);
+    try { localStorage.setItem(VIEW_KEY, v); } catch { /* 기억하지 못해도 된다 */ }
+  };
+
+  /** 셀 편집 저장 — 행 전체를 수정 API 로. 게시 중이면 다시 게시해야 연결에 반영된다 */
+  const saveRow = useCallback(async (next: PlcConnectorInfo, prev: PlcConnectorInfo) => {
+    if (next.hostIp === prev.hostIp && next.description === prev.description
+      && (next.ports ?? []).join(',') === (prev.ports ?? []).join(',')) return prev;
+    if (!next.hostIp?.trim()) throw new Error(t('i18n.tc.connector.hostRequired', 'PLC 주소를 적어 주세요'));
+    if ((next.ports ?? []).some((p) => !Number.isInteger(p))) throw new Error(t('i18n.tc.connector.portsInvalid', '포트는 1~65535 숫자를 쉼표로 나눠 적습니다'));
+    const { connection, ...info } = next;
+    await connectorApi.update({ ...info, hostIp: info.hostIp.trim() });
+    showToast(prev.published
+      ? t('i18n.tc.connector.savedRepublish', '저장했습니다 — 게시 중인 커넥터는 해제 후 다시 게시해야 연결에 반영됩니다')
+      : t('i18n.common.saved', '저장했습니다'), prev.published ? 'warning' : 'success');
+    setRows((rs) => rs.map((r) => (r.name === next.name ? { ...next, connection } : r)));
+    return { ...next, connection };
+  }, [t]);
+
+  /** 표의 작업 칸과 카드 아래 버튼이 함께 쓴다 */
+  const actionsFor = useCallback((row: PlcConnectorInfo): ConnectorAction[] => {
+    const acts: ConnectorAction[] = [];
+    if (perm('U')) acts.push({ key: 'edit', icon: <EditIcon fontSize="small" />, label: t('i18n.common.edit', '수정'), onClick: () => setForm({ open: true, initial: row }) });
+    if (perm('X')) {
+      acts.push(row.published
+        ? { key: 'release', icon: <StopIcon fontSize="small" />, label: t('i18n.tc.connector.release', '해제'), onClick: () => control('release', row) }
+        : { key: 'publish', icon: <PlayArrowIcon fontSize="small" />, label: t('i18n.tc.connector.publish', '게시'), onClick: () => control('publish', row) });
+      if (row.published) {
+        acts.push(row.connection?.operStatus === 'PAUSED'
+          ? { key: 'resume', icon: <PlayArrowIcon fontSize="small" />, label: t('i18n.tc.connector.resume', '재개'), onClick: () => control('resume', row), menu: true }
+          : { key: 'pause', icon: <PauseIcon fontSize="small" />, label: t('i18n.tc.connector.pause', '멈춤'), onClick: () => control('pause', row), menu: true });
+      }
+      acts.push({ key: 'test', icon: <NetworkCheckIcon fontSize="small" />, label: t('i18n.tc.connector.testConnection', '연결 시험'), onClick: () => testConnection(row), menu: true });
+      acts.push({ key: 'read', icon: <ScienceIcon fontSize="small" />, label: t('i18n.tc.testRead.title', '시험 읽기'), onClick: () => setTestReadOf(row), disabled: !row.published, menu: true });
+    }
+    acts.push({ key: 'hist', icon: <HistoryIcon fontSize="small" />, label: t('i18n.tc.history.title', '연결 이력'), onClick: () => setHistoryOf(row.name), menu: true });
+    if (perm('D')) acts.push({ key: 'del', icon: <DeleteOutlineIcon fontSize="small" />, label: t('i18n.common.delete', '삭제'), onClick: () => remove(row), menu: true });
+    return acts;
+  }, [t, perm, control, testConnection, remove]);
+
+  const editable = perm('U');
   const columns = useMemo<GridColDef<PlcConnectorInfo>[]>(() => [
     { field: 'name', headerName: t('i18n.tc.connector.name', '커넥터'), width: 160 },
     { field: 'protocol', headerName: t('i18n.tc.connector.protocol', '프로토콜'), width: 110 },
+    { field: 'hostIp', headerName: t('i18n.tc.connector.host', 'PLC 주소'), width: 140, editable },
     {
-      field: 'endpoint', headerName: t('i18n.tc.connector.endpoint', 'PLC 주소:포트'), width: 190,
-      valueGetter: (_v, r) => `${r.hostIp}:${(r.ports ?? []).join(',')}`,
+      field: 'ports', headerName: t('i18n.tc.connector.ports', '포트'), width: 110, editable,
+      valueGetter: (_v, r) => (r.ports ?? []).join(','),
+      // valueSetter 는 렌더 중에 불려 예외를 던지면 화면이 죽는다 — 잘못된 값은 표시만 해 두고 저장(saveRow)이 거절한다
+      valueSetter: (value: string, r) => {
+        try { return { ...r, ports: parsePorts(String(value)) }; } catch { return { ...r, ports: [Number.NaN] }; }
+      },
     },
     {
       field: 'frame', headerName: t('i18n.tc.connector.frame', '프레임·장치'), width: 120,
       valueGetter: (_v, r) => String(r.settings?.frame ?? (r.settings?.unitId != null ? `unit ${r.settings.unitId}` : '')),
+    },
+    {
+      field: 'published', headerName: t('i18n.tc.connector.publishStatus', '발행 상태'), width: 120,
+      valueGetter: (_v, r) => (r.published ? 'PUBLISHED' : 'RELEASED'),
+      renderCell: ({ row }) => (
+        <Tooltip title={row.published ? '' : t('i18n.tc.connector.releasedHelp', '게시(PUBLISHED)해야 PLC 에 연결합니다')}>
+          <Chip size="small" color={row.published ? 'primary' : 'default'} variant={row.published ? 'filled' : 'outlined'}
+            label={row.published ? 'PUBLISHED' : 'RELEASED'} />
+        </Tooltip>
+      ),
     },
     {
       field: 'state', headerName: t('i18n.tc.connector.state', '연결 상태'), width: 110, sortable: false,
@@ -192,30 +278,16 @@ export default function ConnectorPage(): ReactElement {
         </Tooltip>
       ) : null,
     },
-    { field: 'description', headerName: t('i18n.tc.common.description', '설명'), width: 180 },
+    { field: 'description', headerName: t('i18n.tc.common.description', '설명'), width: 180, editable },
     {
-      field: 'actions', type: 'actions', headerName: '', width: 130,
-      getActions: ({ row }) => {
-        const acts: ReactElement[] = [];
-        if (perm('U')) acts.push(<GridActionsCellItem key="edit" icon={<EditIcon />} label={t('i18n.common.edit', '수정')} onClick={() => setForm({ open: true, initial: row })} />);
-        if (perm('X')) {
-          acts.push(row.published
-            ? <GridActionsCellItem key="release" icon={<StopIcon />} label={t('i18n.tc.connector.release', '해제')} onClick={() => control('release', row)} />
-            : <GridActionsCellItem key="publish" icon={<PlayArrowIcon />} label={t('i18n.tc.connector.publish', '게시')} onClick={() => control('publish', row)} />);
-          if (row.published) {
-            acts.push(row.connection?.operStatus === 'PAUSED'
-              ? <GridActionsCellItem key="resume" icon={<PlayArrowIcon />} label={t('i18n.tc.connector.resume', '재개')} onClick={() => control('resume', row)} showInMenu />
-              : <GridActionsCellItem key="pause" icon={<PauseIcon />} label={t('i18n.tc.connector.pause', '멈춤')} onClick={() => control('pause', row)} showInMenu />);
-          }
-          acts.push(<GridActionsCellItem key="test" icon={<NetworkCheckIcon />} label={t('i18n.tc.connector.testConnection', '연결 시험')} onClick={() => testConnection(row)} showInMenu />);
-          acts.push(<GridActionsCellItem key="read" icon={<ScienceIcon />} label={t('i18n.tc.testRead.title', '시험 읽기')} onClick={() => setTestReadOf(row)} disabled={!row.published} showInMenu />);
-        }
-        acts.push(<GridActionsCellItem key="hist" icon={<HistoryIcon />} label={t('i18n.tc.history.title', '연결 이력')} onClick={() => setHistoryOf(row.name)} showInMenu />);
-        if (perm('D')) acts.push(<GridActionsCellItem key="del" icon={<DeleteOutlineIcon />} label={t('i18n.common.delete', '삭제')} onClick={() => remove(row)} showInMenu />);
-        return acts;
-      },
+      field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 100,
+      getActions: ({ row }) => actionsFor(row).map((a) => (
+        <GridActionsCellItem key={a.key} icon={a.icon} label={a.label} onClick={a.onClick} disabled={a.disabled} showInMenu={a.menu} />
+      )),
     },
-  ], [t, perm, control, testConnection, remove]);
+  ], [t, editable, actionsFor]);
+
+  const cardRows = filtered.slice(page.page * page.pageSize, (page.page + 1) * page.pageSize);
 
   const exportExcel = () => {
     downloadExcel({
@@ -243,9 +315,42 @@ export default function ConnectorPage(): ReactElement {
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} onExport={exportExcel}
         placeholder={t('i18n.tc.connector.search', '이름·주소·프로토콜')} />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ width: 4, height: 16, borderRadius: 0.5, bgcolor: 'primary.main' }} />
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          {t('i18n.tc.connector.listTitle', 'PLC 커넥터 목록')}
+          <Typography component="span" variant="subtitle1" color="text.secondary" sx={{ ml: 0.75 }}>({filtered.length})</Typography>
+        </Typography>
+        <Box sx={{ flex: 1 }} />
+        <ToggleButtonGroup size="small" exclusive value={view} onChange={(_e, v: View | null) => changeView(v)}>
+          <ToggleButton value="card" aria-label={t('i18n.tc.connector.viewCard', '카드로 보기')}>
+            <Tooltip title={t('i18n.tc.connector.viewCard', '카드로 보기')}><ViewModuleIcon fontSize="small" /></Tooltip>
+          </ToggleButton>
+          <ToggleButton value="table" aria-label={t('i18n.tc.connector.viewTable', '표로 보기')}>
+            <Tooltip title={t('i18n.tc.connector.viewTable', '표로 보기')}><ViewListIcon fontSize="small" /></Tooltip>
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']}
-          isInactive={(r) => !r.published} />
+        {view === 'table' ? (
+          <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']}
+            isInactive={(r) => !r.published} pagination
+            gridProps={{
+              paginationModel: page, onPaginationModelChange: setPage,
+              processRowUpdate: saveRow,
+              onProcessRowUpdateError: (e: unknown) => showToast(e instanceof Error && !('response' in e) ? e.message : extractApiError(e), 'error'),
+            }} />
+        ) : (
+          <>
+            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              <ConnectorCards rows={cardRows} actionsFor={actionsFor} selected={selectedCard} onSelect={setSelectedCard} />
+            </Box>
+            <TablePagination component="div" count={filtered.length} page={page.page} rowsPerPage={page.pageSize}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS} showFirstButton showLastButton
+              onPageChange={(_e, p) => setPage((m) => ({ ...m, page: p }))}
+              onRowsPerPageChange={(e) => setPage({ page: 0, pageSize: Number(e.target.value) })} />
+          </>
+        )}
       </Box>
       <ConnectorFormDialog open={form.open} initial={form.initial} protocols={protocols} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(info) => { void save(info); }} />

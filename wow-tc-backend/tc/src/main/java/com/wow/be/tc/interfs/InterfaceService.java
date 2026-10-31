@@ -1,6 +1,7 @@
 package com.wow.be.tc.interfs;
 
 import java.util.List;
+import java.util.Map;
 
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition;
@@ -44,5 +45,13 @@ public interface InterfaceService {
 	public abstract PointsConversionInfo convertToPoints(long id, boolean dryRun) throws ToolControlException;
 
 	public abstract PointsConversionInfo convertToPointsByName(String name, boolean dryRun) throws ToolControlException;
+
+	/**
+	 * 요청 미리보기(docs/interface-detail-design.md §7) — 이 정의(저장 전이어도 된다)로 PLC 에 보낼 요청들. 보내지 않는다.
+	 * RAW·잘못된 점·없는 커넥터는 IllegalArgumentException(400).
+	 *
+	 * @param data 쓰기 값(선택) — 빠진 점은 형의 0 값
+	 */
+	public abstract RequestPlanInfo planRequests(InterfaceInfo info, Map<String, Object> data);
 	
 }

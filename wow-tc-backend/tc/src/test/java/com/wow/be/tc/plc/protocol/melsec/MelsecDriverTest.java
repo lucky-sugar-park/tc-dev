@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.Types.InterfaceType;
 import com.wow.be.tc.interfs.PointInfo;
+import com.wow.be.tc.plc.protocol.PlannedRequest;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PointType;
@@ -191,5 +192,46 @@ class MelsecDriverTest {
 			});
 		assertThat(sent).containsExactly("500000FF03FF000018" + "0010" + "0401" + "0000" + "D*" + "000100" + "0002");
 		assertThat(r.values().get("a")).isEqualTo(List.of(77, 1));
+	}
+
+	@Test
+	void 미리보기는_실행이_보내는_프레임과_같다_읽기() throws ToolControlException {
+		List<PointInfo> points = List.of(point("a", "D0", PointType.INT16), point("b", "D3", PointType.INT16),
+			point("c", "D500", PointType.INT16), point("m", "M10", PointType.BOOL, 3, 0));
+		PlcOperation op = new PlcOperation(MelsecDriver.PROTOCOL, binary, PlcOperation.Kind.READ, points, Map.of(), "t");
+		// 디바이스 순서(M 이 D 보다 앞)로 보낸다
+		Fake fake = new Fake(ok("0014"), ok("0100 0000 0000 0200"), ok("0900"));
+		driver.execute(op, fake::exchange);
+		List<PlannedRequest> plan = driver.plan(op);
+		assertThat(plan).extracting(PlannedRequest::frameHex).containsExactlyElementsOf(fake.sent);
+		assertThat(plan).extracting(PlannedRequest::target).containsExactly("M0", "D0", "D500");
+		assertThat(plan.get(1).points()).containsExactly("a", "b");
+		assertThat(plan.get(1).count()).isEqualTo(4);
+		assertThat(plan.get(1).function()).startsWith("0401/0000");
+	}
+
+	@Test
+	void 미리보기는_실행이_보내는_프레임과_같다_쓰기() throws ToolControlException {
+		List<PointInfo> points = List.of(point("a", "D200", PointType.INT16), point("b", "D201", PointType.INT32), point("m", "M5", PointType.BOOL, 3, 0));
+		Map<String, Object> values = Map.of("a", 1, "b", 0x12345678, "m", List.of(true, false, true));
+		PlcOperation op = new PlcOperation(MelsecDriver.PROTOCOL, binary, PlcOperation.Kind.WRITE, points, values, "t");
+		Fake fake = new Fake(ok(""), ok(""));
+		driver.execute(op, fake::exchange);
+		List<PlannedRequest> plan = driver.plan(op);
+		assertThat(plan).extracting(PlannedRequest::frameHex).containsExactlyElementsOf(fake.sent);
+		assertThat(plan).extracting(PlannedRequest::points).containsExactly(List.of("m"), List.of("a", "b"));
+		assertThat(plan).extracting(PlannedRequest::unit).containsExactly("비트", "워드");
+	}
+
+	@Test
+	void 미리보기_쓰기_값이_없으면_0으로_채운다() {
+		List<PointInfo> points = List.of(point("a", "D200", PointType.INT16), point("arr", "D300", PointType.FLOAT32, 2, 0),
+			point("s", "D400", PointType.STRING, 1, 4), point("m", "M5", PointType.BOOL, 2, 0));
+		Map<String, Object> values = PlannedRequest.withSampleValues(points, Map.of("a", 7));
+		assertThat(values).containsEntry("a", 7).containsEntry("arr", List.of(0.0, 0.0)).containsEntry("s", "").containsEntry("m", List.of(false, false));
+		List<PlannedRequest> plan = driver.plan(new PlcOperation(MelsecDriver.PROTOCOL, binary, PlcOperation.Kind.WRITE, points, values, "t"));
+		assertThat(plan).hasSize(4);
+		assertThat(plan).filteredOn(r -> r.target().equals("D200")).singleElement()
+			.satisfies(r -> assertThat(r.frameHex()).endsWith("C80000A80100" + "0700"));
 	}
 }

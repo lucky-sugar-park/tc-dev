@@ -164,6 +164,28 @@ try:
           and got["settings"].get("pcNo") == 255, (s, got.get("settings")))
     call("DELETE", f"/api/v1/plc-connector/delete/byName/{con['name']}")
 
+    # 8. 요청 미리보기(docs/interface-detail-design.md §7) — 보내지 않고 요청으로 나눈다. 저장 전 정의도 된다
+    pts = [{"name": "a", "address": "D100", "type": "INT16"}, {"name": "b", "address": "D101", "type": "INT16"},
+           {"name": "m", "address": "M10", "type": "BOOL", "count": 3}]
+    draft = {"name": f"e2e.plan.{RUN}", "plcName": PLC, "interfaceType": "READ", "mode": "POINTS", "points": pts}
+    s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": draft})
+    reqs = b.get("requests", []) if isinstance(b, dict) else []
+    check("미리보기 READ 200 — M0 1워드, D100 2워드(a·b 묶음), 프레임 16진", s == 200 and b.get("protocol") == "MELSEC_MC"
+          and [r.get("target") for r in reqs] == ["M0", "D100"] and reqs[1].get("points") == ["a", "b"] and reqs[1].get("count") == 2
+          and all(r.get("frameHex", "").startswith("5000") for r in reqs), (s, b))
+    s, b = call("POST", "/api/v1/ifsvc/management/plan",
+                {"interfaceInfo": dict(draft, interfaceType="WRITE", points=pts[:2]), "data": {"a": 7}})
+    reqs = b.get("requests", []) if isinstance(b, dict) else []
+    check("미리보기 WRITE 200 — 이어진 워드 한 번(1401), 빠진 값은 0 으로 채웠다고 알림", s == 200 and len(reqs) == 1
+          and reqs[0].get("function", "").startswith("1401/0000") and reqs[0].get("frameHex", "").endsWith("07000000")
+          and any("b" in n for n in b.get("notes", [])), (s, b))
+    s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, mode="RAW")})
+    check("미리보기 RAW 는 400", s == 400 and "RAW" in str(b), (s, b))
+    s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, plcName=f"no-such-{RUN}")})
+    check("미리보기 없는 커넥터 400", s == 400 and "커넥터" in str(b), (s, b))
+    s, b = call("POST", "/api/v1/ifsvc/management/plan", {"interfaceInfo": dict(draft, points=[{"name": "x", "address": "Q1", "type": "INT16"}])})
+    check("미리보기 잘못된 주소 400", s == 400, (s, b))
+
     # 7. RAW 결함 M2 — READ 인터페이스에 쓰기 명령(1401)이면 PLC 로 보내지 않고 409
     bad = json.load(open(os.path.join(HERE, "fixture-if-read.json"), encoding="utf-8"))
     bad["name"] = f"e2e.raw.badcmd.{RUN}"

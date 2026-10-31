@@ -37,11 +37,15 @@ import com.wow.be.tc.interfs.PointInfo;
 import com.wow.be.tc.interfs.PointsConversionInfo;
 import com.wow.be.tc.interfs.InterfaceService;
 import com.wow.be.tc.interfs.PropInfo;
+import com.wow.be.tc.interfs.RequestPlanInfo;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.plc.management.PlcConnectorManagementService;
+import com.wow.be.tc.plc.protocol.PlannedRequest;
 import com.wow.be.tc.plc.protocol.PlcDriver;
 import com.wow.be.tc.plc.protocol.PlcDrivers;
+import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.melsec.MelsecDriver;
+import com.wow.be.tc.plc.protocol.modbus.ModbusDriver;
 
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -337,6 +341,46 @@ public class DefaultInterfaceService implements InterfaceService, PersistentServ
 			}
 			point.setOrder(i);
 		}
+	}
+
+	/**
+	 * 요청 미리보기(docs/interface-detail-design.md §7) — 실행과 같은 드라이버 묶기·프레임으로, 보내지 않는다. 커넥터가 게시되지 않아도 된다.
+	 * 쓰기 값이 빠진 점은 형의 0 값으로 채운다.
+	 */
+	@Override
+	public RequestPlanInfo planRequests(InterfaceInfo info, Map<String, Object> data) {
+		if(info==null) {
+			throw new IllegalArgumentException("인터페이스 정의(interfaceInfo)가 없습니다");
+		}
+		if(info.getMode()!=InterfaceMode.POINTS) {
+			throw new IllegalArgumentException("RAW 인터페이스는 RAW 보기에서 헤더·데이터를 봅니다 — 요청 미리보기는 POINTS 만입니다");
+		}
+		validatePoints(info);
+		PlcConnectorInfo connector=plcConnectorService.findPlcConnectorByName(info.getPlcName());
+		PlcDriver driver=PlcDrivers.of(connector.getProtocol());
+		Map<String, Object> settings=driver.normalizeSettings(connector.getSettings(),
+			connector.getMessageFrameFormat()!=null ? connector.getMessageFrameFormat().name() : null);
+		boolean write=info.getInterfaceType()==InterfaceType.WRITE;
+		List<String> notes=new ArrayList<>();
+		Map<String, Object> values=Map.of();
+		if(write) {
+			values=PlannedRequest.withSampleValues(info.getPoints(), data);
+			List<String> sampled=info.getPoints().stream()
+				.filter(p->data==null || data.get(p.getName())==null).map(PointInfo::getName).toList();
+			if(!sampled.isEmpty()) {
+				notes.add("쓰기 값이 없는 점은 0(빈 값)으로 채워 보였습니다: " + String.join(", ", sampled));
+			}
+		}
+		PlcOperation op=new PlcOperation(connector.getProtocol(), settings, write ? PlcOperation.Kind.WRITE : PlcOperation.Kind.READ,
+			info.getPoints(), values, "plan");
+		List<PlannedRequest> requests=driver.plan(op);
+		if(MelsecDriver.PROTOCOL.equals(connector.getProtocol()) && String.valueOf(settings.get("frame")).startsWith("4E")) {
+			notes.add("4E 일련번호는 보낼 때 채웁니다(미리보기는 0)");
+		}
+		if(ModbusDriver.PROTOCOL.equals(connector.getProtocol())) {
+			notes.add("대상 번호는 전선의 0부터 번호입니다(addressBase 를 뺀 값). 트랜잭션 ID 는 보낼 때 채웁니다(미리보기는 0)");
+		}
+		return new RequestPlanInfo(connector.getProtocol(), connector.getName(), settings, requests, notes);
 	}
 
 	@Override

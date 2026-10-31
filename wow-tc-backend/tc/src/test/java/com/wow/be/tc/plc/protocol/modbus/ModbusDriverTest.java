@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.Types.InterfaceType;
 import com.wow.be.tc.interfs.PointInfo;
+import com.wow.be.tc.plc.protocol.PlannedRequest;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PointType;
@@ -231,5 +232,26 @@ class ModbusDriverTest {
 		assertThat(wire.healthCheckOk(reply("03 02 0000"))).isTrue();
 		assertThat(wire.healthCheckOk(reply("83 02"))).isTrue();   // 주소가 없어도 답하면 살아 있다
 		assertThat(wire.healthCheckOk(hex("0000000000020101"))).isFalse();
+	}
+
+	@Test
+	void 미리보기는_실행이_보내는_프레임과_같다() throws ToolControlException {
+		List<PointInfo> reads = List.of(point("bits", "CO1", PointType.BOOL, 3, 0), point("one", "CO5", PointType.BOOL), point("v", "HR1", PointType.INT32));
+		PlcOperation read = new PlcOperation(ModbusDriver.PROTOCOL, defaults, PlcOperation.Kind.READ, reads, Map.of(), "r");
+		Fake fake = new Fake(reply("01 01 15"), reply("03 04 0001 0002"));
+		driver.execute(read, fake::exchange);
+		List<PlannedRequest> plan = driver.plan(read);
+		assertThat(plan).extracting(PlannedRequest::frameHex).containsExactlyElementsOf(fake.sent);
+		assertThat(plan).extracting(PlannedRequest::target).containsExactly("CO0", "HR0");
+		assertThat(plan).extracting(PlannedRequest::function).containsExactly("FC1 Read Coils", "FC3 Read Holding Registers");
+
+		List<PointInfo> writes = List.of(point("a", "HR10", PointType.INT16), point("b", "HR11", PointType.INT16), point("c", "CO1", PointType.BOOL));
+		PlcOperation write = new PlcOperation(ModbusDriver.PROTOCOL, defaults, PlcOperation.Kind.WRITE, writes, Map.of("a", 1, "b", 2, "c", true), "w");
+		Fake wfake = new Fake(reply("05 0000 FF00"), reply("10 0009 0002"));
+		driver.execute(write, wfake::exchange);
+		List<PlannedRequest> wplan = driver.plan(write);
+		assertThat(wplan).extracting(PlannedRequest::frameHex).containsExactlyElementsOf(wfake.sent);
+		assertThat(wplan).extracting(PlannedRequest::function).containsExactly("FC5 Write Single Coil", "FC16 Write Multiple Registers");
+		assertThat(wplan.get(1).points()).containsExactly("a", "b");
 	}
 }

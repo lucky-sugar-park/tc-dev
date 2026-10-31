@@ -20,6 +20,7 @@ import com.wow.be.tc.interfs.HeaderTemplateInfo;
 import com.wow.be.tc.interfs.InterfaceInfo;
 import com.wow.be.tc.interfs.InterfaceService;
 import com.wow.be.tc.interfs.PointsConversionInfo;
+import com.wow.be.tc.interfs.RequestPlanInfo;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -141,6 +142,18 @@ public class InterfaceManagementController {
 	public PointsConversionInfo convertToPointsByName(@PathVariable("name") String name,
 			@RequestParam(value="dryRun", defaultValue="true") boolean dryRun) throws ToolControlException {
 		return interfaceService.convertToPointsByName(name, dryRun);
+	}
+
+	/**
+	 * 요청 미리보기(docs/interface-detail-design.md §7.2) — 본문의 인터페이스 정의(저장 전이어도 된다)로 PLC 에 보낼 요청들을 돌려준다.
+	 * 보내지 않으므로 조회 권한(R)이다. RAW·잘못된 점·없는 커넥터는 400.
+	 */
+	@Requires(action = 'R')
+	@RequestMapping(value="/plan", method=RequestMethod.POST)
+	@ResponseStatus(value = HttpStatus.OK)
+	@ResponseBody
+	public RequestPlanInfo planRequests(@RequestBody RequestPlanInfo.Query query) {
+		return interfaceService.planRequests(query.interfaceInfo(), query.data());
 	}
 
 	@RequestMapping(value="/search/header-templates/by-all", method=RequestMethod.GET)

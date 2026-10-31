@@ -118,3 +118,22 @@ export type PointsConversionInfo = {
   replyName?: string;
   replyUsedBy: string[];
 };
+
+/** 요청 미리보기의 요청 하나 — 보내지 않고 나눠 본 것(docs/interface-detail-design.md §7) */
+export type PlannedRequest = {
+  seq: number;
+  function: string;
+  target: string;
+  count: number;
+  unit: string;
+  points: string[];
+  frameHex: string;
+};
+
+export type RequestPlan = {
+  protocol: string;
+  plcName: string;
+  settings: Record<string, unknown>;
+  requests: PlannedRequest[];
+  notes: string[];
+};

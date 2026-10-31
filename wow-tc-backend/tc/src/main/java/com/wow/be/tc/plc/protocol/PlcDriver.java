@@ -1,5 +1,6 @@
 package com.wow.be.tc.plc.protocol;
 
+import java.util.List;
 import java.util.Map;
 
 import com.wow.be.tc.ToolControlException;
@@ -28,6 +29,13 @@ public interface PlcDriver {
 
 	/** 작업을 한다. 쓰기 값이 빠졌거나 잘못되면 {@code ERR_400} */
 	PlcResult execute(PlcOperation operation, FrameExchanger exchanger) throws ToolControlException;
+
+	/**
+	 * 작업을 보내지 않고 PLC 에 보낼 요청들로 나눈다(미리보기, docs/interface-detail-design.md §7.1) — {@link #execute} 와 같은 묶기·프레임.
+	 * 쓰기 값은 {@code operation.values()} 를 그대로 쓰므로 빠진 값은 부르는 쪽이 채운다({@link PlannedRequest#withSampleValues}).
+	 * 점·값이 잘못되면 {@link IllegalArgumentException}(400)
+	 */
+	List<PlannedRequest> plan(PlcOperation operation);
 
 	/** TCP 연결 계층에 알려 줄 전송 규약(응답 자르기·요청 번호·연결 확인) — 정규화한 설정으로 만든다 */
 	WireProtocol wire(Map<String, Object> settings);

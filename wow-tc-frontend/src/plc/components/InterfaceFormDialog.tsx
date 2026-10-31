@@ -4,6 +4,7 @@ import {
 } from '@mui/material';
 import { DialogFooter, DialogTitleClose, DraggablePaper, useI18n } from 'wow-mes-frontend-shared';
 import { PointsEditor, emptyPoint } from './PointsEditor';
+import { RequestPlanView } from './RequestPlanView';
 import type { InterfaceInfo, PlcConnectorInfo, PointInfo, ProtocolDescriptor } from '../types/plc';
 
 /**
@@ -64,7 +65,7 @@ export function InterfaceFormDialog({ open, initial, connectors, protocols, webh
             <TextField select label={t('i18n.tc.interface.plc', 'PLC 커넥터')} required value={v.plcName ?? ''} onChange={(e) => set({ plcName: e.target.value })}>
               {connectors.map((c) => <MenuItem key={c.name} value={c.name}>{c.name} ({c.protocol})</MenuItem>)}
             </TextField>
-            <TextField select label={t('i18n.tc.interface.type', '형')} value={v.interfaceType} onChange={(e) => set({ interfaceType: e.target.value as 'READ' | 'WRITE' })}
+            <TextField select label={t('i18n.tc.interface.ifType', '타입')} value={v.interfaceType} onChange={(e) => set({ interfaceType: e.target.value as 'READ' | 'WRITE' })}
               slotProps={{ input: { readOnly: edit } }}>
               <MenuItem value="READ">READ</MenuItem>
               <MenuItem value="WRITE">WRITE</MenuItem>
@@ -90,6 +91,9 @@ export function InterfaceFormDialog({ open, initial, connectors, protocols, webh
             {v.interfaceType === 'WRITE' ? ` · ${t('i18n.tc.interface.writeHelp', '요청 data 의 점 이름 값을 쓴다')}` : ` · ${t('i18n.tc.interface.readHelp', '읽은 값을 data 의 점 이름으로 돌려준다')}`}
           </Typography>
           <PointsEditor points={v.points ?? []} onChange={(points) => set({ points })} protocol={protocol} writeInterface={v.interfaceType === 'WRITE'} />
+          <Divider />
+          {/* 저장 전 정의로 — 버튼을 눌러야 부른다 */}
+          <RequestPlanView info={{ ...v, mode: 'POINTS', points: (v.points ?? []).filter((p) => p.name || p.address) }} />
         </Stack>
       </DialogContent>
       <DialogFooter onClose={onClose}><Button type="submit" variant="contained">{t('i18n.common.save', '저장')}</Button></DialogFooter>

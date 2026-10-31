@@ -1,4 +1,8 @@
 # tc 운영 화면 문구(5-5: 송수신 기록·메시지 모니터·스케줄 Job·설정 변경 이력) — 코드<TAB>ko<TAB>en<TAB>ja<TAB>zh
+i18n.tc.audit.last1h	최근 1시간	Last 1 hour	直近1時間	最近1小时
+i18n.tc.audit.last24h	최근 24시간	Last 24 hours	直近24時間	最近24小时
+i18n.tc.audit.last7d	최근 7일	Last 7 days	直近7日	最近7天
+i18n.tc.audit.period	기간	Period	期間	期间
 i18n.tc.audit.failedOnly	실패만	Failed only	失敗のみ	仅失败
 i18n.tc.audit.from	부터	From	開始	从
 i18n.tc.audit.to	까지	To	終了	至

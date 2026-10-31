@@ -13,6 +13,7 @@ import com.wow.be.tc.interfs.PointInfo;
 import com.wow.be.tc.plc.protocol.ByteOrder;
 import com.wow.be.tc.plc.protocol.FrameExchanger;
 import com.wow.be.tc.plc.protocol.PlcDriver;
+import com.wow.be.tc.plc.protocol.PlannedRequest;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PlcStatus;
@@ -162,23 +163,81 @@ public class MelsecDriver implements PlcDriver {
 	@Override
 	public PlcResult execute(PlcOperation op, FrameExchanger exchanger) throws ToolControlException {
 		McFrames frames = new McFrames(op.settings());
-		List<Item> items = new ArrayList<>();
-		for (PointInfo p : op.points()) {
-			try {
-				validatePoint(p, null);
-			} catch (IllegalArgumentException e) {
-				throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED, e.getMessage());
-			}
-			items.add(new Item(p, MelsecAddress.parse(p.getAddress())));
+		List<Item> items;
+		try {
+			items = items(op);
+		} catch (IllegalArgumentException e) {
+			throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED, e.getMessage());
 		}
 		return op.kind() == PlcOperation.Kind.READ ? read(op, items, frames, exchanger) : write(op, items, frames, exchanger);
+	}
+
+	@Override
+	public List<PlannedRequest> plan(PlcOperation op) {
+		McFrames frames = new McFrames(op.settings());
+		List<Item> items = items(op);
+		List<PlannedRequest> out = new ArrayList<>();
+		if (op.kind() == PlcOperation.Kind.READ) {
+			for (Block block : blocks(items, frames.maxWords)) {
+				int start = readStart(block);
+				out.add(PlannedRequest.of(out.size() + 1, "0401/0000 일괄 읽기(워드)", target(block.device, start), block.words(), "워드",
+					block.items.stream().map(i -> i.point.getName()).toList(), readRequest(frames, block)));
+			}
+			return out;
+		}
+		for (Run run : runs(items, op.values(), frames)) {
+			out.add(PlannedRequest.of(out.size() + 1, run.bit ? "1401/0001 일괄 쓰기(비트)" : "1401/0000 일괄 쓰기(워드)",
+				target(run.device, run.start), run.bit ? run.bits.length : run.data.length / 2, run.bit ? "비트" : "워드",
+				run.points, writeRequest(frames, run)));
+		}
+		return out;
+	}
+
+	private List<Item> items(PlcOperation op) {
+		List<Item> items = new ArrayList<>();
+		for (PointInfo p : op.points()) {
+			validatePoint(p, null);
+			items.add(new Item(p, MelsecAddress.parse(p.getAddress())));
+		}
+		return items;
+	}
+
+	/** 비트 디바이스도 워드로 읽으므로 시작은 워드 경계의 비트 번호 */
+	private static int readStart(Block block) {
+		return block.device.isBit() ? block.firstWord * 16 : block.firstWord;
+	}
+
+	private static byte[] readRequest(McFrames frames, Block block) {
+		return frames.request(CMD_READ, SUB_WORD, block.device, readStart(block), block.words(), null);
+	}
+
+	private static byte[] writeRequest(McFrames frames, Run run) {
+		return run.bit
+			? frames.request(CMD_WRITE, SUB_BIT, run.device, run.start, run.bits.length, frames.bitData(run.bits))
+			: frames.request(CMD_WRITE, SUB_WORD, run.device, run.start, run.data.length / 2, frames.wordData(run.data));
+	}
+
+	private static String target(MelsecDevice device, int number) {
+		return device.name() + (device.isHexNumber() ? Integer.toHexString(number).toUpperCase() : Integer.toString(number));
+	}
+
+	/** 쓰기 값을 프레임 단위로 — 값이 잘못되면 {@link IllegalArgumentException} */
+	private static List<Run> runs(List<Item> items, Map<String, Object> values, McFrames frames) {
+		List<Run> runs = new ArrayList<>();
+		for (Item item : items) {
+			Object value = values != null ? values.get(item.point.getName()) : null;
+			if (value == null) {
+				throw new IllegalArgumentException("쓰기 값이 없습니다: " + item.point.getName());
+			}
+			runs.add(item.address.device().isBit() ? Run.bits(item, value) : Run.words(item, value));
+		}
+		return Run.merge(runs, frames.maxWords);
 	}
 
 	private PlcResult read(PlcOperation op, List<Item> items, McFrames frames, FrameExchanger exchanger) throws ToolControlException {
 		Map<String, Object> values = new LinkedHashMap<>();
 		for (Block block : blocks(items, frames.maxWords)) {
-			int start = block.device.isBit() ? block.firstWord * 16 : block.firstWord;
-			byte[] response = exchanger.exchange(op.reqId(), frames.request(CMD_READ, SUB_WORD, block.device, start, block.words(), null));
+			byte[] response = exchanger.exchange(op.reqId(), readRequest(frames, block));
 			McFrames.McReply reply = frames.reply(response);
 			if (reply.endCode() != 0) {
 				return new PlcResult(values, status(reply.endCode()));
@@ -192,23 +251,19 @@ public class MelsecDriver implements PlcDriver {
 	}
 
 	private PlcResult write(PlcOperation op, List<Item> items, McFrames frames, FrameExchanger exchanger) throws ToolControlException {
-		List<Run> runs = new ArrayList<>();
 		for (Item item : items) {
-			Object value = op.values() != null ? op.values().get(item.point.getName()) : null;
-			if (value == null) {
+			if (op.values() == null || op.values().get(item.point.getName()) == null) {
 				throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "쓰기 값이 없습니다: " + item.point.getName());
 			}
-			try {
-				runs.add(item.address.device().isBit() ? Run.bits(item, value) : Run.words(item, value));
-			} catch (IllegalArgumentException e) {
-				throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "쓰기 값이 잘못되었습니다: " + e.getMessage());
-			}
 		}
-		for (Run run : Run.merge(runs, frames.maxWords)) {
-			byte[] request = run.bit
-				? frames.request(CMD_WRITE, SUB_BIT, run.device, run.start, run.bits.length, frames.bitData(run.bits))
-				: frames.request(CMD_WRITE, SUB_WORD, run.device, run.start, run.data.length / 2, frames.wordData(run.data));
-			McFrames.McReply reply = frames.reply(exchanger.exchange(op.reqId(), request));
+		List<Run> runs;
+		try {
+			runs = runs(items, op.values(), frames);
+		} catch (IllegalArgumentException e) {
+			throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "쓰기 값이 잘못되었습니다: " + e.getMessage());
+		}
+		for (Run run : runs) {
+			McFrames.McReply reply = frames.reply(exchanger.exchange(op.reqId(), writeRequest(frames, run)));
 			if (reply.endCode() != 0) {
 				return new PlcResult(Map.of(), status(reply.endCode()));
 			}
@@ -340,15 +395,19 @@ public class MelsecDriver implements PlcDriver {
 
 		boolean[] bits;
 
-		private Run(MelsecDevice device, boolean bit, int start) {
+		/** 담긴 점 이름(미리보기) */
+		final List<String> points = new ArrayList<>();
+
+		private Run(MelsecDevice device, boolean bit, int start, String point) {
 			this.device = device;
 			this.bit = bit;
 			this.start = start;
+			points.add(point);
 		}
 
 		static Run words(Item item, Object value) {
 			PointInfo p = item.point;
-			Run run = new Run(item.address.device(), false, item.address.number());
+			Run run = new Run(item.address.device(), false, item.address.number(), p.getName());
 			run.data = ValueCodec.encode(p.getType(), p.getCount(), p.getLength(), value, order(p.getByteOrder()),
 				order(p.getWordOrder()), p.getName());
 			return run;
@@ -356,7 +415,7 @@ public class MelsecDriver implements PlcDriver {
 
 		static Run bits(Item item, Object value) {
 			PointInfo p = item.point;
-			Run run = new Run(item.address.device(), true, item.address.number());
+			Run run = new Run(item.address.device(), true, item.address.number(), p.getName());
 			run.bits = new boolean[p.getCount()];
 			if (p.getCount() == 1) {
 				run.bits[0] = ValueCodec.bool(value, p.getName());
@@ -388,6 +447,7 @@ public class MelsecDriver implements PlcDriver {
 					System.arraycopy(last.data, 0, joined, 0, last.data.length);
 					System.arraycopy(r.data, 0, joined, last.data.length, r.data.length);
 					last.data = joined;
+					last.points.addAll(r.points);
 					continue;
 				}
 				out.add(r);

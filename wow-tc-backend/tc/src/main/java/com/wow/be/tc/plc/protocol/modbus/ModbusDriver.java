@@ -14,6 +14,7 @@ import com.wow.be.tc.interfs.PointInfo;
 import com.wow.be.tc.plc.protocol.ByteOrder;
 import com.wow.be.tc.plc.protocol.FrameExchanger;
 import com.wow.be.tc.plc.protocol.PlcDriver;
+import com.wow.be.tc.plc.protocol.PlannedRequest;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.PlcStatus;
@@ -193,31 +194,129 @@ public class ModbusDriver implements PlcDriver {
 
 	@Override
 	public PlcResult execute(PlcOperation op, FrameExchanger exchanger) throws ToolControlException {
-		Map<String, Object> s = op.settings();
-		int base = intOf(s, "addressBase", 1);
+		List<Item> items;
+		try {
+			items = items(op);
+		} catch (IllegalArgumentException e) {
+			throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED, e.getMessage());
+		}
+		Limits limits = new Limits(op.settings());
+		ModbusFrames frames = new ModbusFrames(op.settings());
+		Orders orders = orders(op.settings());
+		return op.kind() == PlcOperation.Kind.READ
+			? read(op, items, frames, orders, limits, exchanger)
+			: write(op, items, frames, orders, limits, exchanger);
+	}
+
+	@Override
+	public List<PlannedRequest> plan(PlcOperation op) {
+		List<Item> items = items(op);
+		Limits limits = new Limits(op.settings());
+		ModbusFrames frames = new ModbusFrames(op.settings());
+		List<PlannedRequest> out = new ArrayList<>();
+		if (op.kind() == PlcOperation.Kind.READ) {
+			for (Block block : blocks(items, limits.readRegisters, limits.readCoils)) {
+				int fc = block.table.readFunction;
+				out.add(PlannedRequest.of(out.size() + 1, "FC" + fc + " " + FUNCTION_NAMES.get(fc), target(block.table, block.first), block.units(),
+					unit(block.table), block.items.stream().map(i -> i.point.getName()).toList(), frames.read(fc, block.first, block.units())));
+			}
+			return out;
+		}
+		for (Run run : runs(items, op.values(), orders(op.settings()), limits)) {
+			WriteRequest w = writeRequest(frames, run);
+			out.add(PlannedRequest.of(out.size() + 1, "FC" + w.fc + " " + FUNCTION_NAMES.get(w.fc), target(run.table, run.start), run.units(),
+				unit(run.table), run.points, w.frame));
+		}
+		return out;
+	}
+
+	private static final Map<Integer, String> FUNCTION_NAMES = Map.of(1, "Read Coils", 2, "Read Discrete Inputs", 3, "Read Holding Registers",
+		4, "Read Input Registers", 5, "Write Single Coil", 6, "Write Single Register", 15, "Write Multiple Coils", 16, "Write Multiple Registers");
+
+	/** 영역 + 전선 번호(0부터) — 예 {@code HR0} */
+	private static String target(Table table, int offset) {
+		String prefix = switch (table) {
+			case HOLDING_REGISTER -> "HR";
+			case INPUT_REGISTER -> "IR";
+			case COIL -> "CO";
+			case DISCRETE_INPUT -> "DI";
+		};
+		return prefix + offset;
+	}
+
+	private static String unit(Table table) {
+		return table.isBit() ? "비트" : "레지스터";
+	}
+
+	private List<Item> items(PlcOperation op) {
+		int base = intOf(op.settings(), "addressBase", 1);
 		InterfaceType type = op.kind() == PlcOperation.Kind.WRITE ? InterfaceType.WRITE : InterfaceType.READ;
 		List<Item> items = new ArrayList<>();
 		for (PointInfo p : op.points()) {
-			try {
-				ModbusAddress a = ModbusAddress.parse(p.getAddress(), base);
-				validate(p, a, type);
-				items.add(new Item(p, a, units(p, a)));
-			} catch (IllegalArgumentException e) {
-				throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED, e.getMessage());
-			}
+			ModbusAddress a = ModbusAddress.parse(p.getAddress(), base);
+			validate(p, a, type);
+			items.add(new Item(p, a, units(p, a)));
 		}
-		ModbusFrames frames = new ModbusFrames(s);
-		Orders orders = new Orders(orderOf(s, "byteOrder"), orderOf(s, "wordOrder"));
-		return op.kind() == PlcOperation.Kind.READ
-			? read(op, items, frames, orders, intOf(s, "maxRegistersPerRequest", MAX_READ_REGISTERS), intOf(s, "maxCoilsPerRequest", MAX_READ_COILS), exchanger)
-			: write(op, items, frames, orders, Math.min(intOf(s, "maxRegistersPerRequest", MAX_READ_REGISTERS), MAX_WRITE_REGISTERS),
-				Math.min(intOf(s, "maxCoilsPerRequest", MAX_READ_COILS), MAX_WRITE_COILS), exchanger);
+		return items;
 	}
 
-	private PlcResult read(PlcOperation op, List<Item> items, ModbusFrames frames, Orders orders, int maxRegisters, int maxCoils,
+	private static Orders orders(Map<String, Object> s) {
+		return new Orders(orderOf(s, "byteOrder"), orderOf(s, "wordOrder"));
+	}
+
+	/** 요청 한 번의 한도 — 쓰기는 프로토콜 한도로 다시 자른다 */
+	private static final class Limits {
+
+		final int readRegisters;
+
+		final int readCoils;
+
+		final int writeRegisters;
+
+		final int writeCoils;
+
+		Limits(Map<String, Object> s) {
+			readRegisters = intOf(s, "maxRegistersPerRequest", MAX_READ_REGISTERS);
+			readCoils = intOf(s, "maxCoilsPerRequest", MAX_READ_COILS);
+			writeRegisters = Math.min(readRegisters, MAX_WRITE_REGISTERS);
+			writeCoils = Math.min(readCoils, MAX_WRITE_COILS);
+		}
+	}
+
+	/** 쓰기 값을 프레임 단위로 — 값이 잘못되면 {@link IllegalArgumentException} */
+	private static List<Run> runs(List<Item> items, Map<String, Object> values, Orders orders, Limits limits) {
+		List<Run> runs = new ArrayList<>();
+		for (Item item : items) {
+			Object value = values != null ? values.get(item.point.getName()) : null;
+			if (value == null) {
+				throw new IllegalArgumentException("쓰기 값이 없습니다: " + item.point.getName());
+			}
+			runs.add(item.address.table().isBit() ? Run.bits(item, value) : Run.registers(item, value, orders));
+		}
+		return Run.merge(runs, limits.writeRegisters, limits.writeCoils);
+	}
+
+	/** 쓰기 프레임과, 응답이 되돌려 줄 값(단일 쓰기는 값, 여러 개는 개수) */
+	private record WriteRequest(int fc, byte[] frame, int echo) {
+	}
+
+	private static WriteRequest writeRequest(ModbusFrames frames, Run run) {
+		if (run.table.isBit()) {
+			boolean single = run.bits.length == 1;
+			return single
+				? new WriteRequest(5, frames.writeCoil(run.start, run.bits[0]), run.bits[0] ? 0xFF00 : 0x0000)
+				: new WriteRequest(15, frames.writeCoils(run.start, run.bits), run.bits.length);
+		}
+		boolean single = run.data.length == 2;
+		return single
+			? new WriteRequest(6, frames.writeRegister(run.start, run.data), (run.data[0] & 0xFF) << 8 | (run.data[1] & 0xFF))
+			: new WriteRequest(16, frames.writeRegisters(run.start, run.data), run.data.length / 2);
+	}
+
+	private PlcResult read(PlcOperation op, List<Item> items, ModbusFrames frames, Orders orders, Limits limits,
 			FrameExchanger exchanger) throws ToolControlException {
 		Map<String, Object> values = new LinkedHashMap<>();
-		for (Block block : blocks(items, maxRegisters, maxCoils)) {
+		for (Block block : blocks(items, limits.readRegisters, limits.readCoils)) {
 			int fc = block.table.readFunction;
 			int quantity = block.units();
 			ModbusFrames.Reply reply = frames.reply(exchanger.exchange(op.reqId(), frames.read(fc, block.first, quantity)), fc);
@@ -232,40 +331,26 @@ public class ModbusDriver implements PlcDriver {
 		return new PlcResult(values, PlcStatus.ok(PROTOCOL));
 	}
 
-	private PlcResult write(PlcOperation op, List<Item> items, ModbusFrames frames, Orders orders, int maxRegisters, int maxCoils,
+	private PlcResult write(PlcOperation op, List<Item> items, ModbusFrames frames, Orders orders, Limits limits,
 			FrameExchanger exchanger) throws ToolControlException {
-		List<Run> runs = new ArrayList<>();
 		for (Item item : items) {
-			Object value = op.values() != null ? op.values().get(item.point.getName()) : null;
-			if (value == null) {
+			if (op.values() == null || op.values().get(item.point.getName()) == null) {
 				throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "쓰기 값이 없습니다: " + item.point.getName());
 			}
-			try {
-				runs.add(item.address.table().isBit() ? Run.bits(item, value) : Run.registers(item, value, orders));
-			} catch (IllegalArgumentException e) {
-				throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "쓰기 값이 잘못되었습니다: " + e.getMessage());
-			}
 		}
-		for (Run run : Run.merge(runs, maxRegisters, maxCoils)) {
-			int fc;
-			byte[] request;
-			int echo;
-			if (run.table.isBit()) {
-				boolean single = run.bits.length == 1;
-				fc = single ? 5 : 15;
-				request = single ? frames.writeCoil(run.start, run.bits[0]) : frames.writeCoils(run.start, run.bits);
-				echo = single ? (run.bits[0] ? 0xFF00 : 0x0000) : run.bits.length;
-			} else {
-				boolean single = run.data.length == 2;
-				fc = single ? 6 : 16;
-				request = single ? frames.writeRegister(run.start, run.data) : frames.writeRegisters(run.start, run.data);
-				echo = single ? (run.data[0] & 0xFF) << 8 | (run.data[1] & 0xFF) : run.data.length / 2;
-			}
-			ModbusFrames.Reply reply = frames.reply(exchanger.exchange(op.reqId(), request), fc);
+		List<Run> runs;
+		try {
+			runs = runs(items, op.values(), orders, limits);
+		} catch (IllegalArgumentException e) {
+			throw ToolControlException.of(ToolControlException.INVALID_REQUEST, "쓰기 값이 잘못되었습니다: " + e.getMessage());
+		}
+		for (Run run : runs) {
+			WriteRequest w = writeRequest(frames, run);
+			ModbusFrames.Reply reply = frames.reply(exchanger.exchange(op.reqId(), w.frame), w.fc);
 			if (reply.exception() != 0) {
 				return new PlcResult(Map.of(), status(reply.exception()));
 			}
-			ModbusFrames.checkEcho(reply, run.start, echo);
+			ModbusFrames.checkEcho(reply, run.start, w.echo);
 		}
 		return new PlcResult(Map.of(), PlcStatus.ok(PROTOCOL));
 	}
@@ -409,21 +494,25 @@ public class ModbusDriver implements PlcDriver {
 
 		boolean[] bits;
 
-		private Run(Table table, int start) {
+		/** 담긴 점 이름(미리보기) */
+		final List<String> points = new ArrayList<>();
+
+		private Run(Table table, int start, String point) {
 			this.table = table;
 			this.start = start;
+			points.add(point);
 		}
 
 		static Run registers(Item item, Object value, Orders orders) {
 			PointInfo p = item.point;
-			Run run = new Run(item.address.table(), item.address.offset());
+			Run run = new Run(item.address.table(), item.address.offset(), p.getName());
 			run.data = ValueCodec.encode(p.getType(), p.getCount(), p.getLength(), value, orders.byteOf(p), orders.wordOf(p), p.getName());
 			return run;
 		}
 
 		static Run bits(Item item, Object value) {
 			PointInfo p = item.point;
-			Run run = new Run(item.address.table(), item.address.offset());
+			Run run = new Run(item.address.table(), item.address.offset(), p.getName());
 			run.bits = new boolean[p.getCount()];
 			if (p.getCount() == 1) {
 				run.bits[0] = ValueCodec.bool(value, p.getName());
@@ -462,6 +551,7 @@ public class ModbusDriver implements PlcDriver {
 						System.arraycopy(r.data, 0, joined, last.data.length, r.data.length);
 						last.data = joined;
 					}
+					last.points.addAll(r.points);
 					continue;
 				}
 				out.add(r);
