@@ -106,6 +106,124 @@ flowchart TB
 | 조회 API | 커넥터 조회(`find/{id}`, `find/byName`, `search/all`, `search`)에 `connection`(없으면 null) — `status1` 은 의도, `connection` 은 실제. 화면 갱신용 `GET /api/v1/plc-connector/connection-states` |
 | Redis 장애 | 쓰지 못하고 넘어간다(PLC 처리 계속), 조회의 `connection` 은 null. 경고는 실패가 시작·회복될 때만 |
 
+### 3.5 기동할 때 PLC 연결을 얻는 과정 (구현 기준, 2026-10-31)
+
+`tc.plc.ownership.enabled=true` 일 때다. 끄면(기본) `PlcConnectorLoader` 가 기동 중(`@PostConstruct`)에 게시된 커넥터를 모두 직접 연결하고 Redis 를 보지 않는다.
+
+#### 3.5.1 전체 순서
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Boot as Spring 기동
+    participant Loader as PlcConnectorLoader
+    participant Own as PlcOwnershipManager
+    participant Ren as 갱신 스레드(3초)
+    participant Scan as 검사 스레드(2초)
+    participant R as Redis
+    participant DB as DB(PLC_CONNECTOR)
+    participant Ad as 어댑터(PlcAdapterManager)
+    participant P as PLC
+
+    Boot->>Loader: @PostConstruct
+    Note over Loader: 소유권 관리가 켜져 있으면<br/>아무것도 연결하지 않고 끝
+    Boot->>Own: ApplicationReadyEvent → start()
+    Note over Own: instanceId = 호스트명-기동시각(ms)<br/>비밀값·내부 주소 없으면 경고
+    Own->>Ren: 바로 시작, 3초마다
+    Own->>Scan: 바로 시작, 2초마다
+    Ren->>R: SET tc:instance:{id} = 내부 주소 PX 10초
+    Scan->>DB: 커넥터 목록(STATUS_1 = PUBLISHED 만)
+    Scan->>R: SCAN tc:instance:* → 살아 있는 인스턴스 수 N
+    Note over Scan: 한도 = ceil(게시 수 P / N)
+    loop 게시된 커넥터마다
+        alt 한도 안이고 SET NX 성공
+            Scan->>R: SET tc:plc-owner:{이름} = id NX PX 10초
+            Scan->>Ad: 로컬 어댑터 올림(뒤에서 연결, 30초 동안 2초 간격 재시도)
+            Ad->>P: 채널마다 한 번 연결 시도(실패하면 재연결 예약)
+            Ad-->>R: START 이벤트 → tc:plc-state:{이름}
+        else 다른 인스턴스가 주인
+            Scan->>R: GET tc:plc-owner:{이름} → 주인 id
+            Scan->>R: GET tc:instance:{주인 id} → 주인 내부 주소
+            Scan->>Ad: 원격 어댑터(요청 프레임을 주인에게 넘김)
+        else 주인 없음·한도 초과·주인 주소 모름
+            Note over Scan: 아무것도 두지 않음 → 그 PLC 요청은 503,<br/>다음 검사(2초)에서 다시 판단
+        end
+    end
+    loop 3초마다
+        Ren->>R: 인스턴스 하트비트 + 가진 임대 연장(Lua)
+    end
+```
+
+- 기동 단계에서는 PLC 에 연결하지 않는다. 연결은 기동이 끝난 뒤(`ApplicationReadyEvent`) 검사 스레드가 임대를 얻은 커넥터부터 한다. 그래서 기동 로그의 `Started ToolControlApplication` 뒤에 `임대를 얻었습니다` 가 나온다.
+- 어댑터를 올리는 것은 PLC 가 꺼져 있어도 실패하지 않는다(`startEvenIfDisconnected`) — 채널마다 한 번 시도하고, 못 붙은 채널은 재연결 스케줄러가 계속 붙는다. 넘겨받은 직후 30초는 2초 고정 간격(H1a), 그 뒤는 `plc.connection.retry` 대로 늘어난다(최대 30초).
+- 어댑터 설정 오류(포트·VIP 없음 등)로 올리지 못하면 임대를 바로 반납한다 — 다른 인스턴스가 시도하게.
+- 검사 스레드는 PLC 연결 시도(채널당 최대 연결 시간 초과)를 기다리는 동안 멈추지만, 임대 갱신은 다른 스레드라 밀리지 않는다.
+
+#### 3.5.2 커넥터 하나에 대한 판단 (검사 한 번)
+
+```mermaid
+flowchart TD
+    S([게시된 커넥터 하나]) --> C{게시·해제 API 가<br/>다루는 중?}
+    C -- 예 --> SKIP([건너뜀])
+    C -- 아니오 --> O{이 인스턴스가<br/>임대를 가짐?}
+    O -- 예 --> L{로컬 어댑터 있음?}
+    L -- 예 --> KEEP([그대로])
+    L -- 아니오 --> CONNECT[로컬 어댑터 올림]
+    O -- 아니오 --> LIM{가진 수 &lt; 한도?}
+    LIM -- 예 --> NX{"SET tc:plc-owner:{이름} NX"}
+    NX -- 성공 --> CONNECT
+    NX -- 실패 --> PO
+    LIM -- 아니오 --> PO[주인 찾기]
+    PO --> OW{"주인이 있고<br/>tc:instance:{주인} 에 주소?"}
+    OW -- 예 --> RM[원격 어댑터<br/>주인이 바뀌었으면 바꿈]
+    OW -- 아니오 --> NONE[원격 어댑터 뺌<br/>→ 요청 503]
+    CONNECT --> FAIL{어댑터 올리기 실패?}
+    FAIL -- 예 --> REL[임대 반납] --> NONE
+    FAIL -- 아니오 --> DONE([PLC 연결은 뒤에서 계속])
+```
+
+같은 검사의 앞부분에서, 게시가 풀렸거나 지워진 커넥터는 로컬 연결을 닫고 원격 어댑터를 빼고 임대를 반납한다.
+
+#### 3.5.3 기동 상황별 결과
+
+| 상황 | Redis 에 있는 것 | 첫 검사 결과 | PLC 요청이 되기까지 |
+|---|---|---|---|
+| 처음 뜨는 인스턴스(다른 인스턴스 없음) | 없음 | 게시된 PLC 를 모두 잡음(N=1 → 한도 = P) | 연결되는 대로(보통 1초 안) |
+| 다른 인스턴스가 이미 돌고 있음 | 그 인스턴스의 임대·하트비트 | 모두 원격 어댑터 — 연결하지 않음 | 바로(주인에게 넘김) |
+| 정상 종료 뒤 같은 서버에서 재기동 | 없음(종료 때 반납) | 다른 인스턴스가 이미 이어받았으면 원격, 아무도 없으면 잡음 | 바로 / 연결되는 대로 |
+| 강제 종료 뒤 곧바로 재기동 | 옛 instanceId 의 임대·하트비트가 최대 10초 남음 | 옛 id 를 주인으로 보고 **옛 주소로 원격 어댑터** → 요청 503(같은 내부 주소면 새 인스턴스 자신이 "주인 아님"으로 거절해 `바뀌는 중`, 다른 주소면 `닿지 않습니다`) | 옛 임대가 만료된 다음 검사에서 잡음(최대 약 12초) |
+| Redis 가 없음 | — | 검사·갱신이 예외 → 경고 `소유권(Redis)에 닿지 않습니다`, 아무것도 연결하지 않음 | Redis 가 살아난 다음 검사 |
+
+강제 종료 뒤 재기동은 instanceId 가 기동 시각을 담아 매번 달라서, 같은 서버라도 옛 임대를 자기 것으로 보지 않는다(§3.2). 그래서 옛 임대가 만료될 때까지 기다린다.
+
+```mermaid
+sequenceDiagram
+    participant Old as 옛 tc(강제 종료)
+    participant R as Redis
+    participant New as 새 tc(같은 서버)
+    participant P as PLC
+    Old-xOld: 프로세스 죽음 — OS 가 소켓을 닫아 PLC 슬롯은 바로 빔
+    Note over R: tc:plc-owner:plc-1 = 옛 id (남은 수명 ≤ 10초)
+    New->>R: 첫 검사: SET NX 실패, 주인 = 옛 id
+    New->>New: 옛 주소(= 자기 내부 주소)로 원격 어댑터 → 409 주인 아님 → 요청 503
+    Note over R: 옛 임대 만료
+    New->>R: 다음 검사: SET NX 성공
+    New->>P: 연결
+```
+
+#### 3.5.4 쓰는 Redis 키
+
+| 키 | 값 | 수명 | 누가 |
+|---|---|---|---|
+| `tc:instance:{instanceId}` | 내부 주소(없으면 `-`) | 10초, 3초마다 갱신 | 각 인스턴스(갱신 스레드). 정상 종료 때 지움 |
+| `tc:plc-owner:{커넥터}` | 주인 instanceId | 10초, 3초마다 "내 것일 때만" 연장(Lua) | 주인. 정상 종료·해제 때 "내 것일 때만" 지움 |
+| `tc:plc-state:{커넥터}` | 연결 상태 해시(§3.4.1) | 15초, 5초마다 갱신 | 로컬 어댑터를 가진 인스턴스 |
+
+#### 3.5.5 관찰된 점
+
+- **첫 검사의 인스턴스 수가 하나 적을 수 있다.** 기동하면 갱신 스레드(자기 하트비트를 씀)와 검사 스레드가 둘 다 바로 시작한다. 검사가 먼저 돌면 자기 `tc:instance` 키가 아직 없어 N 이 실제보다 1 작고, 한도가 크게 나온다. 다른 인스턴스가 이미 임대를 가진 PLC 는 영향이 없고(SET NX 가 실패), **여러 인스턴스가 동시에 처음 뜨는 경우**에만 먼저 검사한 쪽이 몫보다 많이 가져갈 수 있다. 연결이 한쪽에 쏠릴 뿐 처리에는 문제가 없다(H4). 고치려면 `start()` 에서 하트비트를 한 번 쓴 뒤 두 스레드를 시작한다.
+- **강제 종료 뒤 재기동은 옛 임대 만료(최대 10초)를 기다린다** — 위 표. 정상 종료를 쓰면 기다리지 않는다.
+
 ## 4. 인스턴스 간 전달
 
 ### 4.1 엔드포인트
