@@ -14,6 +14,16 @@ npm run build          # 타입 검사 + dist/
 - 개발 서버가 넘길 곳은 `TC_DEV_API`·`VPLC_DEV_API` 로 바꾼다.
 - MUI X Pro 라이선스는 `VITE_MUI_X_LICENSE_KEY`(`.env.local`, 저장소에 넣지 않는다). 없으면 표에 개발 워터마크가 뜬다.
 
+## 화면 시험(Playwright)
+
+실제 tc·vplc 가 떠 있고 백엔드 e2e 준비(`setup_e2e.py` — 커넥터 plc-e2e·RAW 인터페이스)가 된 상태에서, 설치된 Chrome 으로 돈다.
+
+```bash
+TC_UI_URL=http://localhost:5180 TC_UI_E2E_ID=<관리자 아이디> TC_UI_E2E_PASSWORD_FILE=<비밀번호 파일> npx playwright test
+```
+
+비밀번호는 파일로만 받는다(출력하지 않는다). 시험은 읽기·미리보기 위주이고, 만드는 인터페이스(`e2e.ui.*`)는 끝에 지운다.
+
 ## 배포
 
 `dist/` 를 tc 의 `TC_UI_DIR` 폴더에 그대로 복사한다(예: `robocopy dist <폴더> /MIR`). **tc 재기동은 필요 없다.**

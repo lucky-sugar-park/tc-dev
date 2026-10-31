@@ -10,6 +10,10 @@ type Loader = () => Promise<{ default: ComponentType }>;
 /** 만든 화면 — 없는 키는 "준비 중" 화면(차례로 채운다, docs/frontend-design.md F10) */
 const PAGES: Record<string, Loader> = {
   'tc.home': () => import('./home/pages/HomePage'),
+  'tc.plc.connector': () => import('./plc/pages/ConnectorPage'),
+  'tc.plc.interface': () => import('./plc/pages/InterfacePage'),
+  'tc.plc.interface-test': () => import('./plc/pages/InterfaceTestPage'),
+  'tc.plc.monitor': () => import('./plc/pages/ConnectionMonitorPage'),
 };
 
 const comingSoon = (m: ScreenMeta): Loader => () =>

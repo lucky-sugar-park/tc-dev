@@ -1,0 +1,112 @@
+# tc PLC 화면 문구(5-3: 커넥터·인터페이스·인터페이스 시험·연결 모니터) — 코드<TAB>ko<TAB>en<TAB>ja<TAB>zh
+# 공용(MES 셸 씨앗에 없는 것)
+i18n.common.clearSearch	검색어 지우기	Clear search	検索語をクリア	清除搜索
+i18n.common.delete	삭제	Delete	削除	删除
+i18n.common.edit	수정	Edit	編集	编辑
+i18n.common.save	저장	Save	保存	保存
+i18n.common.saved	저장했습니다	Saved	保存しました	已保存
+i18n.grid.footer.totalRows	총 {n}건	Total {n}	全{n}件	共{n}条
+i18n.tc.common.all	전체	All	すべて	全部
+i18n.tc.common.description	설명	Description	説明	说明
+i18n.tc.common.required	필수입니다	Required	必須です	必填
+i18n.tc.common.searchPlaceholder	이름 검색	Search by name	名前で検索	按名称搜索
+i18n.tc.common.updated	고친 때	Updated	更新日時	更新时间
+# 커넥터
+i18n.tc.connector.add	커넥터 등록	Add connector	コネクタ登録	添加连接器
+i18n.tc.connector.edit	커넥터 수정	Edit connector	コネクタ編集	编辑连接器
+i18n.tc.connector.channels	연결 수	Channels	接続数	连接数
+i18n.tc.connector.confirmDelete	{name} 을(를) 지울까요? 이 커넥터를 쓰는 인터페이스는 요청이 실패합니다.	Delete {name}? Interfaces using this connector will fail.	{name} を削除しますか？このコネクタを使うインターフェースは失敗します。	删除 {name}？使用此连接器的接口请求将失败。
+i18n.tc.connector.confirmStop	{name} 을(를) {op} 하면 이 PLC 로 가는 요청이 실패합니다. 계속할까요?	If you {op} {name}, requests to this PLC will fail. Continue?	{name} を{op}すると、このPLCへの要求は失敗します。続けますか？	{op} {name} 后，发往此PLC的请求将失败。继续吗？
+i18n.tc.connector.connLimit	포트당 연결 수	Connections per port	ポートあたり接続数	每端口连接数
+i18n.tc.connector.default	기본	Default	既定	默认
+i18n.tc.connector.editPublished	게시 중인 커넥터는 저장한 뒤 해제·게시해야 새 설정으로 연결합니다.	A published connector uses new settings only after release and publish.	公開中のコネクタは保存後に解除・公開すると新しい設定で接続します。	已发布的连接器需在保存后释放并重新发布才会使用新设置。
+i18n.tc.connector.endpoint	PLC 주소:포트	PLC address:port	PLCアドレス:ポート	PLC地址:端口
+i18n.tc.connector.frame	프레임·장치	Frame / unit	フレーム・装置	帧/设备
+i18n.tc.connector.host	PLC 주소	PLC address	PLCアドレス	PLC地址
+i18n.tc.connector.manufacturer	제조사	Manufacturer	メーカー	制造商
+i18n.tc.connector.nameRule	영숫자·_ . - 100자까지	Letters, digits, _ . - (up to 100)	英数字・_ . -（100文字まで）	字母、数字、_ . -（最多100字）
+i18n.tc.connector.noState	상태 없음	No state	状態なし	无状态
+i18n.tc.connector.pause	멈춤	Pause	一時停止	暂停
+i18n.tc.connector.paused	멈춤	Paused	一時停止中	已暂停
+i18n.tc.connector.ports	포트	Ports	ポート	端口
+i18n.tc.connector.portsHelp	쉼표로 여러 개 — 포트마다 연결 하나	Comma-separated — one connection per port	カンマ区切り — ポートごとに1接続	逗号分隔 — 每个端口一个连接
+i18n.tc.connector.portsRule	1~65535 포트를 쉼표로	Ports 1–65535, comma-separated	1〜65535のポートをカンマ区切りで	1–65535 的端口，逗号分隔
+i18n.tc.connector.publish	게시	Publish	公開	发布
+i18n.tc.connector.published	게시	Published	公開	已发布
+i18n.tc.connector.release	해제	Release	解除	释放
+i18n.tc.connector.resume	재개	Resume	再開	恢复
+i18n.tc.connector.search	이름·주소·프로토콜	Name, address, protocol	名前・アドレス・プロトコル	名称、地址、协议
+i18n.tc.connector.settings	프로토콜 설정	Protocol settings	プロトコル設定	协议设置
+i18n.tc.connector.testConnection	연결 시험	Connection test	接続テスト	连接测试
+i18n.tc.connector.vips	로컬 주소(VIP)	Local addresses (VIP)	ローカルアドレス(VIP)	本地地址(VIP)
+i18n.tc.connector.vipsHelp	포트와 같은 개수 — min(포트, VIP) 만큼 연결	Same count as ports — connects min(ports, VIPs)	ポートと同数 — min(ポート, VIP) 個接続	与端口数相同 — 连接 min(端口, VIP) 个
+i18n.tc.connector.vipsRule	로컬 주소를 하나 이상(포트 수와 같게)	At least one local address (same count as ports)	ローカルアドレスを1つ以上（ポート数と同数）	至少一个本地地址（与端口数相同）
+i18n.tc.history.title	연결 이력	Connection history	接続履歴	连接历史
+i18n.tc.history.event	이벤트	Event	イベント	事件
+i18n.tc.history.cause	원인	Cause	原因	原因
+i18n.tc.testRead.title	시험 읽기	Test read	テスト読み取り	测试读取
+i18n.tc.testRead.read	읽기	Read	読み取り	读取
+i18n.tc.testRead.value	값	Value	値	值
+# 점
+i18n.tc.point.add	점 추가	Add point	ポイント追加	添加点
+i18n.tc.point.name	이름	Name	名前	名称
+i18n.tc.point.address	주소	Address	アドレス	地址
+i18n.tc.point.addressHelp	주소 예	Address examples	アドレス例	地址示例
+i18n.tc.point.type	형	Type	型	类型
+i18n.tc.point.count	개수	Count	個数	个数
+i18n.tc.point.length	길이	Length	長さ	长度
+i18n.tc.point.byteOrder	바이트 순서	Byte order	バイト順	字节序
+i18n.tc.point.wordOrder	워드 순서	Word order	ワード順	字序
+i18n.tc.point.connectorDefault	커넥터 기본	Connector default	コネクタ既定	连接器默认
+i18n.tc.point.readOnlyArea	읽기만 되는 영역	Read-only area	読み取り専用領域	只读区域
+# 인터페이스
+i18n.tc.interface.add	인터페이스 등록	Add interface	インターフェース登録	添加接口
+i18n.tc.interface.edit	인터페이스 수정	Edit interface	インターフェース編集	编辑接口
+i18n.tc.interface.confirmDelete	{name} 을(를) 지울까요? 이 opcode 로 오는 요청이 실패합니다.	Delete {name}? Requests with this opcode will fail.	{name} を削除しますか？このopcodeの要求は失敗します。	删除 {name}？使用此 opcode 的请求将失败。
+i18n.tc.interface.definition	점·응답	Points / reply	ポイント・応答	点/应答
+i18n.tc.interface.mode	정의	Definition	定義	定义
+i18n.tc.interface.name	이름(opcode)	Name (opcode)	名前(opcode)	名称(opcode)
+i18n.tc.interface.nameRule	영숫자·_ . - (opcode 로 쓰인다)	Letters, digits, _ . - (used as opcode)	英数字・_ . -（opcodeとして使用）	字母、数字、_ . -（用作 opcode）
+i18n.tc.interface.plc	PLC 커넥터	PLC connector	PLCコネクタ	PLC连接器
+i18n.tc.interface.points	점	Points	ポイント	点
+i18n.tc.interface.readBack	쓴 뒤 다시 읽기	Read back after write	書き込み後に再読み取り	写入后回读
+i18n.tc.interface.readHelp	읽은 값을 data 의 점 이름으로 돌려준다	Returns values in data by point name	読み取った値をポイント名でdataに返す	按点名在 data 中返回读取值
+i18n.tc.interface.reply	응답	Reply	応答	应答
+i18n.tc.interface.search	이름·설명	Name, description	名前・説明	名称、说明
+i18n.tc.interface.sync	동기	Synchronous	同期	同步
+i18n.tc.interface.type	형	Type	型	类型
+i18n.tc.interface.use	사용	In use	使用	使用
+i18n.tc.interface.webhookHelp	응답을 보낼 WebHook(전달 정의는 전달 화면에서)	WebHooks to send results to (delivery rules on the Delivery screen)	結果を送るWebHook（配信定義は配信画面で）	发送结果的 WebHook（投递规则在投递页面）
+i18n.tc.interface.writeHelp	요청 data 의 점 이름 값을 쓴다	Writes the values in request data by point name	要求dataのポイント名の値を書き込む	按点名写入请求 data 中的值
+i18n.tc.raw.title	RAW 인터페이스	RAW interface	RAWインターフェース	RAW接口
+i18n.tc.raw.view	RAW 보기·변환	View RAW / convert	RAW表示・変換	查看RAW/转换
+i18n.tc.raw.help	MC 3E 프레임 바이트로 정의한 옛 인터페이스 — 여기서는 볼 수만 있다. POINTS 로 바꾸면 점 표로 고친다.	Legacy interface defined as MC 3E frame bytes — view only here. Convert to POINTS to edit it as points.	MC 3Eフレームのバイトで定義した旧インターフェース — ここでは表示のみ。POINTSに変換するとポイント表で編集できる。	用 MC 3E 帧字节定义的旧接口 — 此处只能查看。转换为 POINTS 后可按点表编辑。
+i18n.tc.raw.header	헤더	Header	ヘッダー	报头
+i18n.tc.raw.data	데이터	Data	データ	数据
+i18n.tc.raw.reply	응답 인터페이스	Reply interface	応答インターフェース	应答接口
+i18n.tc.raw.order	순서	Order	順序	顺序
+i18n.tc.raw.value	값	Value	値	值
+i18n.tc.convert.preview	변환 미리보기	Conversion preview	変換プレビュー	转换预览
+i18n.tc.convert.dryRun	POINTS 변환 미리보기	Preview POINTS conversion	POINTS変換プレビュー	预览 POINTS 转换
+i18n.tc.convert.apply	변환 적용	Apply conversion	変換を適用	应用转换
+i18n.tc.convert.confirm	{name} 을(를) POINTS 로 바꿀까요? 같은 opcode·같은 data 키로 돈다. 되돌리려면 수정에서 mode 를 RAW 로.	Convert {name} to POINTS? It keeps the same opcode and data keys. To revert, set mode back to RAW.	{name} をPOINTSに変換しますか？同じopcode・同じdataキーで動作します。戻すにはmodeをRAWに。	将 {name} 转换为 POINTS？opcode 与 data 键不变。如需还原，将 mode 改回 RAW。
+i18n.tc.convert.done	POINTS 로 바꿨습니다	Converted to POINTS	POINTSに変換しました	已转换为 POINTS
+i18n.tc.convert.reply	옛 응답 인터페이스 {reply} 는 POINTS 가 쓰지 않는다.	The old reply interface {reply} is not used by POINTS.	旧応答インターフェース {reply} はPOINTSでは使わない。	POINTS 不使用旧应答接口 {reply}。
+i18n.tc.convert.replyUsed	아직 쓰는 인터페이스	Still used by	まだ使っているインターフェース	仍在使用的接口
+i18n.tc.convert.replyFree	쓰는 곳이 없어 지워도 된다.	Nothing else uses it; it can be deleted.	他に使う所がないので削除してよい。	没有其他接口使用，可以删除。
+# 인터페이스 시험
+i18n.tc.interfaceTest.pick	인터페이스(opcode)	Interface (opcode)	インターフェース(opcode)	接口(opcode)
+i18n.tc.interfaceTest.data	요청 data (JSON)	Request data (JSON)	要求data (JSON)	请求 data (JSON)
+i18n.tc.interfaceTest.badJson	JSON 객체가 아닙니다	Not a JSON object	JSONオブジェクトではありません	不是 JSON 对象
+i18n.tc.interfaceTest.sync	응답 받기(request-and-reply)	Wait for reply (request-and-reply)	応答を受ける(request-and-reply)	等待应答(request-and-reply)
+i18n.tc.interfaceTest.async	접수만(request)	Accept only (request)	受付のみ(request)	仅受理(request)
+i18n.tc.interfaceTest.send	보내기	Send	送信	发送
+i18n.tc.interfaceTest.result	응답	Response	応答	响应
+i18n.tc.interfaceTest.none	아직 보낸 요청이 없습니다.	No requests sent yet.	まだ要求を送っていません。	尚未发送请求。
+i18n.tc.interfaceTest.history	이번에 보낸 요청	Requests sent this session	今回送った要求	本次发送的请求
+i18n.tc.interfaceTest.writeWarn	쓰기 요청은 실제 PLC 값을 바꿉니다.	Write requests change real PLC values.	書き込み要求は実際のPLCの値を変更します。	写入请求会更改实际 PLC 的值。
+# 연결 모니터
+i18n.tc.monitor.summary	게시 {p} · 연결 {u} · 끊김 {d}	Published {p} · connected {u} · disconnected {d}	公開 {p} · 接続 {u} · 切断 {d}	已发布 {p} · 已连接 {u} · 已断开 {d}
+i18n.tc.monitor.events	연결 이벤트(이 화면을 연 뒤)	Connection events (since this screen opened)	接続イベント（この画面を開いてから）	连接事件（自打开此页面起）
+i18n.tc.monitor.noEvents	아직 이벤트가 없습니다.	No events yet.	まだイベントはありません。	暂无事件。
+i18n.tc.monitor.channels	채널	Channels	チャネル	通道
