@@ -3,6 +3,7 @@ package com.wow.be.tc.vplc.endpoints;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -77,42 +78,42 @@ public class VirtualPlcController {
 	}
 
 	/** 가상 PLC 를 게시(메모리에 올림)한다. */
-	@GetMapping("/management/publish/{vplcId}")
+	@PostMapping("/management/publish/{vplcId}")
 	public void publishVirtualPlc(@PathVariable("vplcId") String vplcId) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManagementService.publishVirtualPlc(vplcId);
 	}
 
 	/** 이름으로 가상 PLC 를 게시한다. */
-	@GetMapping("/management/publish/byName/{vplcName}")
+	@PostMapping("/management/publish/byName/{vplcName}")
 	public void publishVirtualPlcByName(@PathVariable("vplcName") String vplcName) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManagementService.publishVirtualPlcByName(vplcName);
 	}
 
 	/** 가상 PLC 를 해제(메모리에서 내림)한다. */
-	@GetMapping("/management/release/{vplcId}")
+	@PostMapping("/management/release/{vplcId}")
 	public void releaseVirtualPlc(@PathVariable("vplcId") String vplcId) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManagementService.releaseVirtualPlc(vplcId);
 	}
 
 	/** 이름으로 가상 PLC 를 해제한다. */
-	@GetMapping("/management/release/byName/{vplcName}")
+	@PostMapping("/management/release/byName/{vplcName}")
 	public void releaseVirtualPlcByName(@PathVariable("vplcName") String vplcName) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManagementService.releaseVirtualPlcByName(vplcName);
 	}
 
 	/** 가상 PLC 를 삭제한다. */
-	@GetMapping("/management/delete/{vplcId}")
+	@DeleteMapping("/management/delete/{vplcId}")
 	public void deleteVirtualPlc(@PathVariable("vplcId") String vplcId) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManagementService.deleteVirtualPlc(vplcId);
 	}
 
 	/** 이름으로 가상 PLC 를 삭제한다. */
-	@GetMapping("/management/delete/byName/{vplcName}")
+	@DeleteMapping("/management/delete/byName/{vplcName}")
 	public void deleteVirtualPlcByName(@PathVariable("vplcName") String vplcName) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManagementService.deleteVirtualPlcByName(vplcName);
@@ -177,7 +178,7 @@ public class VirtualPlcController {
 	//======================= for manipulation =========================
 
 	/** 가상 PLC 를 시작한다(포트를 열고 요청을 받는다). */
-	@GetMapping("/control/start/{vplcId}")
+	@PostMapping("/control/start/{vplcId}")
 	public VirtualPlcInfo startVirtualPlc(@PathVariable("vplcId") String vplcId) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManipulationService.startVirtualPlc(vplcId);
@@ -186,7 +187,7 @@ public class VirtualPlcController {
 	}
 
 	/** 이름으로 가상 PLC 를 시작한다. */
-	@GetMapping("/control/start/byName/{vplcName}")
+	@PostMapping("/control/start/byName/{vplcName}")
 	public VirtualPlcInfo startVirtualPlcByName(@PathVariable("vplcName") String vplcName) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManipulationService.startVirtualPlcByName(vplcName);
@@ -194,7 +195,7 @@ public class VirtualPlcController {
 	}
 
 	/** 가상 PLC 를 정지한다(포트를 닫는다). */
-	@GetMapping("/control/stop/{vplcId}")
+	@PostMapping("/control/stop/{vplcId}")
 	public VirtualPlcInfo stopVirtualPlc(@PathVariable("vplcId") String vplcId) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManipulationService.stopVirtualPlc(vplcId);
@@ -202,7 +203,7 @@ public class VirtualPlcController {
 	}
 
 	/** 이름으로 가상 PLC 를 정지한다. */
-	@GetMapping("/control/stop/byName/{vplcName}")
+	@PostMapping("/control/stop/byName/{vplcName}")
 	public VirtualPlcInfo stopVirtualPlcByName(@PathVariable("vplcName") String vplcName) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManipulationService.stopVirtualPlcByName(vplcName);
@@ -210,7 +211,7 @@ public class VirtualPlcController {
 	}
 
 	/** 가상 PLC 를 일시정지한다(요청 처리를 멈춘다). */
-	@GetMapping("/control/pause/{vplcId}")
+	@PostMapping("/control/pause/{vplcId}")
 	public VirtualPlcInfo pauseVirtualPlc(@PathVariable("vplcId") String vplcId) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManipulationService.pauseVirtualPlc(vplcId);
@@ -218,7 +219,7 @@ public class VirtualPlcController {
 	}
 
 	/** 이름으로 가상 PLC 를 일시정지한다. */
-	@GetMapping("/control/pause/byName/{vplcName}")
+	@PostMapping("/control/pause/byName/{vplcName}")
 	public VirtualPlcInfo pauseVirtualPlcByName(@PathVariable("vplcName") String vplcName) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManipulationService.pauseVirtualPlcByName(vplcName);
@@ -226,7 +227,7 @@ public class VirtualPlcController {
 	}
 
 	/** 일시정지한 가상 PLC 를 재개한다. */
-	@GetMapping("/control/resume/{vplcId}")
+	@PostMapping("/control/resume/{vplcId}")
 	public VirtualPlcInfo resumeVirtualPlc(@PathVariable("vplcId") String vplcId) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManipulationService.resumeVirtualPlc(vplcId);
@@ -234,7 +235,7 @@ public class VirtualPlcController {
 	}
 
 	/** 이름으로 가상 PLC 를 재개한다. */
-	@GetMapping("/control/resume/byName/{vplcName}")
+	@PostMapping("/control/resume/byName/{vplcName}")
 	public VirtualPlcInfo resumeVirtualPlcByName(@PathVariable("vplcName") String vplcName) throws VirtualPlcException {
 		log.debug("");
 		virtualPlcManipulationService.resumeVirtualPlcByName(vplcName);

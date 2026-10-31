@@ -133,7 +133,7 @@ tc --TCP--> Netty (PLC마다 NioEventLoopGroup)
 | `manipulation/*` | 메모리 읽기, 쓰기, 전체 초기화 |
 | SSE | `GET /connect/{userId}` |
 
-**공통 문제**: delete, publish처럼 상태를 바꾸는 작업을 GET으로 처리하는 엔드포인트가 많다.
+**공통 문제**: delete, publish처럼 상태를 바꾸는 작업을 GET으로 처리하는 엔드포인트가 많다 ✅ — tc 는 2026-10-31(#9), vplc 도 같은 날 DELETE·POST 로 바꿨다.
 
 ## 7. 보안과 인증
 

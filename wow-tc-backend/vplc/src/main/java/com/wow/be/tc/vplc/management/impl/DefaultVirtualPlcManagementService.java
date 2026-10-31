@@ -106,7 +106,7 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 			vplcInfo.setStatus(PlcStatus.RELEASED);
 		}
 
-		VirtualPlcEntity entity=virtualPlcRepository.findById(vplcInfo.getId()).get();
+		VirtualPlcEntity entity=requireVirtualPlcEntity(vplcInfo.getId());
 		entity.from(vplcInfo);
 		entity.setUpdatedBy("SYSTEM");
 		entity.setUpdatedDate(new Date());
@@ -136,7 +136,7 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	@Transactional
 	public void updateVirtualPlcPort(String vplcId, int startPort, int portCount, int portConnLimit) throws VirtualPlcException {
 		log.debug("");
-		VirtualPlcEntity entity=virtualPlcRepository.findById(vplcId).get();
+		VirtualPlcEntity entity=requireVirtualPlcEntity(vplcId);
 		entity.setStartPort(startPort);
 		entity.setPortCount(portCount);
 		entity.setPortConnLimit(portConnLimit);
@@ -339,7 +339,15 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	@Transactional
 	public VirtualPlcInfo findVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("");
-		return virtualPlcRepository.findById(vplcId).get().info();
+		return requireVirtualPlcEntity(vplcId).info();
+	}
+
+	private VirtualPlcEntity requireVirtualPlcEntity(String vplcId) throws VirtualPlcException {
+		return virtualPlcRepository.findById(vplcId).orElseThrow(() -> notFound(vplcId));
+	}
+
+	private static VirtualPlcException notFound(String idOrName) {
+		return new VirtualPlcException(VirtualPlcException.ERR_404, "가상 PLC 가 없습니다: " + idOrName);
 	}
 	
 	private VirtualPlcEntity getVirtualPlcByName(String vplcName) throws VirtualPlcException {
@@ -351,7 +359,7 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 		matcher=matcher.withMatcher("name", ExampleMatcher.GenericPropertyMatchers.exact());
 		Example<VirtualPlcEntity> example=Example.of(probe, matcher);
 		
-		return virtualPlcRepository.findOne(example).get();
+		return virtualPlcRepository.findOne(example).orElseThrow(() -> notFound(vplcName));
 	}
 
 	@Override

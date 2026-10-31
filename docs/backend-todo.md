@@ -69,3 +69,4 @@
 - 2026-10-31: Eclipse 직접 기동 실패 수정 — 이름 없는 `@PathVariable`·`@Param` 13곳에 이름을 적고 `ParameterNamesTest` 로 막음. `-parameters` 없이 빌드한 jar 로 e2e 통과.
 - 2026-10-31: 없는 대상에 500 이던 관리 API 15개를 404(`ERR_404`)로 — PLC 커넥터 제어·연결 시험, 인터페이스 조회·사용 변경, 송수신 기록 조회. 없는 스케줄 작업의 상세는 빈 목록, 없는 커넥터 이름 삭제는 200(ID 삭제와 같이). 예전 조회 API 중 없는 대상에 빈 200 을 주는 것은 그대로 둠(새 프론트에서 정리).
 - 2026-10-31: 15번 완료 — 비동기 어댑터 큐 제거. 커넥터 API 의 `asyncRequestUse`·`asyncTimerStartDelay`·`asyncTimerRunInterval` 도 없앰(예전 프론트가 보내도 무시된다).
+- 2026-10-31: vplc 의 상태를 바꾸는 GET 14개를 DELETE·POST 로(경로는 그대로, 예전 GET 은 405), 없는 가상 PLC 는 500 대신 404. e2e `test_vplc_http_methods.py`(31개 항목).

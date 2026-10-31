@@ -1,6 +1,7 @@
 """e2e 공통 설정. 환경 변수로 바꾸고, 없으면 로컬 개발 기본값을 쓴다. 비밀값은 출력하지 않는다.
 
 TC_E2E_BASE_URL      tc 주소 (기본 http://localhost:8087)
+TC_E2E_VPLC_URL      vplc 주소 (기본 http://localhost:8088)
 TC_E2E_ADMIN_ID      관리자 아이디 (기본 tc-tester)
 TC_E2E_ADMIN_PASSWORD  관리자 비밀번호 — 없으면 TC_E2E_ADMIN_FILE(id=…/password=… 두 줄)에서 읽는다
 TC_E2E_LOCAL_YML     DB 비밀번호(TC_DB_PASSWORD)를 읽을 application-local.yml (기본 tc/src/main/resources/application-local.yml)
@@ -18,6 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 
 BASE = os.environ.get("TC_E2E_BASE_URL", "http://localhost:8087")
+VPLC_BASE = os.environ.get("TC_E2E_VPLC_URL", "http://localhost:8088")
 LOCAL_YML = os.environ.get("TC_E2E_LOCAL_YML", os.path.join(REPO, "tc", "src", "main", "resources", "application-local.yml"))
 MYSQL = os.environ.get("TC_E2E_MYSQL", r"C:\Program Files\MariaDB 11.4\bin\mysql.exe")
 REDIS_CLI = os.environ.get("TC_E2E_REDIS_CLI", r"C:\Program Files\Memurai\memurai-cli.exe")
