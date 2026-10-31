@@ -58,3 +58,10 @@ __pycache__/
 
 # --- 로컬 실행 폴더(scripts/run-backend.ps1 — jar·화면·로그·로컬 비밀값) ---
 /run/
+
+# --- Eclipse 작업 공간·Vite 캐시 ---
+.metadata/
+.vite/
+
+# --- Claude Code 개인 설정 (launch.json 은 공유) ---
+.claude/settings.local.json
