@@ -24,7 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class PlcShutdownLifecycle implements SmartLifecycle {
 
+	private final PlcOwnershipManager ownership;
+
 	private volatile boolean running;
+
+	public PlcShutdownLifecycle(PlcOwnershipManager ownership) {
+		this.ownership = ownership;
+	}
 
 	@Override
 	public void start() {
@@ -34,7 +40,10 @@ public class PlcShutdownLifecycle implements SmartLifecycle {
 	@Override
 	public void stop() {
 		log.info("PLC 연결을 닫습니다(앱 종료) — 진행 중 요청은 웹 서버 단계에서 마쳤습니다");
+		ownership.stopAcquiring();
 		PlcAdapterManager.getPlcManager().shutdownAllQuietly();
+		// 연결을 닫은 뒤 임대를 반납한다 — PLC 슬롯이 비어 있어 다른 인스턴스가 다음 검사(2초 안)에서 바로 연결한다(§5.2 ③④)
+		ownership.releaseAll();
 		running = false;
 	}
 

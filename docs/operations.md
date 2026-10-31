@@ -10,7 +10,7 @@
 | tc | 8087 (`TC_SERVER_PORT`) | PLC 게이트웨이. 관리 화면(SPA)과 API |
 | vplc | 8088 | 시험용 가상 PLC. 운영에는 쓰지 않는다 |
 | MariaDB | 3306 | DB `tc`. 설정·이력·Quartz(JDBC 저장, 클러스터) |
-| Redis | 6379 | 사용자 토큰, PLC 응답 변경 감지, 요청 제한 집계, 권한 검사 모드, PLC 연결 상태(`tc:plc-state:*`, 만료 15초). 키 접두어 `tc:` |
+| Redis | 6379 | 사용자 토큰, PLC 응답 변경 감지, 요청 제한 집계, 권한 검사 모드, PLC 연결 상태(`tc:plc-state:*`, 만료 15초), 다중화를 켜면 PLC 임대(`tc:plc-owner:*`)·인스턴스 목록(`tc:instance:*`). 키 접두어 `tc:` |
 | PLC | 커넥터마다 | MELSEC MC 3E 바이너리. 포트당 연결 1개 |
 
 **tc 를 두 대 이상 띄울 때**: 모든 tc 서버의 시계를 NTP 로 맞춘다 — Quartz 클러스터가 시각으로 실행을 나누고 죽은 인스턴스를 판단한다. 스케줄 Job 은 클러스터 전체에서 한 번에 한 실행이고, PLC 수집·정리 Job 은 앞 실행이 끝나기 전에 다음 실행이 겹치지 않는다(docs/plc-ha-design.md §9.2).
@@ -42,7 +42,7 @@
 | PLC 커넥터·인터페이스·WebHook·전달 정의·스케줄 Job. WebHook 은 다른 인스턴스에서 바꿔도 10초 안에 따라온다 | access·refresh 토큰 수명(`jwt.*`) |
 | 결과 기록용 DB 연결(`/api/v1/db-connections`) | `TC_SECRET_KEY`, `tc.db-connection.*` |
 | 커넥터 게시·해제 | DB·Redis 접속 정보 |
-| 권한 검사 모드(`PUT /api/v1/security/permission-mode`) | `tc.api-client.*` 기본값, `tc.security.login-throttle.*`, `tc.delivery.*`, `plc.*` |
+| 권한 검사 모드(`PUT /api/v1/security/permission-mode`) | `tc.api-client.*` 기본값, `tc.security.login-throttle.*`, `tc.delivery.*`, `plc.*`, `tc.plc.ownership.*`(다중화 소유권 — 기본 꺼짐, 켜면 PLC 연결이 Redis 임대에 달린다) |
 | 기존 JWT 호출자 전환 스위치(`PUT /api/v1/security/dispatch-any-user`, §6.2) | |
 
 ## 3. 설치와 업그레이드

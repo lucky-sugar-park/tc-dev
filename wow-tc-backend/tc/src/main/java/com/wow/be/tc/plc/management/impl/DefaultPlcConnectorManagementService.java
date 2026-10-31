@@ -26,13 +26,14 @@ import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.Types.PlcConnectorInfoStatus;
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.connector.PlcAdapterManager;
-import com.wow.be.tc.plc.connector.PlcConnectionEventListener;
 import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
 import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.plc.management.PlcConfig;
 import com.wow.be.tc.plc.management.PlcConnectionEventDbHandler;
 import com.wow.be.tc.plc.management.PlcConnectionEventHistInfo;
 import com.wow.be.tc.plc.management.PlcConnectionStateStore;
+import com.wow.be.tc.plc.management.PlcAdapterProps;
+import com.wow.be.tc.plc.management.PlcOwnershipManager;
 import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.plc.management.PlcConnectorManagementService;
 
@@ -70,6 +71,9 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 
 	@Autowired
 	private PlcConnectionStateStore stateStore;
+
+	@Autowired
+	private PlcOwnershipManager ownership;
 
 	@Transactional
 	@Override
@@ -224,28 +228,17 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		try {
 			switch(successState) {
 			case RUNNING :
-				Properties props=new Properties();
-				props.put("id", pInfo.getId());
-				props.put("name", pInfo.getName());
-				props.put("className", pInfo.getAdapterClassName());
-				props.put("hostIp", pInfo.getHostIp());
-				props.put("targetPorts", pInfo.getPorts());
-				props.put("localVips", pInfo.getConnectionVips());
-				props.put("operStatus", successState.name());
-				props.put("messageFrameFormat", pInfo.getMessageFrameFormat().getName());
-				props.put("headerReqTemplate", pInfo.getCommProtocolHeadersResTemplate());
-				props.put("headerResTemplate", pInfo.getCommProtocolHeadersResTemplate());
-				props.put("plcRetryCount", plcConfig.getRetryCount());
-				props.put("plcRetryIntervalRate", plcConfig.getRetryIntervalRate());
-				props.put("plcRetryIntervalIncrement", plcConfig.getRetryIntervalIncrement());
-				props.put("plcRequestTimeoutMs", plcConfig.getRequestTimeoutMs());
-				
-				PlcConnectionEventListener connEventListener=new PlcConnectionEventDbHandler(this, stateStore);
-				props.put("connectionListener", connEventListener);
-				
-				PlcAdapterManager.getPlcManager().loadProgrammableControllerAdapter(props);
+				// 게시 API 는 연결 실패를 바로 알린다(background=false)
+				Properties props=PlcAdapterProps.of(pInfo, plcConfig, new PlcConnectionEventDbHandler(this, stateStore), false);
+				if(ownership.isEnabled()) {
+					// 다중화 — 임대를 잡을 수 있으면 이 인스턴스가 연결하고, 다른 인스턴스가 주인이면 의도만 남긴다
+					ownership.publish(pInfo, props);
+				} else {
+					PlcAdapterManager.getPlcManager().loadProgrammableControllerAdapter(props);
+				}
 				break;
 			case STOPPED :
+				ownership.release(entity.getName());
 				PlcAdapterManager.getPlcManager().releaseProgrammableControllerAdapter(entity.getName());
 				break;
 			case PAUSED:
@@ -279,6 +272,8 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		return manageAndControlPlcConnector(entity, false, PlcConnectorInfoStatus.RELEASED, PlcConnectorOperStatus.STOPPED, PlcConnectorOperStatus.ERROR);
 	}
 	
+	// 다중화 — 해제 의도가 커밋된 뒤에 임대를 반납하려면 트랜잭션 안이어야 한다(PlcOwnershipManager.release)
+	@Transactional
 	@Override
 	public boolean releasePlcConnectorByName(String plcName) throws ToolControlException {
 		log.debug("DefaultPlcConnectorManagementService.releasePlcConnectorByName(String plcName)...");

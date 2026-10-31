@@ -81,6 +81,11 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 
 	private boolean retryIntervalIncrement;
 
+	/** 이 시각(ms)까지는 재연결을 {@link #fastRetryIntervalMs} 고정 간격으로 — 소유권을 넘겨받은 직후(docs/plc-ha-design.md §9.1 H1a) */
+	private long fastRetryUntil;
+
+	private long fastRetryIntervalMs;
+
 	private long requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
 
 	/** 기동(앱 재기동) 때는 PLC 가 아직 안 떠 있어도 어댑터를 올리고 뒤에서 연결한다. 게시 API 는 바로 실패를 알린다. */
@@ -147,6 +152,10 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			this.requestTimeoutMs = t;
 		}
 		this.startEvenIfDisconnected = Boolean.TRUE.equals(props.get("startEvenIfDisconnected"));
+		if (props.get("fastRetryUntil") instanceof Long until && props.get("fastRetryIntervalMs") instanceof Long interval && interval > 0) {
+			this.fastRetryUntil = until;
+			this.fastRetryIntervalMs = interval;
+		}
 		this.start();
 	}
 
@@ -262,7 +271,8 @@ public class MelsecProgrammableControllerAdapter implements ProgrammableControll
 			return;
 		}
 		int attempt = ch.nextReconnectAttempt();
-		long delay = Math.min(retryIntervalIncrement ? retryIntervalRate * attempt : retryIntervalRate, MAX_RECONNECT_INTERVAL_MS);
+		long delay = System.currentTimeMillis() < fastRetryUntil ? fastRetryIntervalMs
+			: Math.min(retryIntervalIncrement ? retryIntervalRate * attempt : retryIntervalRate, MAX_RECONNECT_INTERVAL_MS);
 		try {
 			maintenance.schedule(() -> {
 				if (!running || ch.isConnected()) {

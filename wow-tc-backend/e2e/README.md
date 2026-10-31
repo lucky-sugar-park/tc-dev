@@ -17,6 +17,7 @@
 | `test_vplc_http_methods.py` | vplc 의 상태를 바꾸는 API 메서드 — 예전 GET 은 405, 삭제는 DELETE·게시·해제·제어는 POST, 없는 가상 PLC 는 404(`ERR_404`). vplc 주소는 `TC_E2E_VPLC_URL` | 31 |
 | `test_webhook_cache.py` | WebHook 캐시(H7) — 다른 인스턴스가 바꾼 주소·지운 WebHook 을 DB 를 직접 고쳐 흉내 내고, 만료(10초) 뒤 따라오는지. 약 25초 걸린다. **18090 허용 필요** | 6 |
 | `test_plc_state.py` | PLC 연결 상태 분리(다중화 2단계) — 조회 응답의 `connection`(Redis), 상태 키 만료·5초 갱신, 해제·게시 때 의도(DB)와 연결 상태(Redis), 이벤트가 DB 상태를 고치지 않음 | 7 |
+| `test_plc_ownership.py` | PLC 소유권(다중화 3단계) — 임대·연장·키 사라지면 다시 잡기·남의 임대면 강등·이어받기·해제/게시·균형 규칙. **tc 를 `TC_PLC_OWNERSHIP_ENABLED=true` 로 띄웠을 때만**(아니면 건너뜀) | 17 |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |
 | `ShutdownViaJmx.java` | JMX 로 Spring Boot 정상 종료 요청(Windows 에서 SIGTERM 대신) | |
