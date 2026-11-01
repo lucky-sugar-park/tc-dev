@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Box, Checkbox, Chip, FormControlLabel, MenuItem, TextField, Typography } from '@mui/material';
-import { DataGridPro, type GridColDef, type GridPaginationModel, type GridRowSelectionModel } from '@mui/x-data-grid-pro';
+import { Checkbox, Chip, FormControlLabel, MenuItem, TextField, Typography } from '@mui/material';
+import { type GridColDef, type GridRowSelectionModel } from '@mui/x-data-grid-pro';
 import ReplayIcon from '@mui/icons-material/Replay';
-import { useIsActiveScreen } from 'wow-mes-frontend-framework';
-import {
-  CommandBarActions, FilterBar, LoadErrorState, PageContainer, ScreenAction, extractApiError, useI18n, useLoadFailure,
-} from 'wow-mes-frontend-shared';
+import { CommandBarActions, FilterBar, PageContainer, ScreenAction, useI18n } from 'wow-mes-frontend-shared';
+import { RangeExportDialog, RangeGrid, useRangeGrid, type RangeParams } from '../../shared/components/RangeGrid';
 import { fmtTime } from '../../shared/format';
 import { useCan } from '../../shared/usePerm';
 import { AuditDetailDialog, TYPE_COLOR, isFailed } from '../components/AuditDetailDialog';
@@ -26,74 +24,67 @@ const initialFilter = (): Filter => ({
 });
 
 /**
- * 송수신 기록 (docs/frontend-design.md §5·§14) — 기간·opcode·거래 ID·종류·실패만으로 찾는다(서버 쪽 단위, 최신순). 행을 누르면 그 거래의
- * 기록 전부(요청·응답·오류·전달). 관리자는 골라서 결과 재전송.
+ * 송수신 기록 (docs/frontend-design.md §5·§14) — 기간·opcode·거래 ID·종류·실패만으로 찾는다. 구간 스크롤 표(docs/range-grid-design.md):
+ * 최신순, 스크롤하면 그 구간을 받고, 10만 건 넘으면 구간 이동. 목록에는 본문이 없다 — 행을 누르면 그 거래의 기록 전부(요청·응답·오류·전달)를
+ * 본문과 함께 본다. 관리자는 골라서 결과 재전송.
  */
 export default function AuditPage(): ReactElement {
   const { t } = useI18n();
-  const active = useIsActiveScreen();
   const canRedeliver = useCan('action.tc.redeliver', 'X');
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [applied, setApplied] = useState<Filter>(filter);
-  const [page, setPage] = useState<GridPaginationModel>({ page: 0, pageSize: 100 });
-  const [rows, setRows] = useState<AuditRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const appliedRef = useRef(applied);
+  appliedRef.current = applied;
   const [selection, setSelection] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
   const [detailOf, setDetailOf] = useState<string | null>(null);
   const [redeliver, setRedeliver] = useState<AuditRow[] | null>(null);
-  const { error, fail, clear, retry } = useLoadFailure();
-  const rowsRef = useRef(rows);
-  rowsRef.current = rows;
+  const [exporting, setExporting] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const p = await auditApi.query({
-        from: fromLocalInput(applied.from), to: fromLocalInput(applied.to), opcode: applied.opcode || undefined,
-        transactionId: applied.transactionId || undefined, messageTypes: applied.type ? [applied.type] : undefined,
-        failedOnly: applied.failedOnly || undefined, page: page.page, size: page.pageSize,
-      });
-      setRows(p.items);
-      setTotal(p.total);
-      clear();
-    } catch (e) {
-      fail(extractApiError(e), { hasData: rowsRef.current.length > 0, retry: () => { void loadRef.current(); } });
-    } finally {
-      setLoading(false);
-    }
-  }, [applied, page, fail, clear]);
-  const loadRef = useRef(load);
-  loadRef.current = load;
-  useEffect(() => { if (active) void loadRef.current(); }, [active, applied, page]);
+  const fetchRange = useCallback((p: RangeParams, extra?: Record<string, boolean>) => {
+    const f = appliedRef.current;
+    return auditApi.range({
+      from: fromLocalInput(f.from), to: fromLocalInput(f.to), opcode: f.opcode || undefined, transactionId: f.transactionId || undefined,
+      messageTypes: f.type ? [f.type] : undefined, failedOnly: f.failedOnly || undefined,
+    }, p, extra);
+  }, []);
+  const grid = useRangeGrid<AuditRow>(fetchRange);
 
-  const search = () => { setPage((p) => ({ ...p, page: 0 })); setApplied({ ...filter }); };
+  // 조건을 바꾸면 처음부터(첫 그리기는 그리드가 스스로 읽는다)
+  const firstRef = useRef(true);
+  useEffect(() => {
+    if (firstRef.current) { firstRef.current = false; return; }
+    setSelection({ type: 'include', ids: new Set() });
+    grid.refresh();
+  }, [applied]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const search = () => setApplied({ ...filter });
 
   const columns = useMemo<GridColDef<AuditRow>[]>(() => [
     { field: 'id', headerName: 'ID', width: 90 },
     { field: 'timestamp', headerName: t('i18n.tc.audit.time', '시각'), width: 170, valueFormatter: (v: string) => fmtTime(v) },
     {
       field: 'messageType', headerName: t('i18n.tc.audit.type', '종류'), width: 110,
-      renderCell: ({ row }) => <Chip size="small" variant={isFailed(row) ? 'filled' : 'outlined'} color={isFailed(row) ? 'error' : (TYPE_COLOR[row.messageType] ?? 'default')} label={row.messageType} />,
+      renderCell: ({ row }) => (row.messageType
+        ? <Chip size="small" variant={isFailed(row) ? 'filled' : 'outlined'} color={isFailed(row) ? 'error' : (TYPE_COLOR[row.messageType] ?? 'default')} label={row.messageType} />
+        : null),
     },
     { field: 'name', headerName: 'opcode', width: 220 },
     { field: 'transactionId', headerName: t('i18n.tc.audit.transactionId', '트랜잭션 ID'), width: 220 },
-    { field: 'route', headerName: t('i18n.tc.audit.route', '보낸 곳 → 받는 곳'), width: 220, sortable: false, valueGetter: (_v, r) => `${r.sender ?? ''} → ${r.receiver ?? ''}` },
+    { field: 'route', headerName: t('i18n.tc.audit.route', '보낸 곳 → 받는 곳'), width: 220, valueGetter: (_v, r) => (r.id ? `${r.sender ?? ''} → ${r.receiver ?? ''}` : '') },
     { field: 'principal', headerName: t('i18n.tc.audit.principal', '호출자'), width: 140 },
     { field: 'description', headerName: t('i18n.tc.common.description', '설명'), flex: 1, minWidth: 220 },
   ], [t]);
 
-  const selectedRows = rows.filter((r) => selection.ids.has(r.id));
-
-  if (error && rows.length === 0) return <LoadErrorState message={error} onRetry={retry} retrying={loading} />;
+  const selectedRows = (): AuditRow[] => [...(grid.apiRef.current?.getSelectedRows().values() ?? [])] as AuditRow[];
 
   return (
     <PageContainer>
       <CommandBarActions>
-        <ScreenAction kind="refresh" onClick={() => { void load(); }} />
+        <ScreenAction kind="refresh" onClick={() => grid.refresh()} />
+        <ScreenAction kind="excelDown" onClick={() => setExporting(true)} disabled={!grid.total} />
         {canRedeliver && (
           <ScreenAction icon={<ReplayIcon fontSize="small" />} label={t('i18n.tc.redeliver.title', '결과 재전송')}
-            onClick={() => setRedeliver(selectedRows)} />
+            onClick={() => setRedeliver(selectedRows())} />
         )}
       </CommandBarActions>
       <FilterBar onSearch={search} onReset={() => { const f = initialFilter(); setFilter(f); setApplied(f); }}>
@@ -112,23 +103,27 @@ export default function AuditPage(): ReactElement {
         <FormControlLabel control={<Checkbox size="small" checked={filter.failedOnly} onChange={(e) => setFilter({ ...filter, failedOnly: e.target.checked })} />}
           label={t('i18n.tc.audit.failedOnly', '실패만')} />
       </FilterBar>
-      {canRedeliver && selectedRows.length > 0 && (
-        <Typography variant="caption" color="text.secondary">{t('i18n.tc.audit.selected', '고른 기록')} {selectedRows.length}</Typography>
+      {canRedeliver && selection.ids.size > 0 && (
+        <Typography variant="caption" color="text.secondary">{t('i18n.tc.audit.selected', '고른 기록')} {selection.ids.size}</Typography>
       )}
-      <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <Box sx={{ position: 'absolute', inset: 0 }}>
-          <DataGridPro rows={rows} columns={columns} getRowId={(r) => r.id} loading={loading} density="compact"
-            showColumnVerticalBorder showCellVerticalBorder
-            pagination paginationMode="server" rowCount={total} paginationModel={page} onPaginationModelChange={setPage}
-            pageSizeOptions={[50, 100, 200, 500]}
-            checkboxSelection={canRedeliver} rowSelectionModel={selection} onRowSelectionModelChange={setSelection}
-            disableRowSelectionOnClick onRowClick={(p) => setDetailOf((p.row as AuditRow).transactionId)}
-            getRowClassName={(p) => (p.indexRelativeToCurrentPage % 2 === 0 ? 'row-even' : 'row-odd')}
-            sx={{ '& .MuiDataGrid-row': { cursor: 'pointer' } }} />
-        </Box>
-      </Box>
+      <RangeGrid grid={grid} title={t('i18n.tc.audit.listTitle', '송수신 목록')} columns={columns} getRowId={(r) => r.id}
+        gridProps={{
+          checkboxSelection: canRedeliver, rowSelectionModel: selection, onRowSelectionModelChange: setSelection,
+          onRowClick: (p) => { if (p.row.transactionId) setDetailOf(p.row.transactionId); },
+          sx: { '& .MuiDataGrid-row': { cursor: 'pointer' } },
+        }} />
       <AuditDetailDialog transactionId={detailOf} onClose={() => setDetailOf(null)} />
       <RedeliverDialog rows={redeliver} onClose={() => setRedeliver(null)} onDone={() => setSelection({ type: 'include', ids: new Set() })} />
+      <RangeExportDialog open={exporting} onClose={() => setExporting(false)} grid={grid}
+        fileName={t('i18n.tc.audit.excelFile', '송수신기록')} sheetName={t('i18n.tc.audit.listTitle', '송수신 목록')}
+        options={[{ key: 'includeBody', label: t('i18n.tc.audit.excelBody', '본문(JSON) 포함'), help: t('i18n.tc.audit.excelBodyHelp', '파일이 아주 커질 수 있습니다') }]}
+        toRow={(r, no) => ({
+          [t('i18n.tc.schedule.no', '번호')]: no, ID: r.id, [t('i18n.tc.audit.time', '시각')]: fmtTime(r.timestamp),
+          [t('i18n.tc.audit.type', '종류')]: r.messageType, opcode: r.name, [t('i18n.tc.audit.transactionId', '트랜잭션 ID')]: r.transactionId,
+          [t('i18n.tc.audit.sender', '보낸 곳')]: r.sender ?? '', [t('i18n.tc.audit.receiver', '받는 곳')]: r.receiver ?? '',
+          [t('i18n.tc.audit.principal', '호출자')]: r.principal ?? '', [t('i18n.tc.common.description', '설명')]: r.description ?? '',
+          ...(r.dataMap && Object.keys(r.dataMap).length ? { [t('i18n.tc.audit.body', '본문')]: JSON.stringify(r.dataMap) } : {}),
+        })} />
     </PageContainer>
   );
 }

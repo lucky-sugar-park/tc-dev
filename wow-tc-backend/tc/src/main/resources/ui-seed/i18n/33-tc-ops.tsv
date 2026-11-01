@@ -99,3 +99,15 @@ i18n.tc.schedule.runTo	실행 끝	Run to	実行終了	执行结束
 i18n.tc.schedule.success	성공	Success	成功	成功
 i18n.tc.schedule.fail	실패	Failure	失敗	失败
 i18n.tc.schedule.recent24h	최근 24시간	Last 24 hours	直近24時間	最近24小时
+i18n.tc.audit.listTitle	송수신 목록	Messages	送受信一覧	收发列表
+i18n.tc.audit.excelFile	송수신기록	Messages	送受信記録	收发记录
+i18n.tc.audit.excelBody	본문(JSON) 포함	Include body (JSON)	本文(JSON)を含める	包含正文(JSON)
+i18n.tc.audit.excelBodyHelp	파일이 아주 커질 수 있습니다	The file can become very large	ファイルが非常に大きくなる場合があります	文件可能会很大
+i18n.tc.audit.sender	보낸 곳	Sender	送信元	发送方
+i18n.tc.audit.receiver	받는 곳	Receiver	受信先	接收方
+i18n.tc.audit.body	본문	Body	本文	正文
+i18n.tc.schedule.histListTitle	스케줄 Job 실행 이력	Schedule job runs	スケジュールJob実行履歴	计划任务执行历史
+i18n.tc.schedule.histExcelFile	스케줄Job실행이력	ScheduleJobRuns	スケジュールJob実行履歴	计划任务执行历史
+i18n.tc.confighist.listTitle	설정 변경 이력	Configuration changes	設定変更履歴	配置变更历史
+i18n.tc.confighist.excelFile	설정변경이력	ConfigChanges	設定変更履歴	配置变更历史
+i18n.tc.confighist.actorType	행위자 종류	Actor type	行為者種類	操作者类型

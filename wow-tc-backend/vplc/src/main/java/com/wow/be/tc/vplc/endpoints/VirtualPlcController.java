@@ -17,6 +17,7 @@ import com.wow.be.tc.vplc.melsec.MemoryInfo;
 import com.wow.be.tc.vplc.management.ConnectionClientHistoryInfo;
 import com.wow.be.tc.vplc.management.ConnectionHistoryPage;
 import com.wow.be.tc.vplc.management.ConnectionHistoryQuery;
+import com.wow.be.tc.vplc.management.ConnectionHistoryRange;
 import com.wow.be.tc.vplc.management.ConnectionInfo;
 import com.wow.be.tc.vplc.management.PortUpdateInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcHistoryInfo;
@@ -168,6 +169,15 @@ public class VirtualPlcController {
 	public ConnectionHistoryPage queryConnectionHistories(@RequestBody ConnectionHistoryQuery query) {
 		log.debug("");
 		return virtualPlcManagementService.queryConnectionHistories(query);
+	}
+
+	/** 연결 이력 구간 — 화면의 구간 스크롤 표·엑셀(docs/range-grid-design.md §4). 스냅샷 asOf(SEQ_NO), 건수는 withTotal 일 때만 */
+	@PostMapping("/management/connection-histories/range")
+	public ConnectionHistoryRange rangeConnectionHistories(@RequestBody ConnectionHistoryRange.Request req) {
+		log.debug("");
+		ConnectionHistoryQuery q = req.filter() != null ? req.filter() : new ConnectionHistoryQuery(null, null, null, null, null, null);
+		ConnectionHistoryRange.Params p = req.range() != null ? req.range() : new ConnectionHistoryRange.Params(0, 100, null, true);
+		return virtualPlcManagementService.rangeConnectionHistories(q, p);
 	}
 
 	/** 가상 PLC 의 포트별 연결 상태. */

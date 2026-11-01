@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Box, Chip, Dialog, DialogContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
-import { DataGridPro, type GridColDef, type GridPaginationModel } from '@mui/x-data-grid-pro';
-import { useIsActiveScreen } from 'wow-mes-frontend-framework';
+import { type GridColDef } from '@mui/x-data-grid-pro';
 import {
-  CommandBarActions, DialogFooter, DialogTitleClose, DraggablePaper, FilterBar, LoadErrorState, PageContainer, ScreenAction, extractApiError,
-  useI18n, useLoadFailure,
+  CommandBarActions, DialogFooter, DialogTitleClose, DraggablePaper, FilterBar, PageContainer, ScreenAction, useI18n,
 } from 'wow-mes-frontend-shared';
+import { RangeExportDialog, RangeGrid, useRangeGrid, type RangeParams } from '../../shared/components/RangeGrid';
 import { fmtTime } from '../../shared/format';
 import { configHistoryApi } from '../services/opsApi';
 import type { ConfigChange } from '../types/ops';
@@ -32,69 +31,62 @@ function changedKeys(before?: string, after?: string): string[] {
   }
 }
 
+const changedOf = (r: ConfigChange) => (r.action === 'UPDATE' ? changedKeys(r.beforeJson, r.afterJson).join(', ') : r.detail ?? '');
+
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 
+type Filter = { from: string; to: string; targetType: string; targetId: string; actorId: string };
+
+const initialFilter = (): Filter => ({ from: toLocalInput(new Date(Date.now() - 7 * 86400_000)), to: '', targetType: '', targetId: '', actorId: '' });
+
 /**
- * 설정 변경 이력 (docs/frontend-design.md §5) — 누가 언제 무엇을 바꿨는지(커넥터·인터페이스·전달·스케줄·사용자·API 키 …). 행을 누르면 앞뒤 값과 바뀐 칸.
+ * 설정 변경 이력 (docs/frontend-design.md §5) — 누가 언제 무엇을 바꿨는지(커넥터·인터페이스·전달·스케줄·사용자·API 키 …). 구간 스크롤 표
+ * (docs/range-grid-design.md): 최신순, 스크롤하면 그 구간을 받고, 10만 건 넘으면 구간 이동. 행을 누르면 앞뒤 값과 바뀐 칸.
  */
 export default function ConfigHistoryPage(): ReactElement {
   const { t } = useI18n();
-  const active = useIsActiveScreen();
-  const [filter, setFilter] = useState({ from: toLocalInput(new Date(Date.now() - 7 * 86400_000)), to: '', targetType: '', targetId: '', actorId: '' });
-  const [applied, setApplied] = useState(filter);
-  const [page, setPage] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
-  const [rows, setRows] = useState<ConfigChange[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<Filter>(initialFilter);
+  const [applied, setApplied] = useState<Filter>(filter);
+  const appliedRef = useRef(applied);
+  appliedRef.current = applied;
   const [detail, setDetail] = useState<ConfigChange | null>(null);
-  const { error, fail, clear, retry } = useLoadFailure();
-  const rowsRef = useRef(rows);
-  rowsRef.current = rows;
+  const [exporting, setExporting] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await configHistoryApi.search({
-        from: applied.from ? new Date(applied.from).toISOString() : undefined,
-        to: applied.to ? new Date(applied.to).toISOString() : undefined,
-        targetType: applied.targetType || undefined, targetId: applied.targetId || undefined, actorId: applied.actorId || undefined,
-        page: page.page, size: page.pageSize,
-      });
-      setRows(r.items);
-      setTotal(r.total);
-      clear();
-    } catch (e) {
-      fail(extractApiError(e), { hasData: rowsRef.current.length > 0, retry: () => { void loadRef.current(); } });
-    } finally {
-      setLoading(false);
-    }
-  }, [applied, page, fail, clear]);
-  const loadRef = useRef(load);
-  loadRef.current = load;
-  useEffect(() => { if (active) void loadRef.current(); }, [active, applied, page]);
+  const fetchRange = useCallback((p: RangeParams) => {
+    const f = appliedRef.current;
+    return configHistoryApi.range({
+      from: f.from ? new Date(f.from).toISOString() : undefined, to: f.to ? new Date(f.to).toISOString() : undefined,
+      targetType: f.targetType || undefined, targetId: f.targetId || undefined, actorId: f.actorId || undefined,
+    }, p);
+  }, []);
+  const grid = useRangeGrid<ConfigChange>(fetchRange);
+
+  const firstRef = useRef(true);
+  useEffect(() => {
+    if (firstRef.current) { firstRef.current = false; return; }
+    grid.refresh();
+  }, [applied]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const columns = useMemo<GridColDef<ConfigChange>[]>(() => [
     { field: 'changedAt', headerName: t('i18n.tc.audit.time', '시각'), width: 170, valueFormatter: (v: string) => fmtTime(v) },
     {
       field: 'action', headerName: t('i18n.tc.confighist.action', '동작'), width: 100,
-      renderCell: ({ row }) => <Chip size="small" variant="outlined" color={ACTION_COLOR[row.action] ?? 'default'} label={row.action} />,
+      renderCell: ({ row }) => (row.action ? <Chip size="small" variant="outlined" color={ACTION_COLOR[row.action] ?? 'default'} label={row.action} /> : null),
     },
     { field: 'targetType', headerName: t('i18n.tc.confighist.targetType', '대상 종류'), width: 140 },
     { field: 'targetName', headerName: t('i18n.tc.confighist.target', '대상'), width: 220, valueGetter: (_v, r) => r.targetName ?? r.targetId },
-    { field: 'actorId', headerName: t('i18n.tc.confighist.actor', '바꾼 사람'), width: 140, valueGetter: (_v, r) => `${r.actorId} (${r.actorType})` },
+    { field: 'actorId', headerName: t('i18n.tc.confighist.actor', '바꾼 사람'), width: 140, valueGetter: (_v, r) => (r.actorId ? `${r.actorId} (${r.actorType})` : '') },
     { field: 'actorIp', headerName: 'IP', width: 120 },
-    { field: 'changed', headerName: t('i18n.tc.confighist.changed', '바뀐 칸'), flex: 1, minWidth: 200, sortable: false, valueGetter: (_v, r) => (r.action === 'UPDATE' ? changedKeys(r.beforeJson, r.afterJson).join(', ') : r.detail ?? '') },
+    { field: 'changed', headerName: t('i18n.tc.confighist.changed', '바뀐 칸'), flex: 1, minWidth: 200, valueGetter: (_v, r) => (r.id ? changedOf(r) : '') },
   ], [t]);
-
-  if (error && rows.length === 0) return <LoadErrorState message={error} onRetry={retry} retrying={loading} />;
 
   return (
     <PageContainer>
       <CommandBarActions>
-        <ScreenAction kind="refresh" onClick={() => { void load(); }} />
+        <ScreenAction kind="refresh" onClick={() => grid.refresh()} />
+        <ScreenAction kind="excelDown" onClick={() => setExporting(true)} disabled={!grid.total} />
       </CommandBarActions>
-      <FilterBar onSearch={() => { setPage((p) => ({ ...p, page: 0 })); setApplied({ ...filter }); }}
-        onReset={() => setFilter({ from: toLocalInput(new Date(Date.now() - 7 * 86400_000)), to: '', targetType: '', targetId: '', actorId: '' })}>
+      <FilterBar onSearch={() => setApplied({ ...filter })} onReset={() => { const f = initialFilter(); setFilter(f); setApplied(f); }}>
         <TextField size="small" type="datetime-local" label={t('i18n.tc.audit.from', '부터')} value={filter.from}
           onChange={(e) => setFilter({ ...filter, from: e.target.value })} slotProps={{ htmlInput: { 'aria-label': t('i18n.tc.audit.from', '부터') }, inputLabel: { shrink: true } }} />
         <TextField size="small" type="datetime-local" label={t('i18n.tc.audit.to', '까지')} value={filter.to}
@@ -107,15 +99,11 @@ export default function ConfigHistoryPage(): ReactElement {
         <TextField slotProps={{ htmlInput: { 'aria-label': t('i18n.tc.confighist.targetId', '대상 ID') } }} size="small" label={t('i18n.tc.confighist.targetId', '대상 ID')} value={filter.targetId} onChange={(e) => setFilter({ ...filter, targetId: e.target.value })} />
         <TextField slotProps={{ htmlInput: { 'aria-label': t('i18n.tc.confighist.actor', '바꾼 사람') } }} size="small" label={t('i18n.tc.confighist.actor', '바꾼 사람')} value={filter.actorId} onChange={(e) => setFilter({ ...filter, actorId: e.target.value })} />
       </FilterBar>
-      <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <Box sx={{ position: 'absolute', inset: 0 }}>
-          <DataGridPro rows={rows} columns={columns} getRowId={(r) => r.id} loading={loading} density="compact" showColumnVerticalBorder
-            pagination paginationMode="server" rowCount={total} paginationModel={page} onPaginationModelChange={setPage} pageSizeOptions={[50, 100, 200]}
-            disableRowSelectionOnClick onRowClick={(p) => setDetail(p.row as ConfigChange)}
-            getRowClassName={(p) => (p.indexRelativeToCurrentPage % 2 === 0 ? 'row-even' : 'row-odd')}
-            sx={{ '& .MuiDataGrid-row': { cursor: 'pointer' } }} />
-        </Box>
-      </Box>
+      <RangeGrid grid={grid} title={t('i18n.tc.confighist.listTitle', '설정 변경 이력')} columns={columns} getRowId={(r) => r.id}
+        gridProps={{
+          onRowClick: (p) => { if (p.row.id) setDetail(p.row); },
+          sx: { '& .MuiDataGrid-row': { cursor: 'pointer' } },
+        }} />
       <Dialog open={!!detail} onClose={() => setDetail(null)} maxWidth="lg" fullWidth PaperComponent={DraggablePaper}>
         <DialogTitleClose onClose={() => setDetail(null)}>{detail?.action} {detail?.targetType} — {detail?.targetName ?? detail?.targetId}</DialogTitleClose>
         <DialogContent dividers>
@@ -138,6 +126,15 @@ export default function ConfigHistoryPage(): ReactElement {
         </DialogContent>
         <DialogFooter onClose={() => setDetail(null)} />
       </Dialog>
+      <RangeExportDialog open={exporting} onClose={() => setExporting(false)} grid={grid}
+        fileName={t('i18n.tc.confighist.excelFile', '설정변경이력')} sheetName={t('i18n.tc.confighist.listTitle', '설정 변경 이력')}
+        toRow={(r, no) => ({
+          [t('i18n.tc.schedule.no', '번호')]: no, [t('i18n.tc.audit.time', '시각')]: fmtTime(r.changedAt),
+          [t('i18n.tc.confighist.action', '동작')]: r.action, [t('i18n.tc.confighist.targetType', '대상 종류')]: r.targetType,
+          [t('i18n.tc.confighist.targetId', '대상 ID')]: r.targetId, [t('i18n.tc.confighist.target', '대상')]: r.targetName ?? '',
+          [t('i18n.tc.confighist.actor', '바꾼 사람')]: r.actorId, [t('i18n.tc.confighist.actorType', '행위자 종류')]: r.actorType, IP: r.actorIp ?? '',
+          [t('i18n.tc.confighist.changed', '바뀐 칸')]: changedOf(r),
+        })} />
     </PageContainer>
   );
 }

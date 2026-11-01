@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -21,6 +22,7 @@ import com.wow.be.tc.msg.audit.AuditQuery;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 import com.wow.be.tc.msg.audit.impl.AuditQueryService;
 import com.wow.be.tc.msg.audit.ExchangedMessageAuditService;
+import com.wow.be.tc.utils.RangeQueries;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -72,6 +74,21 @@ public class InterfaceAuditController {
 	@ResponseBody
 	public AuditQuery.Page query(@RequestBody AuditQuery query) {
 		return auditQueryService.search(query);
+	}
+
+	/** 구간 조회 본문 — 화면 조건, 구간, 본문(MSG_JSON) 포함 여부(기본 뺌) */
+	public record RangeRequest(AuditQuery filter, RangeQueries.Params range, Boolean includeBody) {
+	}
+
+	/**
+	 * 화면용 구간 조회 — 화면의 구간 스크롤 표·엑셀(docs/range-grid-design.md §4). 최신순, 스냅샷 asOf(ID), 건수는 withTotal 일 때만.
+	 */
+	@Requires(action = 'R')
+	@PostMapping("/search/query/range")
+	public RangeQueries.Result<ExchangedMessageAuditInfo> queryRange(@RequestBody RangeRequest req) {
+		AuditQuery filter = req.filter() != null ? req.filter() : new AuditQuery(null, null, null, null, null, null, null, null, null);
+		RangeQueries.Params range = req.range() != null ? req.range() : new RangeQueries.Params(0, 100, null, true);
+		return auditQueryService.range(filter, range, Boolean.TRUE.equals(req.includeBody()));
 	}
 
 	@Requires(action = 'R')

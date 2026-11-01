@@ -60,6 +60,7 @@
 | 17 | 인터페이스 세부 정의 — [interface-detail-design.md](interface-detail-design.md) | 🔄 A(요청 미리보기)·B(인터페이스 settings)·C(워드 안 비트 `D100.3`·`HR1.15` 읽기 전용·배율·오프셋·단위·쓰기 범위 — [word-bit-points.md](word-bit-points.md)) 완료. D1(OPC UA 읽기·쓰기·찾아보기·구독 → 전달 정의, [opcua-design.md](opcua-design.md)) 완료. 남은 것: D2 OPC UA 인증·보안 정책, 문자열 인코딩(Shift-JIS·UTF-16LE — 요구가 나오면) |
 | 19 | 스케줄 Job 속성·실행 이력 — [schedule-jobs.md](schedule-jobs.md) | ✅ 2026-11-01 — 성공·실패 판정(정상 종료 = SUCCESS, 예외 = FAIL·사유), 정리 Job 재작성(실패를 SUCCESS 로 기록·건수 덮어씀 고침, 표 고정·나눠 지우기·실행 이력 정리), 빈 Spy Job 삭제, 저장 검사·Job 종류 API, 속성 통째로 바꾸기, SCHED_NAME 덮어쓰기 중단·이력에 실행 서버·걸린 시간, 목록 최근 실행·이력 검색. migration 015, 재기동 필요 |
 | 20 | 쌓이는 기록의 보관과 정리 — [data-retention.md](data-retention.md) | ✅ 2026-11-01 — 시각 색인(migration 016), 기본 키 범위 나눠 지우기, 옛 일괄 삭제 API 제거, 기동 때 기본 정리 Job. 같은 날 둘째: PLC 요청 Job `auditMode=FAILURE_ONLY`(성공은 송수신 기록 생략), 스케줄 Job "지금 실행"(API·화면), 감사 삭제 API 모두 없앰. e2e `test_retention.py`. 남은 것: 파티션(양을 본 뒤). 재기동 필요 |
+| 21 | 큰 목록 표의 구간 조회 — [range-grid-design.md](range-grid-design.md) | ✅ 2026-11-01 — 송수신 기록·스케줄 Job 실행 이력·설정 변경 이력(tc), 연결 이력(vplc)에 `…/range`(스냅샷 asOf·첫 요청만 건수·start/limit, framework RangeableRepository). 화면은 구간 스크롤 표(10만 구간 이동). mes-dev 에도 적용할 내용 — 문서 §7. 재기동 필요(tc·vplc) |
 | 18 | vplc 단위 테스트 | ✅ 2026-11-01 — `McResponderTest`(3E·4E 바이너리·ASCII 워드·비트·루프백·오류 종료 코드)·`MemoryTest`. 가상 Modbus·OPC UA 장비(`vplc-modbus`·`vplc-opcua`)는 [virtual-devices.md](virtual-devices.md), 단위 시험 각각 |
 
 ## 진행 기록

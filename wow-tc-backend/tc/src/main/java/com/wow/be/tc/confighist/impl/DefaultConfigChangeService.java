@@ -34,6 +34,7 @@ import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
 import com.wow.be.tc.confighist.ConfigChangeRecorder;
 import com.wow.be.tc.confighist.ConfigChangeService;
 import com.wow.be.tc.security.RequestPrincipals;
+import com.wow.be.tc.utils.RangeQueries;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -72,6 +73,10 @@ public class DefaultConfigChangeService implements ConfigChangeRecorder, ConfigC
 	private final ConfigChangeRepository repository;
 
 	private final ClientAddressResolver addressResolver;
+
+	private final ConfigChangeRangeableRepository rangeRepository;
+
+	private final RangeQueries rangeQueries;
 
 	// ── 기록 ──
 
@@ -172,6 +177,19 @@ public class DefaultConfigChangeService implements ConfigChangeRecorder, ConfigC
 	@Override
 	public Page<ConfigChangeInfo> search(Date from, Date to, TargetType targetType, String targetId, String actorId,
 			int page, int size) {
+		PageRequest pr = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 500), Sort.by(Sort.Direction.DESC, "changedAt"));
+		return repository.findAll(specOf(from, to, targetType, targetId, actorId), pr).map(ConfigChangeEntity::info);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public RangeQueries.Result<ConfigChangeInfo> range(Date from, Date to, TargetType targetType, String targetId, String actorId,
+			RangeQueries.Params range) {
+		return rangeQueries.byTime(specOf(from, to, targetType, targetId, actorId), "changedAt", range,
+			Sort.by(Sort.Order.desc("changedAt"), Sort.Order.desc("id")), repository, rangeRepository, ConfigChangeEntity::info);
+	}
+
+	private static Specification<ConfigChangeEntity> specOf(Date from, Date to, TargetType targetType, String targetId, String actorId) {
 		Specification<ConfigChangeEntity> spec = Specification.unrestricted();
 		if (from != null) {
 			spec = spec.and((r, q, cb) -> cb.greaterThanOrEqualTo(r.get("changedAt"), from));
@@ -188,8 +206,7 @@ public class DefaultConfigChangeService implements ConfigChangeRecorder, ConfigC
 		if (actorId != null && !actorId.isBlank()) {
 			spec = spec.and((r, q, cb) -> cb.equal(r.get("actorId"), actorId));
 		}
-		PageRequest pr = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 500), Sort.by(Sort.Direction.DESC, "changedAt"));
-		return repository.findAll(spec, pr).map(ConfigChangeEntity::info);
+		return spec;
 	}
 
 	@Override

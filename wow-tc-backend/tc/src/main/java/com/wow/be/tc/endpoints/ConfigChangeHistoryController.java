@@ -15,6 +15,7 @@ import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.tc.confighist.ConfigChangeInfo;
 import com.wow.be.tc.confighist.ConfigChangeInfo.TargetType;
 import com.wow.be.tc.confighist.ConfigChangeService;
+import com.wow.be.tc.utils.RangeQueries;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +51,14 @@ public class ConfigChangeHistoryController {
 		Page<ConfigChangeInfo> result = configChangeService.search(req.from(), req.to(), req.targetType(), req.targetId(),
 			req.actorId(), page, size);
 		return new PageResult(result.getContent(), result.getTotalElements(), result.getNumber(), result.getSize());
+	}
+
+	@Operation(summary = "설정 변경 이력 구간", description = "화면의 구간 스크롤 표·엑셀(docs/range-grid-design.md §4). 최신순, 스냅샷 asOf(시각), 건수는 withTotal 일 때만.")
+	@Requires(action = 'R')
+	@PostMapping("/range")
+	public RangeQueries.Result<ConfigChangeInfo> range(@RequestBody RangeQueries.Request<SearchRequest> req) {
+		SearchRequest f = req.filter() != null ? req.filter() : new SearchRequest(null, null, null, null, null, null, null);
+		return configChangeService.range(f.from(), f.to(), f.targetType(), f.targetId(), f.actorId(), req.rangeOrDefault());
 	}
 
 	@Operation(summary = "대상 하나의 변경 이력", description = "상세 화면의 변경 이력 탭용. 최신순.")

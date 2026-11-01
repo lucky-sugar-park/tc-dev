@@ -23,6 +23,7 @@ import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.persist.PersistentEntity;
 import com.wow.be.framework.persist.PersistentService;
+import com.wow.be.framework.persist.Rangeable;
 import com.wow.be.tc.vplc.Types.PlcStatus;
 import com.wow.be.tc.vplc.VirtualPlcException;
 import com.wow.be.tc.vplc.core.VirtualPlc;
@@ -32,6 +33,7 @@ import com.wow.be.tc.vplc.management.ConnectionClientHistoryInfo;
 import com.wow.be.tc.vplc.management.ConnectionClientInfo;
 import com.wow.be.tc.vplc.management.ConnectionHistoryPage;
 import com.wow.be.tc.vplc.management.ConnectionHistoryQuery;
+import com.wow.be.tc.vplc.management.ConnectionHistoryRange;
 import com.wow.be.tc.vplc.management.ConnectionInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcHistoryInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
@@ -60,6 +62,9 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	
 	@Autowired
 	private ConnectionClientHistoryRepository connectionClientHistoryRepository;
+
+	@Autowired
+	private ConnectionClientHistoryRangeableRepository connectionClientHistoryRangeRepository;
 
 	/** 종류별 규칙·객체 — 이 서비스는 종류를 모른다(docs/vplc-architecture.md §2.1) */
 	@Autowired
@@ -440,13 +445,46 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	@Override
 	@Transactional(readOnly = true)
 	public ConnectionHistoryPage queryConnectionHistories(ConnectionHistoryQuery q) {
-		// 가상 PLC 는 많지 않다 — 이름·종류는 한 번에 읽어 아이디로 바꿔 건다(이력 표에는 아이디만 있다)
+		Map<String, VirtualPlcEntity> vplcs = vplcsById();
+		PageRequest pr = PageRequest.of(q.pageOrDefault(), q.sizeOrDefault(), HISTORY_SORT);
+		org.springframework.data.domain.Page<ConnectionClientHistoryEntity> found = connectionClientHistoryRepository.findAll(historySpec(q, vplcs), pr);
+		List<ConnectionClientHistoryInfo> items = found.getContent().stream().map(e -> withVplc(e, vplcs)).toList();
+		return new ConnectionHistoryPage(items, found.getTotalElements(), q.pageOrDefault(), q.sizeOrDefault());
+	}
+
+	/**
+	 * 연결 이력 구간 — 화면의 구간 스크롤 표·엑셀(docs/range-grid-design.md §4, tc 의 RangeQueries 와 같은 규약).
+	 * 스냅샷은 SEQ_NO(첫 요청에서 조건에 맞는 최댓값), 건수는 withTotal 일 때만.
+	 */
+	@Override
+	@Transactional(readOnly = true)
+	public ConnectionHistoryRange rangeConnectionHistories(ConnectionHistoryQuery q, ConnectionHistoryRange.Params p) {
+		Map<String, VirtualPlcEntity> vplcs = vplcsById();
+		Specification<ConnectionClientHistoryEntity> spec = historySpec(q, vplcs);
+		long asOf = p.asOf() != null ? p.asOf() : connectionClientHistoryRepository
+			.findAll(spec, PageRequest.of(0, 1, Sort.by(Sort.Order.desc("seqNo")))).stream()
+			.findFirst().map(ConnectionClientHistoryEntity::getSeqNo).orElse(0L);
+		Specification<ConnectionClientHistoryEntity> snap = spec.and((root, cq, cb) -> cb.le(root.get("seqNo"), asOf));
+		Long total = Boolean.TRUE.equals(p.withTotal()) ? connectionClientHistoryRepository.count(snap) : null;
+		List<ConnectionClientHistoryInfo> rows = connectionClientHistoryRangeRepository
+			.findAllByRange(snap, new Rangeable(p.startOrZero(), p.limitClamped(), HISTORY_SORT)).stream()
+			.map(e -> withVplc(e, vplcs)).toList();
+		return new ConnectionHistoryRange(rows, total, asOf, p.startOrZero());
+	}
+
+	private static final Sort HISTORY_SORT = Sort.by(Sort.Order.desc("timestamp"), Sort.Order.desc("seqNo"));
+
+	/** 가상 PLC 는 많지 않다 — 이름·종류는 한 번에 읽어 아이디로 바꿔 건다(이력 표에는 아이디만 있다) */
+	private Map<String, VirtualPlcEntity> vplcsById() {
 		Map<String, VirtualPlcEntity> vplcs = new HashMap<>();
 		virtualPlcRepository.findAll().forEach(v -> vplcs.put(v.getId(), v));
+		return vplcs;
+	}
+
+	private static Specification<ConnectionClientHistoryEntity> historySpec(ConnectionHistoryQuery q, Map<String, VirtualPlcEntity> vplcs) {
 		String text = q.search() == null ? "" : q.search().trim().toLowerCase();
 		String protocol = q.protocol() == null ? "" : q.protocol().trim();
-
-		Specification<ConnectionClientHistoryEntity> spec = (root, cq, cb) -> {
+		return (root, cq, cb) -> {
 			List<jakarta.persistence.criteria.Predicate> ps = new ArrayList<>();
 			if (!text.isEmpty()) {
 				List<String> named = vplcs.values().stream()
@@ -456,28 +494,27 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 			}
 			if (!protocol.isEmpty()) {
 				// 종류가 비어 있는 예전 줄은 MELSEC_MC
-				List<String> ofKind = vplcs.values().stream()
-					.filter(v -> protocol.equals(v.getProtocol() == null || v.getProtocol().isBlank() ? "MELSEC_MC" : v.getProtocol()))
-					.map(VirtualPlcEntity::getId).toList();
+				List<String> ofKind = vplcs.values().stream().filter(v -> protocol.equals(protocolOf(v))).map(VirtualPlcEntity::getId).toList();
 				ps.add(ofKind.isEmpty() ? cb.disjunction() : root.get("vplcId").in(ofKind));
 			}
 			if (q.from() != null) ps.add(cb.greaterThanOrEqualTo(root.get("timestamp"), q.from()));
 			if (q.to() != null) ps.add(cb.lessThanOrEqualTo(root.get("timestamp"), q.to()));
 			return cb.and(ps.toArray(jakarta.persistence.criteria.Predicate[]::new));
 		};
-		PageRequest pr = PageRequest.of(q.pageOrDefault(), q.sizeOrDefault(),
-			Sort.by(Sort.Order.desc("timestamp"), Sort.Order.desc("seqNo")));
-		org.springframework.data.domain.Page<ConnectionClientHistoryEntity> found = connectionClientHistoryRepository.findAll(spec, pr);
-		List<ConnectionClientHistoryInfo> items = found.getContent().stream().map(e -> {
-			ConnectionClientHistoryInfo info = e.info();
-			VirtualPlcEntity v = vplcs.get(e.getVplcId());
-			if (v != null) {
-				info.setVplcName(v.getName());
-				info.setProtocol(v.getProtocol() == null || v.getProtocol().isBlank() ? "MELSEC_MC" : v.getProtocol());
-			}
-			return info;
-		}).toList();
-		return new ConnectionHistoryPage(items, found.getTotalElements(), q.pageOrDefault(), q.sizeOrDefault());
+	}
+
+	private static String protocolOf(VirtualPlcEntity v) {
+		return v.getProtocol() == null || v.getProtocol().isBlank() ? "MELSEC_MC" : v.getProtocol();
+	}
+
+	private static ConnectionClientHistoryInfo withVplc(ConnectionClientHistoryEntity e, Map<String, VirtualPlcEntity> vplcs) {
+		ConnectionClientHistoryInfo info = e.info();
+		VirtualPlcEntity v = vplcs.get(e.getVplcId());
+		if (v != null) {
+			info.setVplcName(v.getName());
+			info.setProtocol(protocolOf(v));
+		}
+		return info;
 	}
 
 	@Override

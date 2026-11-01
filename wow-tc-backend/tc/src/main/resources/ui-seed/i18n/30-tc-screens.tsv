@@ -20,3 +20,14 @@ i18n.tc.home.failuresToday	오늘 실패	Failures today	本日の失敗	今日�
 i18n.tc.home.connectorState	커넥터 연결 상태	Connector status	コネクタ接続状態	连接器状态
 i18n.tc.home.recentErrors	최근 오류	Recent errors	最近のエラー	最近错误
 i18n.tc.home.updatedAt	갱신	Updated	更新	更新于
+i18n.tc.range.chunk	한 번에 받는 행 수	Rows per fetch	一度に取得する行数	每次获取行数
+i18n.tc.range.prevSegment	이전 구간	Previous range	前の区間	上一区间
+i18n.tc.range.nextSegment	다음 구간	Next range	次の区間	下一区间
+i18n.tc.range.exportSegment	지금 구간	Current range	現在の区間	当前区间
+i18n.tc.range.exportAll	검색 결과 전체	All results	検索結果すべて	全部搜索结果
+i18n.tc.range.exportCount	{n}건을 내려받습니다.	{n} rows will be downloaded.	{n}件をダウンロードします。	将下载 {n} 条。
+i18n.tc.range.exportTooMany	{n}건은 엑셀로 만들기에 많습니다(최대 {max}건) — 기간 등 조건을 좁히세요.	{n} rows are too many for Excel (max {max}) — narrow the conditions.	{n}件はExcelには多すぎます(最大{max}件) — 条件を絞ってください。	{n} 条对 Excel 来说太多(最多 {max} 条) — 请缩小条件。
+i18n.tc.range.exportStart	내려받기	Download	ダウンロード	下载
+i18n.common.excelDownload	엑셀 다운로드	Excel download	Excelダウンロード	Excel 下载
+i18n.common.cancel	취소	Cancel	キャンセル	取消
+i18n.common.close	닫기	Close	閉じる	关闭

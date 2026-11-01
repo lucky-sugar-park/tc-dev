@@ -1,6 +1,7 @@
 package com.wow.be.tc.msg.audit.impl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.wow.be.tc.msg.audit.AuditQuery;
+import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
+import com.wow.be.tc.utils.RangeQueries;
 
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -28,14 +31,38 @@ public class AuditQueryService {
 
 	private final ExchangedMessageAuditRepository repository;
 
+	private final ExchangedMessageAuditRangeableRepository rangeRepository;
+
+	private final RangeQueries rangeQueries;
+
 	@Transactional(readOnly = true)
 	public AuditQuery.Page search(AuditQuery q) {
 		int page = q.page() != null && q.page() >= 0 ? q.page() : 0;
 		int size = q.size() != null ? Math.min(Math.max(q.size(), 1), MAX_SIZE) : 100;
+		Page<ExchangedMessageAuditEntity> result = repository.findAll(specOf(q), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")));
+		return new AuditQuery.Page(result.getContent().stream().map(ExchangedMessageAuditEntity::info).toList(),
+			result.getTotalElements(), result.getNumber(), result.getSize());
+	}
+
+	/**
+	 * 구간 조회 — 화면의 구간 스크롤 표(docs/range-grid-design.md). 최신순, 스냅샷은 ID. 목록에는 본문(MSG_JSON)을 빼고 보낸다
+	 * (상세 창은 거래 ID 로 따로 읽는다). 엑셀에서 본문을 고르면 includeBody.
+	 */
+	@Transactional(readOnly = true)
+	public RangeQueries.Result<ExchangedMessageAuditInfo> range(AuditQuery q, RangeQueries.Params range, boolean includeBody) {
+		return rangeQueries.byKey(ExchangedMessageAuditEntity.class, specOf(q), "id", range, Sort.by(Sort.Direction.DESC, "id"),
+			repository, rangeRepository, e -> {
+				ExchangedMessageAuditInfo info = e.info();
+				if (!includeBody) info.setDataMap(new HashMap<>());
+				return info;
+			});
+	}
+
+	private static Specification<ExchangedMessageAuditEntity> specOf(AuditQuery q) {
 		if (q.from() != null && q.to() != null && q.from().after(q.to())) {
 			throw new IllegalArgumentException("기간의 시작이 끝보다 늦습니다");
 		}
-		Specification<ExchangedMessageAuditEntity> spec = (root, query, cb) -> {
+		return (root, query, cb) -> {
 			List<Predicate> ps = new ArrayList<>();
 			if (q.from() != null) {
 				ps.add(cb.greaterThanOrEqualTo(root.get("timestamp"), q.from()));
@@ -63,8 +90,5 @@ public class AuditQueryService {
 			}
 			return cb.and(ps.toArray(Predicate[]::new));
 		};
-		Page<ExchangedMessageAuditEntity> result = repository.findAll(spec, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")));
-		return new AuditQuery.Page(result.getContent().stream().map(ExchangedMessageAuditEntity::info).toList(),
-			result.getTotalElements(), result.getNumber(), result.getSize());
 	}
 }

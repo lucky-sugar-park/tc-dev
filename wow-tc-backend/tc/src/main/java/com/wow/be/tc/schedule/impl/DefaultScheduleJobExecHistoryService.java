@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import jakarta.persistence.criteria.Predicate;
@@ -25,6 +26,7 @@ import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryInfo;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryQuery;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryService;
+import com.wow.be.tc.utils.RangeQueries;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,6 +40,12 @@ public class DefaultScheduleJobExecHistoryService
 
 	@Autowired
 	private ScheduleJobRepository scheduleJobRepository;
+
+	@Autowired
+	private ScheduleJobExecHistoryRangeableRepository rangeRepository;
+
+	@Autowired
+	private RangeQueries rangeQueries;
 
 	@Override
 	public void saveScheduleJobExecHistory(ScheduleJobExecHistoryInfo scheduleJobExecHistoryInfo) {
@@ -106,6 +114,20 @@ public class DefaultScheduleJobExecHistoryService
 
 	@Override
 	public Page<ScheduleJobExecHistoryInfo> query(ScheduleJobExecHistoryQuery q) {
+		int page = q.page() != null ? Math.max(q.page(), 0) : 0;
+		int size = q.size() != null ? Math.min(Math.max(q.size(), 1), 500) : 50;
+		PageRequest req = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seqNo"));
+		return scheduleJobExecHistoryRepository.findAll(specOf(q), req).map(ScheduleJobExecHistoryEntity::info);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public RangeQueries.Result<ScheduleJobExecHistoryInfo> range(ScheduleJobExecHistoryQuery q, RangeQueries.Params range) {
+		return rangeQueries.byKey(ScheduleJobExecHistoryEntity.class, specOf(q), "seqNo", range, Sort.by(Sort.Direction.DESC, "seqNo"),
+			scheduleJobExecHistoryRepository, rangeRepository, ScheduleJobExecHistoryEntity::info);
+	}
+
+	private Specification<ScheduleJobExecHistoryEntity> specOf(ScheduleJobExecHistoryQuery q) {
 		// Job 이름·설명·상태 조건 → 그 Job 들의 이름(이력에는 이름만 있다). 상태를 고르면 지금 있는 Job 의 이력만,
 		// 글만 주면 지운 Job 의 이력도 이름으로 찾는다
 		String search = StringUtils.hasText(q.jobSearch()) ? q.jobSearch().trim().toLowerCase() : null;
@@ -131,10 +153,7 @@ public class DefaultScheduleJobExecHistoryService
 			if (StringUtils.hasText(q.result())) where.add(cb.equal(root.get("executionResult"), q.result()));
 			return cb.and(where.toArray(Predicate[]::new));
 		};
-		int page = q.page() != null ? Math.max(q.page(), 0) : 0;
-		int size = q.size() != null ? Math.min(Math.max(q.size(), 1), 500) : 50;
-		PageRequest req = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seqNo"));
-		return scheduleJobExecHistoryRepository.findAll(spec, req).map(ScheduleJobExecHistoryEntity::info);
+		return spec;
 	}
 
 	private static boolean contains(String value, String lowerNeedle) {

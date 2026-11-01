@@ -1,6 +1,8 @@
 import { tcConfig } from '../../shared/tcConfig';
+import type { RangePage, RangeParams } from '../../shared/components/RangeGrid';
 import type {
-  MemoryInfo, OpcUaInfo, OpcUaTag, OpcUaTagSpec, Vplc, VplcConnection, VplcConnectionHistoryPage, VplcConnectionHistoryQuery, VplcProtocol,
+  MemoryInfo, OpcUaInfo, OpcUaTag, OpcUaTagSpec, Vplc, VplcConnection, VplcConnectionHistory, VplcConnectionHistoryPage, VplcConnectionHistoryQuery,
+  VplcProtocol,
 } from '../types/vplc';
 
 const enc = encodeURIComponent;
@@ -38,6 +40,9 @@ export const vplcApi = {
   connections: (id: string) => call<VplcConnection[]>('GET', `/management/search/connection/${enc(id)}`),
   /** 연결 이력 한 쪽 — 가상 PLC 이름·IP, 종류, 기간. 최신순 */
   connectionHistories: (q: VplcConnectionHistoryQuery) => call<VplcConnectionHistoryPage>('POST', '/management/connection-histories/query', q),
+  /** 연결 이력 구간(docs/range-grid-design.md) — 조건은 connectionHistories 와 같고 page·size 는 쓰지 않는다 */
+  connectionHistoryRange: (filter: Omit<VplcConnectionHistoryQuery, 'page' | 'size'>, range: RangeParams) =>
+    call<RangePage<VplcConnectionHistory>>('POST', '/management/connection-histories/range', { filter, range }),
   control: (op: VplcControl, id: string) => call<Vplc>('POST', `/control/${op}/${enc(id)}`),
   /** 붙은 연결을 모두 끊는다(모든 종류) — tc 재연결 시험 */
   dropConnections: (id: string) => call<{ dropped: number }>('POST', `/control/drop-connections/${enc(id)}`),

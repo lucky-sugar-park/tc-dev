@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition;
+import com.wow.be.tc.utils.RangeQueries;
 
 public interface ScheduleJobExecHistoryService {
 
@@ -22,6 +23,9 @@ public interface ScheduleJobExecHistoryService {
 
 	/** 실행 이력 — 최신순 한 쪽 */
 	public abstract Page<ScheduleJobExecHistoryInfo> query(ScheduleJobExecHistoryQuery q);
+
+	/** 실행 이력 구간 — 화면의 구간 스크롤 표(docs/range-grid-design.md). 최신순, 스냅샷은 SEQ_NO. page·size 는 쓰지 않는다 */
+	public abstract RangeQueries.Result<ScheduleJobExecHistoryInfo> range(ScheduleJobExecHistoryQuery q, RangeQueries.Params range);
 
 	/** Job 이름 → 가장 최근 실행 이력 */
 	public abstract Map<String, ScheduleJobExecHistoryInfo> latestByJob();

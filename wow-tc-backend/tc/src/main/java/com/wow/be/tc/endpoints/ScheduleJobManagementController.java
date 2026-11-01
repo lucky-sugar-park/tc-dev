@@ -26,6 +26,7 @@ import com.wow.be.tc.schedule.ScheduleJobExecHistoryInfo;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryQuery;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryService;
 import com.wow.be.tc.schedule.ScheduleJobInfo;
+import com.wow.be.tc.utils.RangeQueries;
 import com.wow.be.tc.schedule.ScheduleJobKind;
 import com.wow.be.tc.schedule.ScheduleJobService;
 
@@ -159,5 +160,13 @@ public class ScheduleJobManagementController {
 	public ExecHistoryPage queryExecHistories(@RequestBody ScheduleJobExecHistoryQuery q) {
 		Page<ScheduleJobExecHistoryInfo> page = scheduleJobExecHistoryService.query(q);
 		return new ExecHistoryPage(page.getContent(), page.getTotalElements(), page.getNumber(), page.getSize());
+	}
+
+	@Operation(summary = "실행 이력 구간", description = "화면의 구간 스크롤 표·엑셀(docs/range-grid-design.md §4). 조건은 검색과 같고 page·size 는 쓰지 않는다. 최신순, 스냅샷 asOf(SEQ_NO), 건수는 withTotal 일 때만.")
+	@Requires(action = 'R')
+	@PostMapping("/exec-histories/range")
+	public RangeQueries.Result<ScheduleJobExecHistoryInfo> rangeExecHistories(@RequestBody RangeQueries.Request<ScheduleJobExecHistoryQuery> req) {
+		ScheduleJobExecHistoryQuery q = req.filter() != null ? req.filter() : new ScheduleJobExecHistoryQuery(null, null, null, null, null, null, null, null);
+		return scheduleJobExecHistoryService.range(q, req.rangeOrDefault());
 	}
 }

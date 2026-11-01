@@ -106,3 +106,4 @@ i18n.tc.vplc.connFrom	연결 기간 시작	Connected from	接続期間開始	连
 i18n.tc.vplc.connTo	연결 기간 끝	Connected to	接続期間終了	连接期间结束
 i18n.tc.vplc.histSearch	가상 PLC 이름·IP	Virtual PLC name·IP	仮想PLC名・IP	虚拟PLC名称·IP
 i18n.tc.vplc.connHistTitle	가상 PLC 연결 이력	Virtual PLC connection history	仮想PLC接続履歴	虚拟PLC连接历史
+i18n.tc.vplc.connHistExcelFile	가상PLC연결이력	VirtualPlcConnections	仮想PLC接続履歴	虚拟PLC连接历史

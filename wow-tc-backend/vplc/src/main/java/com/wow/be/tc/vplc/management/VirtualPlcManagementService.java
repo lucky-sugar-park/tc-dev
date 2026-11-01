@@ -47,6 +47,9 @@ public interface VirtualPlcManagementService {
 
 	/** 연결 이력 한 쪽 — 가상 PLC 이름·IP, 종류, 기간으로 찾는다. 최신순, 항목에 가상 PLC 이름·종류를 채운다 */
 	public ConnectionHistoryPage queryConnectionHistories(ConnectionHistoryQuery query);
+
+	/** 연결 이력 구간 — 화면의 구간 스크롤 표(docs/range-grid-design.md). 스냅샷 SEQ_NO, 건수는 withTotal 일 때만 */
+	public ConnectionHistoryRange rangeConnectionHistories(ConnectionHistoryQuery query, ConnectionHistoryRange.Params range);
 	
 	public List<ConnectionInfo> searchConnections(String vplcId) throws VirtualPlcException;
 	
