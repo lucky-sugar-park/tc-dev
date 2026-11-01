@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Checkbox, Chip, FormControlLabel, MenuItem, TextField, Typography } from '@mui/material';
-import { type GridColDef, type GridRowSelectionModel } from '@mui/x-data-grid-pro';
-import ReplayIcon from '@mui/icons-material/Replay';
+import { GridActionsCellItem, type GridColDef, type GridRowSelectionModel } from '@mui/x-data-grid-pro';
+import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { CommandBarActions, FilterBar, PageContainer, ScreenAction, useI18n } from 'wow-mes-frontend-shared';
 import { RangeExportDialog, RangeGrid, useRangeGrid, type RangeParams } from '../../shared/components/RangeGrid';
 import { fmtTime } from '../../shared/format';
@@ -12,6 +12,9 @@ import { auditApi } from '../services/opsApi';
 import type { AuditRow } from '../types/ops';
 
 const TYPES = ['REQUEST', 'RESPONSE', 'ERROR', 'DELIVERY'];
+
+/** 결과 재전송할 수 있는 기록 — 전달 기록은 같은 대상으로, 응답·오류 기록은 고른 대상으로(docs/redelivery-design.md) */
+const REDELIVERABLE = ['DELIVERY', 'RESPONSE', 'ERROR'];
 
 /** datetime-local 값(이 브라우저 시각) ↔ ISO */
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -73,7 +76,15 @@ export default function AuditPage(): ReactElement {
     { field: 'route', headerName: t('i18n.tc.audit.route', '보낸 곳 → 받는 곳'), width: 220, valueGetter: (_v, r) => (r.id ? `${r.sender ?? ''} → ${r.receiver ?? ''}` : '') },
     { field: 'principal', headerName: t('i18n.tc.audit.principal', '호출자'), width: 140 },
     { field: 'description', headerName: t('i18n.tc.common.description', '설명'), flex: 1, minWidth: 220 },
-  ], [t]);
+    // 작업 칸(오른쪽 고정) — 그 한 줄을 결과 재전송. 다시 보낼 수 있는 기록(전달·응답·오류)만, 관리자만
+    ...(canRedeliver ? [{
+      field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 70,
+      getActions: ({ row }) => (REDELIVERABLE.includes(row.messageType)
+        ? [<GridActionsCellItem key="redeliver" icon={<SendOutlinedIcon />} label={t('i18n.tc.redeliver.title', '결과 재전송')}
+          onClick={() => setRedeliver([row])} />]
+        : []),
+    } as GridColDef<AuditRow>] : []),
+  ], [t, canRedeliver]);
 
   const selectedRows = (): AuditRow[] => [...(grid.apiRef.current?.getSelectedRows().values() ?? [])] as AuditRow[];
 
@@ -83,7 +94,8 @@ export default function AuditPage(): ReactElement {
         <ScreenAction kind="refresh" onClick={() => grid.refresh()} />
         <ScreenAction kind="excelDown" onClick={() => setExporting(true)} disabled={!grid.total} />
         {canRedeliver && (
-          <ScreenAction icon={<ReplayIcon fontSize="small" />} label={t('i18n.tc.redeliver.title', '결과 재전송')}
+          // 새로 고침(↻)과 헷갈리지 않게 보내기 아이콘 — 표의 작업 칸과 같은 아이콘
+          <ScreenAction icon={<SendOutlinedIcon fontSize="small" />} label={t('i18n.tc.redeliver.title', '결과 재전송')}
             onClick={() => setRedeliver(selectedRows())} />
         )}
       </CommandBarActions>

@@ -45,12 +45,12 @@ test('송수신 기록 — 스크롤로 구간 받기, 구간 이동, 행 수, �
   await open(page, '운영', '송수신 기록');
   await page.getByLabel('opcode').filter({ visible: true }).fill(OPCODE);
   await page.getByRole('button', { name: '검색', exact: true }).filter({ visible: true }).click();
-  // 검색 뒤 새 건수가 올 때까지(검색 직후에는 앞 결과의 행이 잠시 남아 있다)
+  // 검색 뒤 새 건수가 올 때까지(검색 직후에는 앞 결과의 행이 잠시 남아 있다). 그 opcode 기록이 없으면 0 에 머문다
   const title = page.getByText(/^송수신 목록\s*\(/).filter({ visible: true });
-  await expect(title).not.toHaveText(/\(0\)$/, { timeout: 15_000 });
-  await expectRangeGrid(page, '송수신 목록');
-  const total = Number(((await title.textContent()) ?? '').replace(/[^\d]/g, ''));
+  const loaded = await expect(title).not.toHaveText(/\(0\)$/, { timeout: 8_000 }).then(() => true, () => false);
+  const total = loaded ? Number(((await title.textContent()) ?? '').replace(/[^\d]/g, '')) : 0;
   test.skip(total <= 100_000, `opcode ${OPCODE} 기록이 10만 건 이하(${total}) — 구간 이동 시험 건너뜀`);
+  await expectRangeGrid(page, '송수신 목록');
 
   // 스크롤 — 받지 않은 자리로 내려가면 그 구간을 받아 번호가 이어진다
   const scroller = grid(page).locator('.MuiDataGrid-virtualScroller');

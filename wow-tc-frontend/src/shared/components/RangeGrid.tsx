@@ -185,7 +185,8 @@ function RangeControls<T extends GridValidRowModel>({ grid }: { grid: RangeGridS
         renderInput={(p) => (
           <TextField {...p} onBlur={() => commit(text)}
             // 라벨·테두리 없이 — 왼쪽 글이 라벨이다
-            sx={{ '& .MuiOutlinedInput-notchedOutline': { border: 'none' }, '& .MuiInputBase-input': { textAlign: 'right' } }}
+            // 높이도 낮춰 제목 줄이 표에 붙게
+            sx={{ '& .MuiOutlinedInput-notchedOutline': { border: 'none' }, '& .MuiInputBase-input': { textAlign: 'right' }, '& .MuiInputBase-root': { height: 28, py: 0 } }}
             slotProps={{ ...p.slotProps, htmlInput: { ...p.slotProps.htmlInput, 'aria-label': t('i18n.tc.range.chunk', '한 번에 받는 행 수'), inputMode: 'numeric' } }} />
         )}
       />
@@ -211,7 +212,8 @@ export function RangeGrid<T extends GridValidRowModel>({ grid, title, columns, g
     ...columns,
   ]), [columns, t]);
   return (
-    <>
+    // 제목 줄과 표는 붙여 둔다(페이지의 다른 칸 사이 간격 8px 보다 좁게)
+    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
       <ListTitle title={title} count={grid.total ?? 0}>
         <RangeControls grid={grid} />
       </ListTitle>
@@ -224,7 +226,8 @@ export function RangeGrid<T extends GridValidRowModel>({ grid, title, columns, g
             dataSource={grid.dataSource}
             dataSourceCache={null}
             lazyLoading
-            initialState={{ pagination: { paginationModel: { page: 0, pageSize: grid.chunk } } }}
+            // 작업 칸(field 'actions')은 오른쪽에 고정
+            initialState={{ pagination: { paginationModel: { page: 0, pageSize: grid.chunk } }, pinnedColumns: { left: [], right: ['actions'] } }}
             onDataSourceError={(e) => showToast(e instanceof GridGetRowsError ? (e.cause instanceof Error ? e.cause.message : e.message) : String(e), 'error')}
             hideFooter density="compact" showColumnVerticalBorder showCellVerticalBorder disableRowSelectionOnClick
             disableColumnSorting disableColumnFilter
@@ -234,7 +237,7 @@ export function RangeGrid<T extends GridValidRowModel>({ grid, title, columns, g
           />
         </Box>
       </Box>
-    </>
+    </Box>
   );
 }
 
