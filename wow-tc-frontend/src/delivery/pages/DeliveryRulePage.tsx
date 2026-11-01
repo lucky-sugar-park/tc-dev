@@ -132,7 +132,7 @@ export default function DeliveryRulePage(): ReactElement {
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.delivery.search', '인터페이스·대상·ID')} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.id ?? ''} pinLeft={['interfaceName']} title={t('i18n.tc.delivery.listTitle', '전달 정의 목록')} isInactive={(r) => !r.use} />
+        <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.id ?? ''} pinLeft={['interfaceName']} title={t('i18n.tc.delivery.listTitle', '전달 정의 목록')} isInactive={(r) => !r.use} />
       </Box>
       <DeliveryRuleFormDialog open={form.open} initial={form.initial} interfaces={interfaces} webhooks={webhooks} dbConnections={dbConnections}
         error={form.error} onClose={() => setForm({ open: false })} onSubmit={(r) => { void save(r); }} />

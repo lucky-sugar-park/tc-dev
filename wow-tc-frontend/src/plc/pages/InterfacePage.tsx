@@ -193,7 +193,7 @@ export default function InterfacePage(): ReactElement {
           </>
         )} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} isInactive={(r) => !r.use} title={t('i18n.tc.interface.listTitle', '인터페이스 목록')} />
+        <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} isInactive={(r) => !r.use} title={t('i18n.tc.interface.listTitle', '인터페이스 목록')} />
       </Box>
       <InterfaceFormDialog open={form.open} initial={form.initial} connectors={connectors} protocols={protocols}
         error={form.error} onClose={() => setForm({ open: false })} onSubmit={(info) => { void save(info); }} />

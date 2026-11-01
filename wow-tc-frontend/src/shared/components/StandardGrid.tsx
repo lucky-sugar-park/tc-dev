@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Box, TablePagination } from '@mui/material';
+import { useI18n } from 'wow-mes-frontend-shared';
 import { DataGridPro, type DataGridProProps, type GridColDef, type GridPaginationModel, type GridValidRowModel } from '@mui/x-data-grid-pro';
 import { ListTitle } from './ListTitle';
 import { TotalCountFooter } from './TotalCountFooter';
@@ -27,6 +28,25 @@ export function TopPagination({ count, model, onChange }: {
   );
 }
 
+/** 번호 칸 필드 */
+export const ROW_NO_FIELD = '__rowNo';
+
+/**
+ * 번호 칸 — 지금 보이는 순서(검색·정렬 반영)의 위치. 쪽 넘김이면 앞 쪽들의 행 수를 더한다. 데이터가 아니라 화면 위치라 정렬·거르기는 없다.
+ */
+export function rowNumberColumn<T extends GridValidRowModel>(headerName: string): GridColDef<T> {
+  return {
+    field: ROW_NO_FIELD, headerName, width: 70, type: 'number', sortable: false, filterable: false, disableColumnMenu: true,
+    renderCell: (p) => {
+      const index = p.api.getRowIndexRelativeToVisibleRows(p.id);
+      if (index == null || index < 0) return '';
+      const model = p.api.state.pagination?.paginationModel;
+      const offset = p.api.state.pagination?.enabled !== false && model ? model.page * model.pageSize : 0;
+      return (offset + index + 1).toLocaleString();
+    },
+  };
+}
+
 /** 행 수가 줄어 지금 쪽이 비면 마지막 쪽으로 */
 export function clampPage(m: GridPaginationModel, count: number): GridPaginationModel {
   const last = Math.max(0, Math.ceil(count / m.pageSize) - 1);
@@ -43,7 +63,7 @@ export function clampPage(m: GridPaginationModel, count: number): GridPagination
  * </ul>
  * 그 밖의 DataGrid 속성(인라인 편집 등)은 {@code gridProps} 로. 작업 칸의 아이콘(⋮ 포함)에는 이름을 툴팁으로 단다.
  */
-export function StandardGrid<T extends GridValidRowModel>({ rows, columns, loading, getRowId, isInactive, onRowClick, selectedId, pinLeft, minHeight = 0, pagination, title, titleExtra, gridProps }: {
+export function StandardGrid<T extends GridValidRowModel>({ rows, columns, loading, getRowId, isInactive, onRowClick, selectedId, pinLeft, minHeight = 0, pagination, title, titleExtra, numbered, gridProps }: {
   rows: T[];
   columns: GridColDef<T>[];
   loading?: boolean;
@@ -60,9 +80,14 @@ export function StandardGrid<T extends GridValidRowModel>({ rows, columns, loadi
   title?: string;
   /** 제목 줄에서 쪽 넘김 왼쪽에 둘 것 */
   titleExtra?: ReactNode;
+  /** 첫 칸에 번호(보이는 순서) — 왼쪽 고정 칸이 있으면 그 앞에 고정 */
+  numbered?: boolean;
   gridProps?: Partial<DataGridProProps<T>>;
 }) {
-  const cols = useMemo(() => withActionTooltips(columns), [columns]);
+  const { t } = useI18n();
+  const cols = useMemo(() => withActionTooltips(numbered ? [rowNumberColumn<T>(t('i18n.tc.schedule.no', '번호')), ...columns] : columns),
+    [columns, numbered, t]);
+  const pinned = numbered && pinLeft?.length ? [ROW_NO_FIELD, ...pinLeft] : (pinLeft ?? []);
   const [ownModel, setOwnModel] = useState<GridPaginationModel>({ page: 0, pageSize: PAGE_SIZE_OPTIONS[0] });
   const model = gridProps?.paginationModel ?? ownModel;
   const setModel = (m: GridPaginationModel) => {
@@ -91,7 +116,7 @@ export function StandardGrid<T extends GridValidRowModel>({ rows, columns, loadi
             }
             : { slots: { footer: TotalCountFooter, moreActionsIcon: MoreActionsIcon }, slotProps: { footer: { total: rows.length } } })}
           initialState={{
-            pinnedColumns: { left: pinLeft ?? [], right: ['actions'] },
+            pinnedColumns: { left: pinned, right: ['actions'] },
             ...(paged ? { pagination: { paginationModel: { page: 0, pageSize: PAGE_SIZE_OPTIONS[0] } } } : {}),
           }}
           onRowClick={onRowClick ? (p) => onRowClick(p.row as T) : undefined}

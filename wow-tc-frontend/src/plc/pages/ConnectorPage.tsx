@@ -315,22 +315,26 @@ export default function ConnectorPage(): ReactElement {
     <PageContainer>
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} onExport={exportExcel}
-        placeholder={t('i18n.tc.connector.search', '이름·주소·프로토콜')} />
+        placeholder={t('i18n.tc.connector.search', '이름·주소·프로토콜')}
+        // 카드 | 표 보기 — 통합검색 오른쪽
+        filters={(
+          <ToggleButtonGroup size="small" exclusive value={view} onChange={(_e, v: View | null) => changeView(v)}
+            sx={{ height: 32, alignSelf: 'flex-end' }}>
+            <ToggleButton value="card" aria-label={t('i18n.tc.connector.viewCard', '카드로 보기')}>
+              <Tooltip title={t('i18n.tc.connector.viewCard', '카드로 보기')}><ViewModuleIcon fontSize="small" /></Tooltip>
+            </ToggleButton>
+            <ToggleButton value="table" aria-label={t('i18n.tc.connector.viewTable', '표로 보기')}>
+              <Tooltip title={t('i18n.tc.connector.viewTable', '표로 보기')}><ViewListIcon fontSize="small" /></Tooltip>
+            </ToggleButton>
+          </ToggleButtonGroup>
+        )} />
       <ListTitle title={t('i18n.tc.connector.listTitle', 'PLC 커넥터 목록')} count={filtered.length}>
-        <ToggleButtonGroup size="small" exclusive value={view} onChange={(_e, v: View | null) => changeView(v)}>
-          <ToggleButton value="card" aria-label={t('i18n.tc.connector.viewCard', '카드로 보기')}>
-            <Tooltip title={t('i18n.tc.connector.viewCard', '카드로 보기')}><ViewModuleIcon fontSize="small" /></Tooltip>
-          </ToggleButton>
-          <ToggleButton value="table" aria-label={t('i18n.tc.connector.viewTable', '표로 보기')}>
-            <Tooltip title={t('i18n.tc.connector.viewTable', '표로 보기')}><ViewListIcon fontSize="small" /></Tooltip>
-          </ToggleButton>
-        </ToggleButtonGroup>
         {/* 쪽 넘김 — 카드·표가 같은 쪽을 쓴다 */}
         <TopPagination count={filtered.length} model={page} onChange={setPage} />
       </ListTitle>
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {view === 'table' ? (
-          <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']}
+          <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']}
             isInactive={(r) => !r.published} pagination
             gridProps={{
               paginationModel: page, onPaginationModelChange: setPage, hideFooter: true,

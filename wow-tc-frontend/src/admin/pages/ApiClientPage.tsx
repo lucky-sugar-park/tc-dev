@@ -138,7 +138,7 @@ export default function ApiClientPage(): ReactElement {
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.apiclient.search', 'ID·이름·opcode')} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.clientId} pinLeft={['clientId']} title={t('i18n.tc.apiclient.listTitle', 'API 클라이언트 목록')} isInactive={(r) => !r.enabled} />
+        <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.clientId} pinLeft={['clientId']} title={t('i18n.tc.apiclient.listTitle', 'API 클라이언트 목록')} isInactive={(r) => !r.enabled} />
       </Box>
       <ApiClientFormDialog open={form.open} initial={form.initial} opcodes={opcodes} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(c) => { void save(c); }} />

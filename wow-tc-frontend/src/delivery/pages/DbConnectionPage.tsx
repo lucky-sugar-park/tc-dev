@@ -118,7 +118,7 @@ export default function DbConnectionPage(): ReactElement {
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.dbconn.search', '이름·URL')} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} isInactive={(r) => !r.use} title={t('i18n.tc.dbconn.listTitle', '외부 연결 DB 목록')} />
+        <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} isInactive={(r) => !r.use} title={t('i18n.tc.dbconn.listTitle', '외부 연결 DB 목록')} />
       </Box>
       <DbConnectionFormDialog open={form.open} initial={form.initial} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(c) => { void save(c); }} />

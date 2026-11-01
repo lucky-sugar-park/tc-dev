@@ -102,3 +102,4 @@ i18n.tc.code.confirmDelete	{code} 을(를) 지울까요?	Delete {code}?	{code} �
 i18n.tc.user.listTitle	사용자 목록	Users	ユーザー一覧	用户列表
 i18n.tc.apiclient.listTitle	API 클라이언트 목록	API clients	APIクライアント一覧	API 客户端列表
 i18n.tc.i18nmgmt.listTitle	다국어 목록	Translations	多言語一覧	多语言列表
+i18n.tc.code.listTitle	공통 코드 목록	Common codes	共通コード一覧	通用代码列表

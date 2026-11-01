@@ -31,3 +31,6 @@ i18n.tc.range.exportStart	내려받기	Download	ダウンロード	下载
 i18n.common.excelDownload	엑셀 다운로드	Excel download	Excelダウンロード	Excel 下载
 i18n.common.cancel	취소	Cancel	キャンセル	取消
 i18n.common.close	닫기	Close	閉じる	关闭
+i18n.tc.split.show	왼쪽 펴기	Show left pane	左側を表示	展开左侧
+i18n.tc.split.hide	왼쪽 접기	Hide left pane	左側を隠す	收起左侧
+i18n.tc.split.resize	왼쪽 넓이 조절	Resize left pane	左側の幅を調整	调整左侧宽度

@@ -8,7 +8,9 @@ import { useIsActiveScreen } from 'wow-mes-frontend-framework';
 import {
   DialogFooter, DialogTitleClose, DraggablePaper, LoadErrorState, PageContainer, extractApiError, showConfirm, showToast, useI18n, useLoadFailure,
 } from 'wow-mes-frontend-shared';
+import { ListTitle } from '../../shared/components/ListTitle';
 import { ListToolbar } from '../../shared/components/ListToolbar';
+import { SplitPane } from '../../shared/components/SplitPane';
 import { StandardGrid } from '../../shared/components/StandardGrid';
 import { matches } from '../../shared/format';
 import { usePerm } from '../../shared/usePerm';
@@ -16,6 +18,9 @@ import { commonCodeApi } from '../services/adminApi';
 import type { CommonCode } from '../types/admin';
 
 const SCREEN = 'tc.admin.code';
+
+/** 두 표의 머리 줄 — 같은 높이(오른쪽은 코드 등록 단추가 있다) */
+const HEAD_SX = { px: 1.5, py: 0.5, minHeight: 40, display: 'flex', flexDirection: 'column', justifyContent: 'center' } as const;
 
 function CodeFormDialog({ open, parent, initial, onClose, onSubmit, error }: {
   open: boolean;
@@ -168,21 +173,27 @@ export default function CommonCodePage(): ReactElement {
     <PageContainer>
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void reload(); }}
         onAdd={perm('C') ? () => setForm({ open: true, parent: null }) : undefined} placeholder={t('i18n.tc.code.search', '그룹 코드·이름')} />
-      <Box sx={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '380px 1fr' }, gap: 1 }}>
-        <Paper variant="outlined" sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <StandardGrid rows={filteredGroups} columns={groupCols} loading={loading} getRowId={(r) => r.code}
+      {/* 왼쪽 그룹·오른쪽 코드 — 가운데 막대로 넓이 조절, 단추로 왼쪽 접기 */}
+      <SplitPane storageKey="tc.commonCode.split" left={(
+        <Paper variant="outlined" sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Box sx={HEAD_SX}>
+            <ListTitle title={t('i18n.tc.code.listTitle', '공통 코드 목록')} />
+          </Box>
+          <StandardGrid numbered rows={filteredGroups} columns={groupCols} loading={loading} getRowId={(r) => r.code}
             onRowClick={(r) => setGroup(r.code)} selectedId={group ?? undefined} isInactive={(r) => r.isUse === false} />
         </Paper>
-        <Paper variant="outlined" sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Stack direction="row" sx={{ alignItems: 'center', px: 1.5, py: 0.5, gap: 1 }}>
-            <Typography variant="subtitle2" sx={{ flex: 1 }}>{group ?? t('i18n.tc.code.pickGroup', '왼쪽에서 그룹을 고르세요')}</Typography>
-            {group && perm('C') && (
-              <Button size="small" startIcon={<AddIcon />} onClick={() => setForm({ open: true, parent: group })}>{t('i18n.tc.code.add', '코드 등록')}</Button>
-            )}
-          </Stack>
-          <StandardGrid rows={codes} columns={codeCols} getRowId={(r) => r.code} isInactive={(r) => r.isUse === false} />
+      )} right={(
+        <Paper variant="outlined" sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Box sx={HEAD_SX}>
+            <ListTitle title={group ?? t('i18n.tc.code.pickGroup', '왼쪽에서 그룹을 고르세요')}>
+              {group && perm('C') && (
+                <Button size="small" startIcon={<AddIcon />} onClick={() => setForm({ open: true, parent: group })}>{t('i18n.tc.code.add', '코드 등록')}</Button>
+              )}
+            </ListTitle>
+          </Box>
+          <StandardGrid numbered rows={codes} columns={codeCols} getRowId={(r) => r.code} isInactive={(r) => r.isUse === false} />
         </Paper>
-      </Box>
+      )} />
       <CodeFormDialog open={form.open} parent={form.parent} initial={form.initial} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(c) => { void save(c); }} />
     </PageContainer>

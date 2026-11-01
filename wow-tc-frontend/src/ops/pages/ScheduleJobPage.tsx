@@ -226,7 +226,7 @@ export default function ScheduleJobPage(): ReactElement {
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.schedule.search', '이름·설명')} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ flex: current ? '1 1 45%' : 1, minHeight: 180, display: 'flex', flexDirection: 'column' }}>
-          <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} title={t('i18n.tc.schedule.listTitle', '스케줄 Job 목록')} isInactive={(r) => !r.use}
+          <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} title={t('i18n.tc.schedule.listTitle', '스케줄 Job 목록')} isInactive={(r) => !r.use}
             onRowClick={(r) => setSelected(r.name)} selectedId={selected ?? undefined} />
         </Box>
         {current ? (

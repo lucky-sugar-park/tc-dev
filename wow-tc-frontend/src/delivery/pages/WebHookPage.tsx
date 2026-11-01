@@ -93,7 +93,7 @@ export default function WebHookPage(): ReactElement {
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.webhook.search', '이름·URL')} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} title={t('i18n.tc.webhook.listTitle', 'WebHook 목록')} />
+        <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} title={t('i18n.tc.webhook.listTitle', 'WebHook 목록')} />
       </Box>
       <WebHookFormDialog open={form.open} initial={form.initial} canTest={perm('X')} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(h) => { void save(h); }} />

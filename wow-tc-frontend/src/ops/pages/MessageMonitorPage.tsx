@@ -3,6 +3,7 @@ import { Box, Chip, FormControlLabel, MenuItem, Switch, TextField, Typography } 
 import { DataGridPro, type GridColDef } from '@mui/x-data-grid-pro';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import { CommandBarActions, FilterBar, PageContainer, ScreenAction, serverEvents, useI18n } from 'wow-mes-frontend-shared';
+import { rowNumberColumn } from '../../shared/components/StandardGrid';
 import { fmtTime, matches } from '../../shared/format';
 import { AuditDetailDialog, TYPE_COLOR, isFailed } from '../components/AuditDetailDialog';
 import type { AuditRow } from '../types/ops';
@@ -41,6 +42,8 @@ export default function MessageMonitorPage(): ReactElement {
   }), [rows]);
 
   const columns = useMemo<GridColDef<AuditRow>[]>(() => [
+    // 번호 — 보이는 순서(맨 위가 가장 최근에 받은 것)
+    rowNumberColumn<AuditRow>(t('i18n.tc.schedule.no', '번호')),
     { field: 'timestamp', headerName: t('i18n.tc.audit.time', '시각'), width: 170, valueFormatter: (v: string) => fmtTime(v) },
     {
       field: 'messageType', headerName: t('i18n.tc.audit.type', '종류'), width: 110,
