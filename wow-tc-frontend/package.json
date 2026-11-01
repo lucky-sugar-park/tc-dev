@@ -1,6 +1,6 @@
 {
   "name": "wow-tc-frontend",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "description": "tc(PLC 게이트웨이) 화면 — mes-dev 의 framework·shared 를 쓰는 독립 앱 (docs/frontend-design.md)",
