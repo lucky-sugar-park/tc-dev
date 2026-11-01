@@ -45,7 +45,7 @@ DEVS = [common.ensure_vplc(d) for d in common.E2E_MODBUS]
 if None in DEVS:
     print(f"SKIP vplc 가 없습니다({common.VPLC_BASE}) — wow-tc-backend 에서 vplc 를 띄우세요")
     sys.exit(0)
-MB1, MB2 = (common.VPLC_BASE + "/api/v1/vplc/modbus/" + d["id"] for d in DEVS)
+MB1, MB2 = (common.VPLC_BASE + "/api/v1/vplc/memory/" + d["id"] + "/area" for d in DEVS)
 
 TOKEN = common.admin_token()
 
@@ -114,7 +114,7 @@ try:
     check("쓰기 36.6·코일 → readBack", s == 200 and w.get("data") == {"set": 36.6, "lamp": True}, (s, w))
     s, hr = http("GET", MB1 + "/hr?start=9&count=1")
     s2, co = http("GET", MB1 + "/co?start=4&count=1")
-    check("가상 장치에는 원시 366·코일 켜짐(프로토콜 주소 9·4)", hr.get("values") == [366] and co.get("values") == [True], (hr, co))
+    check("가상 장치에는 원시 366·코일 켜짐(프로토콜 주소 9·4)", hr.get("values") == [366] and co.get("values") == [1], (hr, co))
 finally:
     for name in created:
         call("DELETE", f"/api/v1/ifsvc/management/delete/byName/{name}")

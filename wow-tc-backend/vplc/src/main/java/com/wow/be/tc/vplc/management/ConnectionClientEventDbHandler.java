@@ -4,8 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.wow.be.tc.vplc.VirtualPlcException;
-import com.wow.be.tc.vplc.machine.ClientConnectionEvent;
-import com.wow.be.tc.vplc.machine.ClientConnectionEventListener;
+import com.wow.be.tc.vplc.core.connection.ClientConnectionEvent;
+import com.wow.be.tc.vplc.core.connection.ClientConnectionEventListener;
 
 import lombok.extern.slf4j.Slf4j;
 

@@ -1,5 +1,5 @@
 import { tcConfig } from '../../shared/tcConfig';
-import type { ModbusTable, OpcUaInfo, OpcUaTag, OpcUaTagSpec, Vplc, VplcConnection, VplcMemory, VplcProtocol } from '../types/vplc';
+import type { MemoryInfo, OpcUaInfo, OpcUaTag, OpcUaTagSpec, Vplc, VplcConnection, VplcProtocol } from '../types/vplc';
 
 const enc = encodeURIComponent;
 
@@ -35,46 +35,29 @@ export const vplcApi = {
   release: (id: string) => call<void>('POST', `/management/release/${enc(id)}`),
   connections: (id: string) => call<VplcConnection[]>('GET', `/management/search/connection/${enc(id)}`),
   control: (op: VplcControl, id: string) => call<Vplc>('POST', `/control/${op}/${enc(id)}`),
-  read: (v: Vplc, memoryType: string, startAddress: number, wordCount: number) =>
-    call<VplcMemory>('POST', '/manipulation/read', { vplcId: v.id, memoryType, frameFormat: v.frameFormat, startAddress, wordCount }),
-  /** 워드 값(-32768~65535) */
-  writeWords: (v: Vplc, memoryType: string, startAddress: number, words: number[]) =>
-    call<VplcMemory>('POST', '/manipulation/write', { vplcId: v.id, memoryType, frameFormat: v.frameFormat, startAddress, words }),
-  /** 문자열(ASCII) — 한 워드에 두 글자, 낮은 바이트가 앞 글자 */
-  writeText: (v: Vplc, memoryType: string, startAddress: number, text: string) =>
-    call<VplcMemory>('POST', '/manipulation/write', {
-      vplcId: v.id, memoryType, frameFormat: v.frameFormat, startAddress, wordCount: Math.ceil(text.length / 2), data: text,
-    }),
-  clearAll: (v: Vplc, memoryType: string, currentPosition: number) =>
-    call<VplcMemory>('POST', '/manipulation/clear/all', { vplcId: v.id, memoryType, frameFormat: v.frameFormat, currentPosition }),
   /** 붙은 연결을 모두 끊는다(모든 종류) — tc 재연결 시험 */
   dropConnections: (id: string) => call<{ dropped: number }>('POST', `/control/drop-connections/${enc(id)}`),
-
-  // Modbus — 번호는 프로토콜 주소(0부터)
-  /** 비트 영역은 true/false, 레지스터는 0~65535 */
-  modbusRead: (id: string, table: ModbusTable, start: number, count: number) =>
-    call<{ start: number; values: (number | boolean)[] }>('GET', `/modbus/${enc(id)}/${table}?start=${start}&count=${count}`),
-  modbusWrite: (id: string, table: ModbusTable, start: number, values: (number | boolean)[]) =>
-    call<{ start: number; values: (number | boolean)[] }>('PUT', `/modbus/${enc(id)}/${table}`, { start, values }),
-  /** 응답 지연(ms) — 설정에도 남는다 */
+  /** Modbus 응답 지연(ms) — 설정에도 남는다 */
   modbusDelay: (id: string, delayMs: number) => call<Vplc>('POST', `/control/delay/${enc(id)}`, { delayMs }),
-
-  // OPC UA — 태그 경로는 Line1.Temp 처럼
+  /** OPC UA 엔드포인트·네임스페이스 번호·세션 수 */
   opcUaInfo: (id: string) => call<OpcUaInfo>('GET', `/opcua/${enc(id)}`),
-  opcUaTags: (id: string) => call<OpcUaTag[]>('GET', `/opcua/${enc(id)}/tags`),
-  opcUaAddTag: (id: string, spec: OpcUaTagSpec) => call<void>('POST', `/opcua/${enc(id)}/tags`, spec),
-  /** 지금 값 — 실행 중일 때만 */
-  opcUaSetValue: (id: string, path: string, value: unknown) => call<OpcUaTag>('PUT', `/opcua/${enc(id)}/tags/${enc(path)}`, { value }),
-  opcUaRemoveTag: (id: string, path: string) => call<void>('DELETE', `/opcua/${enc(id)}/tags/${enc(path)}`),
-};
 
-/** Modbus 영역 — 코일·입력 비트는 16개를 한 줄(워드)로 묶어 보인다. 입력 영역(IR·DI)도 화면에서는 바꿀 수 있다(장비 쪽 값 흉내) */
-export const MODBUS_TABLES: { code: ModbusTable; label: string; bit: boolean }[] = [
-  { code: 'hr', label: 'HR — Holding register', bit: false },
-  { code: 'ir', label: 'IR — Input register', bit: false },
-  { code: 'co', label: 'CO — Coil', bit: true },
-  { code: 'di', label: 'DI — Discrete input', bit: true },
-];
+  // 메모리 — 종류와 관계없이 능력으로(docs/vplc-architecture.md §2.4)
+  /** 능력 — 영역(MELSEC·Modbus) 또는 태그(OPC UA) */
+  memory: (id: string) => call<MemoryInfo>('GET', `/memory/${enc(id)}`),
+  /** 영역 값 — 단위 그대로(WORD 0~65535, BIT 0·1) */
+  areaRead: (id: string, area: string, start: number, count: number) =>
+    call<{ start: number; values: number[] }>('GET', `/memory/${enc(id)}/area/${enc(area)}?start=${start}&count=${count}`),
+  /** WORD 는 -32768~65535, BIT 는 0·1 */
+  areaWrite: (id: string, area: string, start: number, values: number[]) =>
+    call<{ start: number; values: number[] }>('PUT', `/memory/${enc(id)}/area/${enc(area)}`, { start, values }),
+  areaClear: (id: string, area: string) => call<void>('POST', `/memory/${enc(id)}/area/${enc(area)}/clear`),
+  tags: (id: string) => call<OpcUaTag[]>('GET', `/memory/${enc(id)}/tags`),
+  addTag: (id: string, spec: OpcUaTagSpec) => call<void>('POST', `/memory/${enc(id)}/tags`, spec),
+  /** 지금 값 — 실행 중일 때만 */
+  setTagValue: (id: string, path: string, value: unknown) => call<OpcUaTag>('PUT', `/memory/${enc(id)}/tags/${enc(path)}`, { value }),
+  removeTag: (id: string, path: string) => call<void>('DELETE', `/memory/${enc(id)}/tags/${enc(path)}`),
+};
 
 /** OPC UA 태그 형 — tc 점 형과 같은 이름 */
 export const OPCUA_TYPES = ['BOOL', 'INT16', 'UINT16', 'INT32', 'UINT32', 'INT64', 'FLOAT32', 'FLOAT64', 'STRING'] as const;
@@ -85,7 +68,7 @@ export const PROTOCOL_LABEL: Record<VplcProtocol, string> = { MELSEC_MC: 'MELSEC
 /** 종류(예전 줄은 MELSEC_MC) */
 export const protocolOf = (v: Pick<Vplc, 'protocol'>): VplcProtocol => v.protocol ?? 'MELSEC_MC';
 
-/** MC 메모리 종류 — vplc Types.MemoryType 과 같다(코드·이름·마지막 주소·16진 주소 여부) */
+/** MC 메모리 종류 — 등록 폼에서 고른다(vplc MelsecTypes.MemoryType 과 같은 코드). 화면의 주소·크기는 서버(GET /memory/{id})가 알려 준다 */
 export const MEMORY_TYPES: { code: string; label: string; max: number; hex?: boolean; bit?: boolean }[] = [
   { code: 'D*', label: 'D — Data register', max: 12287 },
   { code: 'W*', label: 'W — Link register', max: 0x1FFF, hex: true },
@@ -107,11 +90,6 @@ export const MEMORY_TYPES: { code: string; label: string; max: number; hex?: boo
   { code: 'Z*', label: 'Z — Index register', max: 15 },
 ];
 
-/** 주소 표기 — D100, W1A0(16진) */
-export const addressLabel = (code: string, addr: number): string => {
-  const m = MEMORY_TYPES.find((x) => x.code === code);
-  return `${code.replace('*', '')}${m?.hex ? addr.toString(16).toUpperCase() : addr}`;
-};
 
 /** 상태 칩 색 */
 export const STATUS_COLOR: Record<string, 'success' | 'warning' | 'error' | 'default' | 'info'> = {

@@ -7,14 +7,15 @@ import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.wow.be.framework.AbstractInfo;
-import com.wow.be.tc.vplc.Types.FrameFormat;
+import com.wow.be.tc.vplc.melsec.MelsecTypes.FrameFormat;
 import com.wow.be.tc.vplc.Types.PlcStatus;
 import com.wow.be.tc.vplc.Types.Protocol;
-import com.wow.be.tc.vplc.machine.MemoryInfo;
+import com.wow.be.tc.vplc.melsec.MemoryInfo;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import com.wow.be.tc.vplc.melsec.MelsecTypes;
 
 @ToString
 @Data

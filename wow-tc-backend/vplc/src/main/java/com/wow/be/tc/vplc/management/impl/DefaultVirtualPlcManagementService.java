@@ -23,16 +23,15 @@ import com.wow.be.framework.persist.PersistentEntity;
 import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.tc.vplc.Types.PlcStatus;
 import com.wow.be.tc.vplc.VirtualPlcException;
-import com.wow.be.tc.vplc.machine.VirtualDevice;
-import com.wow.be.tc.vplc.machine.VirtualDeviceFactory;
-import com.wow.be.tc.vplc.machine.VirtualProgrammableControllerManager;
+import com.wow.be.tc.vplc.core.VirtualPlc;
+import com.wow.be.tc.vplc.core.VirtualPlcProviders;
+import com.wow.be.tc.vplc.core.VirtualPlcRegistry;
 import com.wow.be.tc.vplc.management.ConnectionClientHistoryInfo;
 import com.wow.be.tc.vplc.management.ConnectionClientInfo;
 import com.wow.be.tc.vplc.management.ConnectionInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcHistoryInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcManagementService;
-import com.wow.be.tc.vplc.opcua.OpcUaTagRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,16 +57,14 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	@Autowired
 	private ConnectionClientHistoryRepository connectionClientHistoryRepository;
 
+	/** 종류별 규칙·객체 — 이 서비스는 종류를 모른다(docs/vplc-architecture.md §2.1) */
 	@Autowired
-	private VirtualDeviceFactory deviceFactory;
-
-	@Autowired
-	private OpcUaTagRepository opcUaTagRepository;
+	private VirtualPlcProviders providers;
 	
-	private VirtualProgrammableControllerManager virtualPlcManager;
+	private VirtualPlcRegistry virtualPlcManager;
 	
 	public DefaultVirtualPlcManagementService () {
-		virtualPlcManager=VirtualProgrammableControllerManager.getManager();
+		virtualPlcManager=VirtualPlcRegistry.instance();
 	}
 	
 	@Override
@@ -77,7 +74,7 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 		if(vplcInfo.getId()==null || "".equals(vplcInfo.getId())) {
 			vplcInfo.setId(UUID.randomUUID().toString());
 		}
-		VirtualDeviceFactory.normalize(vplcInfo);
+		providers.normalize(vplcInfo);
 		if(vplcInfo.isPublished()==true) {
 			vplcInfo.setStatus(PlcStatus.PUBLISHED);
 		} else {
@@ -113,7 +110,7 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 		} else if(vplcInfo.getProtocol()!=stored.getProtocol()) {
 			throw new VirtualPlcException(VirtualPlcException.ERR_400, "가상 PLC 종류는 바꿀 수 없습니다 — 지우고 다시 등록하세요: " + stored.getProtocol() + " → " + vplcInfo.getProtocol());
 		}
-		VirtualDeviceFactory.normalize(vplcInfo);
+		providers.normalize(vplcInfo);
 		if(vplcInfo.isPublished() && (PlcStatus.REGISTERED==vplcInfo.getStatus()) || PlcStatus.RELEASED==vplcInfo.getStatus()) {
 			vplcInfo.setStatus(PlcStatus.PUBLISHED);
 		} else if(vplcInfo.isPublished()!=true) {
@@ -142,7 +139,7 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 			publishVirtualProgrammableController(vplcInfo);
 		} else if((PlcStatus.REGISTERED==vplcInfo.getStatus() || PlcStatus.RELEASED==vplcInfo.getStatus()) && vplcInfo.isPublished()!=true) {
 			vplcInfo.setStatus(PlcStatus.RELEASED);
-			virtualPlcManager.releaseVirtualProgrammableController(vplcInfo.getId());
+			virtualPlcManager.release(vplcInfo.getId());
 		}
 	}
 
@@ -201,7 +198,7 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	
 	@Transactional
 	private void publishVirtualProgrammableController(VirtualPlcInfo vplcInfo) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.addVirtualProgrammableController(VirtualPlcInfo vplcInfo)...");
+		log.debug("DefaultVirtualPlcManagementService.publishVirtualProgrammableController(VirtualPlcInfo vplcInfo)...");
 
 		// Connection 정보생성
 		if(vplcInfo.getConnections()==null || vplcInfo.getConnections().size()<=0) {
@@ -220,10 +217,9 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 				connectionRepository.save(connEntity);
 			}
 		}
-		// Virtual PLC 정보 메모리로 Load — 종류별 객체(VirtualDeviceFactory)
-		VirtualDevice vplc=deviceFactory.create(vplcInfo);
-		vplc.setStatus(PlcStatus.PUBLISHED);
-		virtualPlcManager.addVirtualProgrammableController(vplc.getId(), vplc);
+		// Virtual PLC 정보 메모리로 Load — 종류별 객체(VirtualPlcProvider)
+		VirtualPlc vplc=providers.create(vplcInfo);
+		virtualPlcManager.register(vplc);
 	}
 	
 	@Transactional
@@ -252,7 +248,7 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 			});
 		});
 		// 메모리에서 해당 Virtual PLC 제거
-		virtualPlcManager.releaseVirtualProgrammableController(vplcInfo.getId());
+		virtualPlcManager.release(vplcInfo.getId());
 	}
 	
 	@Override
@@ -317,9 +313,12 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	@Transactional
 	public void deleteVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("");
-		// 게시된 채로 지우면 포트가 열린 채 남았다 — 먼저 메모리에서 내린다. OPC UA 태그도 함께 지운다
-		virtualPlcManager.releaseVirtualProgrammableController(vplcId);
-		opcUaTagRepository.deleteByVplcId(vplcId);
+		// 게시된 채로 지우면 포트가 열린 채 남았다 — 먼저 메모리에서 내린다. 종류별 뒷정리(OPC UA 태그)는 Provider 가
+		virtualPlcManager.release(vplcId);
+		java.util.Optional<VirtualPlcEntity> found=virtualPlcRepository.findById(vplcId);
+		if(found.isPresent()) {
+			providers.onDelete(found.get().info());
+		}
 		virtualPlcRepository.deleteById(vplcId);
 	}
 

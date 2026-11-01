@@ -1,18 +1,14 @@
 package com.wow.be.tc.vplc.lifecycle;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.wow.be.tc.vplc.Types.MemoryType;
 import com.wow.be.tc.vplc.Types.PlcStatus;
 import com.wow.be.tc.vplc.VirtualPlcException;
-import com.wow.be.tc.vplc.machine.ClientConnectionEventDispatcher;
-import com.wow.be.tc.vplc.machine.MemoryInfo;
-import com.wow.be.tc.vplc.machine.VirtualDevice;
-import com.wow.be.tc.vplc.machine.VirtualProgrammableControllerManager;
+import com.wow.be.tc.vplc.core.connection.ClientConnectionEventDispatcher;
+import com.wow.be.tc.vplc.core.VirtualPlcRegistry;
 import com.wow.be.tc.vplc.management.ConnectionClientEventDbHandler;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcManagementService;
@@ -22,7 +18,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 기동 때 DB 의 가상 PLC 목록을 메모리로 올린다. 마지막 상태가 RUNNING 이던 PLC 는 바로 시작한다.
+ * 기동 때 DB 의 가상 PLC 목록을 메모리로 올리고 마지막 상태로 되살린다 — RUNNING 은 시작, PAUSED 는 시작 뒤 일시정지, STOPPED 는 정지.
  */
 @Component
 @Slf4j
@@ -48,17 +44,19 @@ public class VirtualPlcLoader {
 				PlcStatus status=vplcInfo.getStatus();
 				if(status==PlcStatus.PUBLISHED || status==PlcStatus.PAUSED || status==PlcStatus.RUNNING || status==PlcStatus.STOPPED) {
 					try {
-						vplcInfo.setMemInfos(extractMemList(vplcInfo.getMemoryTypeList()));
 						// RELEASED 또는 REGISTERED 상태인 PLC는 메모리로 로드하지 않음
 						vplcManipulationService.publishVirtualPlc(vplcInfo);
-						VirtualDevice vplc=VirtualProgrammableControllerManager.getManager().get(vplcInfo.getId());
-						vplc.setStatus(vplcInfo.getStatus());
-						// DB 상에서의 마지막 상태가 Running 중이었었던 Virtual PLC민 start 시킴
-						if(vplcInfo.getStatus()==PlcStatus.RUNNING) {
+						// DB 의 마지막 상태로 — RUNNING 은 시작, PAUSED 는 시작 뒤 일시정지(예전에는 상태 글자만 붙여 포트가 닫혀 있었다), STOPPED 는 정지
+						if(status==PlcStatus.RUNNING || status==PlcStatus.PAUSED) {
 							vplcManipulationService.startVirtualPlc(vplcInfo.getId());
+							if(status==PlcStatus.PAUSED) {
+								vplcManipulationService.pauseVirtualPlc(vplcInfo.getId());
+							}
+						} else if(status==PlcStatus.STOPPED) {
+							VirtualPlcRegistry.instance().get(vplcInfo.getId()).stop();
 						}
 					} catch (VirtualPlcException e) {
-						log.warn("");
+						log.warn("가상 PLC 를 되살리지 못했습니다: {} — {}", vplcInfo.getName(), e.getMessage());
 					}
 				}
 			});
@@ -69,15 +67,6 @@ public class VirtualPlcLoader {
 		}
 	}
 	
-	private List<MemoryInfo> extractMemList(List<String> memTypeList) {
-		List<MemoryInfo> memories=new ArrayList<>();
-		memTypeList.forEach(memType->{
-			MemoryInfo mem=new MemoryInfo();
-			mem.setMemoryType(MemoryType.toMemoryType(memType));
-			memories.add(mem);
-		});
-		return memories;
-	}
 	
 	private void readyClientConnectionEventHandler () {
 		log.debug("");

@@ -1,6 +1,7 @@
 # 가상 PLC — MELSEC MC · Modbus TCP · OPC UA (한 vplc 안)
 
 > 작성일: 2026-11-01 (v0.4.0), 같은 날 vplc 로 합침. 대상: `wow-tc-backend/vplc`.
+> 사용 안내(종류별 설명): [vplc-guide.md](vplc-guide.md), 코드 구조: [vplc-architecture.md](vplc-architecture.md)
 > 관련: [opcua-design.md](opcua-design.md), [plc-protocol-design.md](plc-protocol-design.md), [frontend-design.md](frontend-design.md) §16, e2e `test_plc_vmodbus.py`·`test_plc_opcua.py`
 
 tc 의 드라이버를 개발·시험할 상대 장비다. **vplc 앱 하나가 세 종류의 가상 PLC 를 여러 대씩 띄운다.** 셋 모두 VPLC 테이블에 등록되고 같은 상태 단계를 따른다.
@@ -43,18 +44,20 @@ java -jar vplc/build/libs/vplc-0.4.0.jar --spring.config.import=optional:file:vp
 
 공통(예전 그대로) — `management/register·update·delete·find·search·publish·release`, `control/start·stop·pause·resume/{id}`, `management/search/connection/{id}`. 등록 본문에 `protocol`·`settings`.
 
+메모리는 종류와 관계없이 **능력**으로 다룬다(docs/vplc-architecture.md §2.3·§2.4).
+
 | 요청 | 종류 | 내용 |
 |---|---|---|
 | `POST /control/drop-connections/{id}` | 모두 | 붙은 연결을 끊는다(포트는 계속 받는다) — tc 재연결 시험. `{dropped}` |
-| `POST /manipulation/read·write·clear/all` | MELSEC | MC 메모리(예전 그대로). 다른 종류면 400 |
-| `GET /modbus/{id}/{co\|di\|ir\|hr}?start=&count=` | Modbus | 값 — 비트 true/false, 레지스터 0~65535. 번호는 프로토콜 주소(0부터 — tc 의 `HR1` 은 `hr` 0) |
-| `PUT /modbus/{id}/{co\|di\|ir\|hr}` `{start, values}` | Modbus | 값 넣기 — 입력 영역(DI·IR)도 |
+| `GET /memory/{id}` | 모두 | 능력 — `{kind: AREA, areas: [{code, label, unit, size, hexAddress, bitDevice}]}` 또는 `{kind: TAG}` |
+| `GET /memory/{id}/area/{영역}?start=&count=` · `PUT` `{start, values}` · `POST …/clear` | MELSEC·Modbus | 영역 값 — 단위 그대로(WORD 0~65535, 쓰기는 -32768 도 / BIT 0·1), 한 번에 2000 칸까지. 영역은 코드나 표시 이름(`D*`·`D`, `hr`·`HR`). Modbus 번호는 프로토콜 주소(0부터 — tc 의 `HR1` 은 `HR` 0) |
+| `GET /memory/{id}/tags` · `POST` `{path, type, value, simulation, description}` | OPC UA | 태그 목록(실행 중이면 지금 값) · 더하기(DB 에 남고, 실행 중이면 서버에도) |
+| `PUT /memory/{id}/tags/{path}` `{value}` · `DELETE` | OPC UA | 지금 값(실행 중일 때만) · 지우기 |
 | `POST /control/delay/{id}` `{delayMs}` | Modbus | 응답 지연 — 메모리에 바로, 설정에도 |
 | `GET /opcua/{id}` | OPC UA | 엔드포인트·네임스페이스 URI·번호(실행 중일 때, 아니면 -1)·세션 수·태그 수 |
-| `GET /opcua/{id}/tags` · `POST` `{path, type, value, simulation, description}` | OPC UA | 태그 목록(실행 중이면 지금 값) · 더하기(DB 에 남고, 실행 중이면 서버에도) |
-| `PUT /opcua/{id}/tags/{path}` `{value}` · `DELETE` | OPC UA | 지금 값(실행 중일 때만) · 지우기 |
+| `POST /manipulation/read·write·clear/all` | MELSEC | MC 메모리 예전 API(프레임·ASCII 문자열 쓰기). 다른 종류면 400 |
 
-게시 안 된 가상 PLC 의 메모리를 건드리면 409, 없는 아이디의 제어는 404(예전과 같다).
+게시 안 된 가상 PLC 의 메모리를 건드리면 409, 없는 아이디는 404. 상태 규칙에 맞지 않는 제어(실행 중이 아닌데 일시정지 등)는 409.
 
 ## 4. Modbus
 
@@ -84,4 +87,5 @@ e2e(`common.ensure_vplc`)가 없으면 등록하고 게시·시작한다.
 ## 7. 시험
 
 - 단위 `./gradlew :vplc:test`(18) — MC(`McResponderTest`·`MemoryTest`), Modbus PDU·TCP 왕복(`ModbusSimulatorTest`), 한 포트 두 장치·일시정지·마지막 정지 때 포트 닫기·설정 검사(`ModbusVirtualDeviceTest`), OPC UA 서버·보안(`VirtualOpcUaServerTest`·`VirtualOpcUaSecurityTest`), 시작·일시정지 동안 읽기 무응답·태그·정지 뒤 같은 포트로 다시 시작(`OpcUaVirtualDeviceTest`).
-- e2e `test_vplc_http_methods.py`(35), `test_plc_vmodbus.py`(8), `test_plc_opcua.py`(30). Playwright `vplc.spec.ts`(5).
+- 단위 테스트는 vplc-architecture.md §4 — 20개.
+- e2e `test_vplc_http_methods.py`(43), `test_plc_vmodbus.py`(8), `test_plc_opcua.py`(30). Playwright `vplc.spec.ts`(5).

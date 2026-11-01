@@ -6,20 +6,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.wow.be.tc.vplc.Types.FrameFormat;
-import com.wow.be.tc.vplc.Types.MemoryType;
+import com.wow.be.tc.vplc.melsec.MelsecTypes.FrameFormat;
+import com.wow.be.tc.vplc.melsec.MelsecTypes.MemoryType;
 import com.wow.be.tc.vplc.Types.PlcStatus;
 import com.wow.be.tc.vplc.VirtualPlcException;
-import com.wow.be.tc.vplc.machine.MemoryInfo;
-import com.wow.be.tc.vplc.machine.VirtualDevice;
-import com.wow.be.tc.vplc.machine.VirtualDeviceFactory;
-import com.wow.be.tc.vplc.machine.VirtualProgrammableController;
-import com.wow.be.tc.vplc.machine.VirtualProgrammableControllerManager;
+import com.wow.be.tc.vplc.melsec.MemoryInfo;
+import com.wow.be.tc.vplc.core.VirtualPlc;
+import com.wow.be.tc.vplc.core.VirtualPlcProviders;
+import com.wow.be.tc.vplc.melsec.MelsecVirtualPlc;
+import com.wow.be.tc.vplc.core.VirtualPlcRegistry;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcManagementService;
 import com.wow.be.tc.vplc.manipulation.VirtualPlcManipulationService;
 
 import lombok.extern.slf4j.Slf4j;
+import com.wow.be.tc.vplc.melsec.MelsecTypes;
 
 /**
  * 메모리에 올라온 가상 PLC 의 시작·정지·일시정지·재개와 메모리 읽기·쓰기·초기화.
@@ -29,23 +30,22 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulationService {
 
-	private VirtualProgrammableControllerManager vplcManager;
+	private VirtualPlcRegistry vplcManager;
 	
 	@Autowired
 	private VirtualPlcManagementService vplcManagementService;
 
 	@Autowired
-	private VirtualDeviceFactory deviceFactory;
+	private VirtualPlcProviders providers;
 	
 	public DefaultVirtualPlcManipulationService() {
-		vplcManager=VirtualProgrammableControllerManager.getManager();
+		vplcManager=VirtualPlcRegistry.instance();
 	}
 	
 	private void addVirtualProgrammableController(VirtualPlcInfo vplcInfo) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.addVirtualProgrammableController(VirtualPlcInfo vplcInfo)...");
-		VirtualDevice device=deviceFactory.create(vplcInfo);
-		device.setStatus(PlcStatus.PUBLISHED);
-		vplcManager.addVirtualProgrammableController(device.getId(), device);
+		VirtualPlc device=providers.create(vplcInfo);
+		vplcManager.register(device);
 	}
 	
 	@Override
@@ -79,20 +79,20 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	 */
 	private void control(String vplcId, PlcStatus to, DeviceAction action) throws VirtualPlcException {
 		vplcManagementService.findVirtualPlc(vplcId);	// 없는 가상 PLC 는 404
-		VirtualDevice device=published(vplcId);
+		VirtualPlc device=published(vplcId);
 		action.run(device);
 		updateVirtualPlcStatus(vplcId, null, to);
 	}
 
 	private interface DeviceAction {
-		void run(VirtualDevice device) throws VirtualPlcException;
+		void run(VirtualPlc device) throws VirtualPlcException;
 	}
 	
 	@Override
 	@Transactional
 	public void startVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.startVirtualPlc(String vplcId)...");
-		control(vplcId, PlcStatus.RUNNING, VirtualDevice::start);
+		control(vplcId, PlcStatus.RUNNING, VirtualPlc::start);
 	}
 
 	@Override
@@ -105,7 +105,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	@Transactional
 	public void stopVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.stopVirtualPlc(String vplcId)...");
-		control(vplcId, PlcStatus.STOPPED, VirtualDevice::stop);
+		control(vplcId, PlcStatus.STOPPED, VirtualPlc::stop);
 	}	
 
 	@Override
@@ -118,7 +118,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	@Transactional
 	public void pauseVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.pauseVirtualPlc(String vplcId)...");
-		control(vplcId, PlcStatus.PAUSED, VirtualDevice::pause);
+		control(vplcId, PlcStatus.PAUSED, VirtualPlc::pause);
 	}
 
 	@Override
@@ -131,7 +131,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	@Transactional
 	public void resumeVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.resumeVirtualPlc(String vplcId)...");
-		control(vplcId, PlcStatus.RUNNING, VirtualDevice::resume);
+		control(vplcId, PlcStatus.RUNNING, VirtualPlc::resume);
 	}
 
 	@Override
@@ -142,7 +142,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	
 	public void releaseVirtualPlc(String plcId) throws VirtualPlcException {
 		log.debug("");
-		vplcManager.releaseVirtualProgrammableController(plcId);
+		vplcManager.release(plcId);
 	}
 	
 	@Transactional
@@ -214,7 +214,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 
 	private MemoryInfo writeBytes(String vplcId, MemoryType memType, String frameFormat, int startAddress, int wordCount, byte[] data)
 			throws VirtualPlcException {
-		VirtualProgrammableController vplc=publishedMc(vplcId);
+		MelsecVirtualPlc vplc=publishedMc(vplcId);
 		vplc.write(startAddress, wordCount, data, memType);
 		byte[] bytes=vplc.read(startAddress, 20, memType);
 		MemoryInfo mInfo=new MemoryInfo();
@@ -237,7 +237,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	public MemoryInfo clearAll(String vplcId, String memoryType, String frameFormat, int currentPosition) throws VirtualPlcException {
 		log.debug("");
 		MemoryType memType=MemoryType.toMemoryType(memoryType);
-		VirtualProgrammableController vplc=publishedMc(vplcId);
+		MelsecVirtualPlc vplc=publishedMc(vplcId);
 		vplc.clear(memType);
 		byte[] bytes=vplc.read(currentPosition, 20, memType);
 		MemoryInfo mInfo=new MemoryInfo();
@@ -257,8 +257,8 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	}
 
 	/** 게시(메모리에 올라온)된 가상 PLC — 아니면 409. 예전에는 NPE 로 500 이었다 */
-	private VirtualDevice published(String vplcId) throws VirtualPlcException {
-		VirtualDevice vplc=vplcManager.get(vplcId);
+	private VirtualPlc published(String vplcId) throws VirtualPlcException {
+		VirtualPlc vplc=vplcManager.get(vplcId);
 		if(vplc==null) {
 			throw new VirtualPlcException(VirtualPlcException.ERR_409, "게시되지 않은 가상 PLC 입니다 — 먼저 게시하세요: " + vplcId);
 		}
@@ -266,8 +266,8 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	}
 
 	/** 게시된 가상 MELSEC PLC — 다른 종류면 400(메모리 종류·워드 읽기·쓰기는 MELSEC 만) */
-	private VirtualProgrammableController publishedMc(String vplcId) throws VirtualPlcException {
-		if(published(vplcId) instanceof VirtualProgrammableController mc) {
+	private MelsecVirtualPlc publishedMc(String vplcId) throws VirtualPlcException {
+		if(published(vplcId) instanceof MelsecVirtualPlc mc) {
 			return mc;
 		}
 		throw new VirtualPlcException(VirtualPlcException.ERR_400, "MELSEC 가상 PLC 가 아닙니다 — 종류별 메모리 API 를 쓰세요: " + vplcId);

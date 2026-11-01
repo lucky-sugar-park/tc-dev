@@ -1,7 +1,7 @@
 package com.wow.be.tc.vplc.manipulation;
 
 import com.wow.be.tc.vplc.VirtualPlcException;
-import com.wow.be.tc.vplc.machine.MemoryInfo;
+import com.wow.be.tc.vplc.melsec.MemoryInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
 
 /**

@@ -50,8 +50,9 @@ UA = common.ensure_vplc(common.E2E_OPCUA, common.E2E_OPCUA_TAGS)
 if UA is None:
     print(f"SKIP vplc 가 없습니다({common.VPLC_BASE}) — wow-tc-backend 에서 vplc 를 띄우세요")
     sys.exit(0)
-SIM = common.VPLC_BASE + "/api/v1/vplc/opcua/" + UA["id"]
-s, info = http("GET", SIM)
+INFO = common.VPLC_BASE + "/api/v1/vplc/opcua/" + UA["id"]
+SIM = common.VPLC_BASE + "/api/v1/vplc/memory/" + UA["id"]
+s, info = http("GET", INFO)
 NS = info["namespaceIndex"]
 
 

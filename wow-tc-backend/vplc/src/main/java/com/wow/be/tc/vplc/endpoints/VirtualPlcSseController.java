@@ -14,7 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.wow.be.framework.sse.EventPusher;
 import com.wow.be.framework.sse.FilterableSseEmitter;
 import com.wow.be.framework.sse.SseEmitterManager;
-import com.wow.be.tc.vplc.machine.VirtualPlcEventKind;
+import com.wow.be.tc.vplc.core.VirtualPlcEventKind;
 
 import lombok.extern.slf4j.Slf4j;
 

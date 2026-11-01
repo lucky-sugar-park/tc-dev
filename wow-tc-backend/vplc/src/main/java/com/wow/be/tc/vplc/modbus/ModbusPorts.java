@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.wow.be.tc.vplc.VirtualPlcException;
-import com.wow.be.tc.vplc.machine.ConnectionEvents;
+import com.wow.be.tc.vplc.core.connection.ConnectionEvents;
 import com.wow.be.tc.vplc.modbus.ModbusTcpServer.Client;
 
 /**
@@ -21,7 +21,7 @@ public final class ModbusPorts {
 
 	private static final class Port {
 
-		final Map<Integer, ModbusVirtualDevice> units = new ConcurrentHashMap<>();
+		final Map<Integer, ModbusVirtualPlc> units = new ConcurrentHashMap<>();
 
 		ModbusTcpServer server;
 	}
@@ -34,9 +34,9 @@ public final class ModbusPorts {
 	}
 
 	/** 장치를 포트에 붙인다(시작) — 포트가 처음이면 연다 */
-	public synchronized void attach(ModbusVirtualDevice d) throws VirtualPlcException {
+	public synchronized void attach(ModbusVirtualPlc d) throws VirtualPlcException {
 		Port p = ports.computeIfAbsent(d.port(), k -> new Port());
-		ModbusVirtualDevice other = p.units.get(d.unitId());
+		ModbusVirtualPlc other = p.units.get(d.unitId());
 		if (other != null && other != d) {
 			throw new VirtualPlcException(VirtualPlcException.ERR_409,
 				"포트 " + d.port() + " 에 단위 ID " + d.unitId() + " 가상 PLC 가 이미 실행 중입니다: " + other.getName());
@@ -45,9 +45,9 @@ public final class ModbusPorts {
 		if (p.server == null) {
 			try {
 				p.server = new ModbusTcpServer(d.bindAddress(), d.port(), unit -> {
-					ModbusVirtualDevice u = p.units.get(unit);
+					ModbusVirtualPlc u = p.units.get(unit);
 					return u != null ? u.memory() : null;
-				}, listener(p), () -> p.units.values().stream().mapToInt(ModbusVirtualDevice::connLimit).max().orElse(1));
+				}, listener(p), () -> p.units.values().stream().mapToInt(ModbusVirtualPlc::connLimit).max().orElse(1));
 			} catch (IOException e) {
 				p.units.remove(d.unitId());
 				if (p.units.isEmpty()) {
@@ -62,7 +62,7 @@ public final class ModbusPorts {
 	}
 
 	/** 장치를 떼어 낸다(정지) — 마지막 장치면 포트를 닫는다 */
-	public synchronized void detach(ModbusVirtualDevice d) {
+	public synchronized void detach(ModbusVirtualPlc d) {
 		Port p = ports.get(d.port());
 		if (p == null || p.units.get(d.unitId()) != d) {
 			return;
@@ -104,7 +104,7 @@ public final class ModbusPorts {
 	}
 
 	/** 연결 이력 한 줄 */
-	static void history(ModbusVirtualDevice d, Client c, boolean connected) {
+	static void history(ModbusVirtualPlc d, Client c, boolean connected) {
 		ConnectionEvents.dispatch(d.getId(), c.port(), c.remoteIp(), c.id(), connected,
 			"Remote client is connected / disconnected to virtual Modbus device (unit " + d.unitId() + ").");
 	}

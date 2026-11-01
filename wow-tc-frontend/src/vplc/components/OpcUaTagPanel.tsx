@@ -57,7 +57,7 @@ function AddTagDialog({ vplcId, open, onClose, onAdded }: { vplcId: string; open
     }
     if (sim) spec.simulation = { kind: sim as OpcUaSimulation['kind'], periodMs: Number(period) || 1000, min: Number(min), max: Number(max) };
     try {
-      await vplcApi.opcUaAddTag(vplcId, spec);
+      await vplcApi.addTag(vplcId, spec);
       showToast(t('i18n.common.saved', '저장했습니다'), 'success');
       onAdded();
     } catch (err) {
@@ -124,7 +124,7 @@ export function OpcUaTagPanel({ vplcId, running, active, search, reloadKey, refr
   const load = useCallback(async () => {
     try {
       if (!vplcId) { setTags([]); return; }
-      setTags(await vplcApi.opcUaTags(vplcId));
+      setTags(await vplcApi.tags(vplcId));
       onError(null);
     } catch (e) {
       onError(extractApiError(e));
@@ -142,7 +142,7 @@ export function OpcUaTagPanel({ vplcId, running, active, search, reloadKey, refr
   const remove = useCallback(async (path: string) => {
     if (!(await showConfirm({ message: t('i18n.tc.vplc.confirmDelete', '{name} 을(를) 지울까요?').replace('{name}', path), severity: 'warning' }))) return;
     try {
-      await vplcApi.opcUaRemoveTag(vplcId, path);
+      await vplcApi.removeTag(vplcId, path);
       await loadRef.current();
     } catch (e) {
       showToast(extractApiError(e), 'error');
@@ -176,7 +176,7 @@ export function OpcUaTagPanel({ vplcId, running, active, search, reloadKey, refr
               if (next.text === prev.text) return prev;
               const v = parseTagValue(next.type, next.text);
               if (v === null) { showToast(t('i18n.tc.vplc.tagValueRule', '형에 맞지 않는 값입니다'), 'error'); return prev; }
-              const saved = await vplcApi.opcUaSetValue(vplcId, next.path, v);
+              const saved = await vplcApi.setTagValue(vplcId, next.path, v);
               return { ...saved, text: saved.value == null ? '' : String(saved.value) };
             }}
             onProcessRowUpdateError={(e) => showToast(extractApiError(e), 'error')} />

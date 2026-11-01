@@ -7,12 +7,12 @@ import java.util.Map;
 
 import org.hibernate.annotations.ColumnDefault;
 
-import com.wow.be.tc.vplc.Types.FrameFormat;
+import com.wow.be.tc.vplc.melsec.MelsecTypes.FrameFormat;
 import com.wow.be.tc.vplc.Types.PlcStatus;
 import com.wow.be.tc.vplc.Types.Protocol;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.wow.be.tc.vplc.machine.VirtualProgrammableController;
+import com.wow.be.tc.vplc.melsec.MelsecVirtualPlc;
 import com.wow.be.framework.persist.PersistentEntity;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
 
@@ -30,6 +30,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import com.wow.be.tc.vplc.melsec.MelsecTypes;
 
 @ToString
 @Builder
@@ -42,7 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 public class VirtualPlcEntity extends PersistentEntity<VirtualPlcInfo>{
 
 	@Transient
-	private VirtualProgrammableController vplc;
+	private MelsecVirtualPlc vplc;
 
 	@Id
 	@Column(name="ID")
@@ -117,7 +118,7 @@ public class VirtualPlcEntity extends PersistentEntity<VirtualPlcInfo>{
 			m.replaceAll((k, v)->v instanceof Double d && d==Math.rint(d) && !Double.isInfinite(d) ? (Object)Long.valueOf(d.longValue()) : v);
 			info.setSettings(m);
 		}
-		info.setFrameFormat(FrameFormat.valueOf(this.getFrameFormat()));
+		info.setFrameFormat(this.getFrameFormat()!=null ? FrameFormat.valueOf(this.getFrameFormat()) : null);
 		info.setStatus(PlcStatus.valueOf(this.getStatus()));
 		info.setIpAddress(this.getIpAddress());
 		info.setStartPort(this.getStartPort()!=null?this.getStartPort():0);

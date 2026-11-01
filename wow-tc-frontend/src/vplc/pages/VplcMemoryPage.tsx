@@ -21,9 +21,9 @@ import {
 import { usePerm } from '../../shared/usePerm';
 import { OpcUaTagPanel } from '../components/OpcUaTagPanel';
 import {
-  MEMORY_TYPES, MODBUS_TABLES, PROTOCOL_LABEL, STATUS_COLOR, addressLabel, isPublished, protocolOf, vplcApi, type VplcControl,
+  PROTOCOL_LABEL, STATUS_COLOR, isPublished, protocolOf, vplcApi, type VplcControl,
 } from '../services/vplcApi';
-import type { ModbusTable, Vplc, VplcProtocol } from '../types/vplc';
+import type { MemoryArea, Vplc, VplcProtocol } from '../types/vplc';
 
 const SCREEN = 'tc.vplc.memory';
 const PAGE_SIZES = [20, 50, 100];
@@ -34,12 +34,6 @@ type Row = { addr: number; word: number; text: string };
 const hex4 = (w: number) => (w & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
 const signed = (w: number) => (w << 16) >> 16;
 const ch = (b: number) => (b >= 0x20 && b <= 0x7E ? String.fromCharCode(b) : '·');
-
-/** 메모리 영역 — MC 메모리 종류 또는 Modbus 영역. bit 이면 한 줄(워드)이 비트 16개 */
-type Area = { code: string; label: string; max: number; hex?: boolean; bit?: boolean };
-
-/** Modbus 주소(프로토콜 주소, 0부터) — 레지스터는 칸 번호, 비트 영역은 그 줄의 비트 번호 */
-const modbusLabel = (area: Area, addr: number, bit = 0) => `${area.code.toUpperCase()}${area.bit ? addr * 16 + bit : addr}`;
 
 /** 값 쓰기 — 워드 값 여러 개(쉼표·공백, 10진·0x16진) 또는 문자열(ASCII, 한 워드에 두 글자) */
 function WriteDialog({ open, memoryType, start, label, textHelp, onClose, onWrite }: {
@@ -135,7 +129,6 @@ export default function VplcMemoryPage(): ReactElement {
   const vplc = protocol === 'MELSEC_MC' ? device : null;
   /** Modbus 이면 그 장치 */
   const mb = protocol === 'MODBUS_TCP' ? device : null;
-  const mbSize = Number(mb?.settings?.size ?? 10000);
 
   const loadDevices = useCallback(async () => {
     try {
@@ -151,63 +144,52 @@ export default function VplcMemoryPage(): ReactElement {
   }, []);
   useEffect(() => { if (active) void loadDevices(); }, [active, loadDevices]);
 
-  const areas = useMemo<Area[]>(() => {
-    if (vplc) {
-      return vplc.memoryTypeList.map((c) => {
-        const m = MEMORY_TYPES.find((x) => x.code === c);
-        return { code: c, label: c.replace('*', ''), max: m?.max ?? 0xFFFFF, hex: m?.hex, bit: m?.bit };
-      });
-    }
-    if (mb) {
-      return MODBUS_TABLES.map((x) => ({ code: x.code, label: x.code.toUpperCase(), bit: x.bit, max: x.bit ? Math.ceil(mbSize / 16) - 1 : mbSize - 1 }));
-    }
-    return [];
-  }, [vplc, mb, mbSize]);
+  /** 영역 — 서버(GET /memory/{id})가 알려 준다(종류를 모른다). BIT 영역(Modbus 코일·입력)은 16개를 한 줄로 묶는다 */
+  const [areas, setAreas] = useState<MemoryArea[]>([]);
+  useEffect(() => {
+    setAreas([]);
+    if (!device || protocol === 'OPC_UA') return;
+    vplcApi.memory(device.id).then((m) => setAreas(m.kind === 'AREA' ? m.areas : [])).catch((e) => setError(extractApiError(e)));
+  }, [device?.id, protocol]); // eslint-disable-line react-hooks/exhaustive-deps
   const area = areas.find((a) => a.code === memType) ?? null;
+  const bitArea = area?.unit === 'BIT';
 
-  // 장비를 바꾸면 그 장비의 첫 메모리 종류로
+  // 가상 PLC 를 바꾸면 그 PLC 의 첫 영역으로
   useEffect(() => {
     if (!areas.length) return;
     setMemType((cur) => (areas.some((a) => a.code === cur) ? cur : areas[0].code));
   }, [areas]);
 
-  /** 주소 표기 — 줄(워드) 번호, 비트 영역 비트 번호 */
-  const rowLabel = useCallback((addr: number) => {
-    if (!area) return String(addr);
-    return mb ? modbusLabel(area, addr) : addressLabel(area.code, addr);
-  }, [area, mb]);
-  const bitLabel = useCallback((addr: number, b: number) => {
-    if (!area) return `b${b}`;
-    if (mb) return area.bit ? modbusLabel(area, addr, b) : `b${b}`;
-    return area.bit ? addressLabel(area.code, addr * 16 + b) : `b${b}`;
-  }, [area, mb]);
+  /** 주소 표기 — 영역 이름 + 번호(16진 영역은 16진). 줄 번호, 비트 영역·비트 디바이스는 비트 번호 */
+  const num = useCallback((n: number) => (area?.hexAddress ? n.toString(16).toUpperCase() : String(n)), [area]);
+  const rowLabel = useCallback((addr: number) => (area ? `${area.label}${num(bitArea ? addr * 16 : addr)}` : String(addr)), [area, bitArea, num]);
+  const bitLabel = useCallback((addr: number, b: number) => (area && (bitArea || area.bitDevice) ? `${area.label}${num(addr * 16 + b)}` : `b${b}`),
+    [area, bitArea, num]);
+
+  /** 마지막 줄 번호 */
+  const max = area ? (bitArea ? Math.ceil(area.size / 16) : area.size) - 1 : 0;
 
   const read = useCallback(async () => {
-    if (!area || (!vplc && !mb)) { setWords(null); return; }
+    if (!area || !device) { setWords(null); return; }
     try {
-      if (vplc) {
-        setWords((await vplcApi.read(vplc, area.code, start, size)).wordInfos.map((w) => w.word));
-      } else if (mb) {
-        const table = area.code as ModbusTable;
-        const rowsN = Math.max(0, Math.min(size, area.max - start + 1));
-        if (area.bit) {
-          const first = start * 16;
-          const count = Math.min(rowsN * 16, mbSize - first);
-          const bits = count > 0 ? (await vplcApi.modbusRead(mb.id, table, first, count)).values : [];
-          setWords(Array.from({ length: rowsN }, (_, r) => {
-            let w = 0;
-            for (let b = 0; b < 16; b++) if (bits[r * 16 + b] === true) w |= 1 << b;
-            return signed(w);
-          }));
-        } else {
-          setWords(rowsN > 0 ? (await vplcApi.modbusRead(mb.id, table, start, rowsN)).values.map((v) => signed(Number(v))) : []);
-        }
+      const rowsN = Math.max(0, Math.min(size, max - start + 1));
+      if (bitArea) {
+        const first = start * 16;
+        const count = Math.min(rowsN * 16, area.size - first);
+        const bits = count > 0 ? (await vplcApi.areaRead(device.id, area.code, first, count)).values : [];
+        setWords(Array.from({ length: rowsN }, (_, r) => {
+          let w = 0;
+          for (let b = 0; b < 16; b++) if (bits[r * 16 + b] === 1) w |= 1 << b;
+          return signed(w);
+        }));
+      } else {
+        setWords(rowsN > 0 ? (await vplcApi.areaRead(device.id, area.code, start, rowsN)).values.map(signed) : []);
       }
       setError(null);
     } catch (e) {
       setError(extractApiError(e));
     }
-  }, [vplc, mb, mbSize, area, start, size]);
+  }, [device, area, bitArea, max, start, size]);
   const readRef = useRef(read);
   readRef.current = read;
   useEffect(() => { if (active) void read(); }, [active, read]);
@@ -217,24 +199,18 @@ export default function VplcMemoryPage(): ReactElement {
     return () => window.clearInterval(h);
   }, [active, refresh, protocol]);
 
-  const max = area?.max ?? 0xFFFFF;
   const go = (s: number) => { const n = Math.max(0, Math.min(s, max)); setStart(n); setStartInput(String(n)); };
 
-  /** 워드 쓰기 — Modbus 비트 영역은 한 워드를 비트 16개로 푼다(영역 끝에서 자른다) */
+  /** 워드 쓰기 — BIT 영역은 한 워드를 비트 16개로 푼다(영역 끝에서 자른다) */
   const putWords = useCallback(async (addr: number, ws: number[]) => {
-    if (!area) return;
-    if (vplc) {
-      await vplcApi.writeWords(vplc, area.code, addr, ws);
-    } else if (mb) {
-      const table = area.code as ModbusTable;
-      if (area.bit) {
-        const bits = ws.flatMap((w) => Array.from({ length: 16 }, (_, b) => ((w >> b) & 1) === 1)).slice(0, Math.max(0, mbSize - addr * 16));
-        await vplcApi.modbusWrite(mb.id, table, addr * 16, bits);
-      } else {
-        await vplcApi.modbusWrite(mb.id, table, addr, ws);
-      }
+    if (!area || !device) return;
+    if (bitArea) {
+      const bits = ws.flatMap((w) => Array.from({ length: 16 }, (_, b) => (w >> b) & 1)).slice(0, Math.max(0, area.size - addr * 16));
+      await vplcApi.areaWrite(device.id, area.code, addr * 16, bits);
+    } else {
+      await vplcApi.areaWrite(device.id, area.code, addr, ws);
     }
-  }, [vplc, mb, mbSize, area]);
+  }, [device, area, bitArea]);
 
   const writeWords = useCallback(async (addr: number, ws: number[]) => {
     try {
@@ -250,12 +226,14 @@ export default function VplcMemoryPage(): ReactElement {
     try {
       if (input.words) {
         await putWords(addr, input.words);
-      } else if (input.text && vplc) {
-        await vplcApi.writeText(vplc, area.code, addr, input.text);
       } else if (input.text) {
-        // Modbus — 높은 바이트가 앞 글자
+        // 한 워드에 두 글자 — MELSEC 은 낮은 바이트가 앞 글자, Modbus 는 높은 바이트가 앞 글자
         const codes = Array.from(input.text, (c) => c.charCodeAt(0));
-        await putWords(addr, Array.from({ length: Math.ceil(codes.length / 2) }, (_, i) => (codes[2 * i] << 8) | (codes[2 * i + 1] ?? 0)));
+        await putWords(addr, Array.from({ length: Math.ceil(codes.length / 2) }, (_, i) => {
+          const first = codes[2 * i];
+          const second = codes[2 * i + 1] ?? 0;
+          return mb ? (first << 8) | second : (second << 8) | first;
+        }));
       }
       setWriteOpen(false);
       showToast(t('i18n.tc.vplc.written', '썼습니다'), 'success');
@@ -281,14 +259,13 @@ export default function VplcMemoryPage(): ReactElement {
   };
 
   const clearAll = async () => {
-    if (!area) return;
+    if (!area || !device) return;
     const ok = await showConfirm({
       message: t('i18n.tc.vplc.confirmClear', '{type} 메모리를 모두 0 으로 지울까요?').replace('{type}', area.label), severity: 'error',
     });
     if (!ok) return;
     try {
-      if (vplc) await vplcApi.clearAll(vplc, area.code, start);
-      else if (mb) await vplcApi.modbusWrite(mb.id, area.code as ModbusTable, 0, Array.from({ length: mbSize }, () => (area.bit ? false : 0)));
+      await vplcApi.areaClear(device.id, area.code);
       await readRef.current();
     } catch (e) {
       showToast(extractApiError(e), 'error');
@@ -337,9 +314,9 @@ export default function VplcMemoryPage(): ReactElement {
 
   const opc = protocol === 'OPC_UA';
   const lastRow = Math.min(start + size - 1, max);
-  // Modbus 비트 영역은 마지막 줄이 영역 끝에서 잘린다(칸 1000 이면 CO999 까지)
-  const rangeText = !area ? '' : area.bit && mb
-    ? `${rowLabel(start)} ~ ${area.code.toUpperCase()}${Math.min(lastRow * 16 + 15, mbSize - 1)}`
+  // BIT 영역은 마지막 줄이 영역 끝에서 잘린다(칸 1000 이면 CO999 까지)
+  const rangeText = !area ? '' : bitArea
+    ? `${rowLabel(start)} ~ ${area.label}${num(Math.min(lastRow * 16 + 15, area.size - 1))}`
     : `${rowLabel(start)} ~ ${rowLabel(lastRow)}`;
   const kindOf = (k: VplcProtocol) => devices.filter((d) => protocolOf(d) === k);
   /** 고른 가상 PLC 한 줄 설명 */

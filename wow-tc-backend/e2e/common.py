@@ -137,7 +137,7 @@ def ensure_vplc(spec, tags=None):
             raise SystemExit(f"가상 PLC 등록 실패: {spec['name']} HTTP {s}")
         s, info = vplc("GET", "/api/v1/vplc/management/find/byName/" + spec["name"])
         for t in tags or []:
-            vplc("POST", f"/api/v1/vplc/opcua/{info['id']}/tags", t)
+            vplc("POST", f"/api/v1/vplc/memory/{info['id']}/tags", t)
     vid = info["id"]
     if info["status"] in ("REGISTERED", "RELEASED"):
         vplc("POST", "/api/v1/vplc/management/publish/" + vid)

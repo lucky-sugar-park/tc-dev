@@ -37,17 +37,24 @@ export type Vplc = {
   updatedDate?: string;
 };
 
-export type WordInfo = { word: number; high: number; low: number; lhStr?: string; hlStr?: string };
-
-export type VplcMemory = {
-  vplcId: string;
-  memoryType: string;
-  startAddress: number;
-  words: number[];
-  wordInfos: WordInfo[];
+/** 영역 메모리의 영역 하나(GET /memory/{id}) — MELSEC 메모리 종류·Modbus HR·IR·CO·DI */
+export type MemoryArea = {
+  /** 영역 코드(MELSEC D*, Modbus hr) */
+  code: string;
+  /** 표시(D, HR) */
+  label: string;
+  /** WORD 는 0~65535, BIT 는 0·1 */
+  unit: 'WORD' | 'BIT';
+  /** 칸 수(단위 기준) */
+  size: number;
+  /** 주소를 16진으로(MELSEC W·B·X·Y…) */
+  hexAddress: boolean;
+  /** 워드로 담지만 비트마다 주소(MELSEC M·X…) */
+  bitDevice: boolean;
 };
 
-export type ModbusTable = 'co' | 'di' | 'ir' | 'hr';
+/** 메모리 능력 — 영역(MELSEC·Modbus) 또는 태그(OPC UA) */
+export type MemoryInfo = { kind: 'AREA'; areas: MemoryArea[] } | { kind: 'TAG' };
 
 export type OpcUaInfo = { endpointUrl: string; namespaceUri: string; namespaceIndex: number; tags: number; sessions: number };
 

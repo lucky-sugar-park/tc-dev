@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.wow.be.framework.Condition;
 import com.wow.be.tc.vplc.VirtualPlcException;
-import com.wow.be.tc.vplc.machine.MemoryInfo;
+import com.wow.be.tc.vplc.melsec.MemoryInfo;
 import com.wow.be.tc.vplc.management.ConnectionClientHistoryInfo;
 import com.wow.be.tc.vplc.management.ConnectionInfo;
 import com.wow.be.tc.vplc.management.PortUpdateInfo;

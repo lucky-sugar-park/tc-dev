@@ -87,5 +87,42 @@ s2, b2 = post_json("/manipulation/read", {"vplcName": NO, "memoryType": "D*", "f
 check("메모리: 게시 안 된 아이디 409, 없는 이름 404(예전 500·null)", s == 409 and s2 == 404, (s, b, s2, b2))
 post_json("/manipulation/write", {**MEM, "startAddress": 950, "words": [0, 0, 0, 0]})
 
+
+# 메모리 능력 API(docs/vplc-architecture.md §2.4) — 종류와 관계없이 /memory
+def put_json(path, body):
+    req = urllib.request.Request(BASE + path, data=json.dumps(body).encode(), method="PUT")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status, json.loads(r.read().decode() or "null")
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode()
+        return e.code, json.loads(raw) if raw.startswith("{") else raw
+
+
+s, body = call("GET", "/memory/vplc-e2e")
+desc = json.loads(body) if s == 200 else {}
+d_area = next((a for a in desc.get("areas", []) if a.get("label") == "D"), {})
+check("GET /memory/{MELSEC} → 영역 D(WORD, 16진 아님)", s == 200 and desc.get("kind") == "AREA" and d_area.get("unit") == "WORD"
+      and d_area.get("hexAddress") is False and d_area.get("size", 0) > 960, (s, body[:300]))
+s, b = put_json("/memory/vplc-e2e/area/D", {"start": 960, "values": [1234, -1, 0x4241]})
+s2, r = call("GET", "/memory/vplc-e2e/area/D*?start=960&count=3")
+check("영역 D 쓰기 → 읽기 1234·65535·0x4241(부호 없이)", s == 200 and s2 == 200 and json.loads(r)["values"] == [1234, 65535, 0x4241], (s, b, s2, r[:200]))
+s, b = put_json("/memory/vplc-e2e/area/D", {"start": 960, "values": [70000]})
+check("영역 범위 밖 값 → 400", s == 400 and isinstance(b, dict) and b.get("errorCode") == "ERR_400", (s, b))
+s, b = call("GET", "/memory/vplc-e2e/area/D?start=0&count=3000")
+check("한 번에 2000 칸 넘게 → 400", s == 400, (s, b[:200]))
+s, b = call("GET", "/memory/vplc-e2e/tags")
+check("MELSEC 에 태그 API → 400(영역 API 를 쓰라)", s == 400 and error_code(b) == "ERR_400", (s, b[:200]))
+s, b = call("GET", f"/memory/{NO}/area/D?start=0&count=1")
+check("없는 가상 PLC 메모리 → 404", s == 404, (s, b[:200]))
+put_json("/memory/vplc-e2e/area/D", {"start": 960, "values": [0, 0, 0]})
+
+# 상태 규칙 한 곳(AbstractVirtualPlc) — 실행 중인 PLC 재개·시작은 409
+s, b = call("POST", "/control/resume/vplc-e2e")
+check("RUNNING 에 재개 → 409", s == 409 and error_code(b) == "ERR_409", (s, b[:200]))
+s, b = call("POST", "/control/start/vplc-e2e")
+check("RUNNING 에 시작 → 409", s == 409 and error_code(b) == "ERR_409", (s, b[:200]))
+
 print(f"\n{sum(results)}/{len(results)} PASS")
 sys.exit(0 if all(results) else 1)

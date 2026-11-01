@@ -277,7 +277,7 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 
 ### 16.1 Modbus·OPC UA 가상 PLC (2026-11-01)
 
-vplc 한 앱이 MELSEC·Modbus·OPC UA 가상 PLC 를 여러 대씩 띄운다(docs/virtual-devices.md — 처음에는 따로 뜨던 vplc-modbus·vplc-opcua 를 화면이 함께 불렀으나 같은 날 vplc 로 합쳤다). 화면은 다시 vplc 하나만 부른다(`tc-config.json` 의 `vplcUrl`).
+vplc 한 앱이 MELSEC·Modbus·OPC UA 가상 PLC 를 여러 대씩 띄운다(종류별 사용 안내 docs/vplc-guide.md, 설계 docs/virtual-devices.md — 처음에는 따로 뜨던 vplc-modbus·vplc-opcua 를 화면이 함께 불렀으나 같은 날 vplc 로 합쳤다). 화면은 다시 vplc 하나만 부른다(`tc-config.json` 의 `vplcUrl`).
 
 | 화면 | 내용 |
 |---|---|

@@ -39,9 +39,10 @@ def call(method, path, body=None, base=None, token=True):
             return e.code, raw
 
 
-def vplc(op):
+def vplc(op, allow=(200,)):
+    """vplc 제어 — 상태 규칙(docs/vplc-architecture.md §2.2)상 이미 그 상태면 409. 정리에서는 409 도 받는다"""
     s = call("POST", f"/api/v1/vplc/control/{op}/byName/{VPLC}", base=common.VPLC_BASE, token=False)[0]
-    if s != 200:
+    if s not in allow:
         raise SystemExit(f"vplc {op} 실패: HTTP {s}")
     return s
 
@@ -145,7 +146,7 @@ try:
     ok = wait(lambda: plc(PTS)[0] == 200, 20)
     check("vplc 재개 → 다시 연결해 요청 200", ok)
 finally:
-    vplc("resume")
+    vplc("resume", allow=(200, 409))   # 이미 실행 중이면 409
     set_settings({})
     for name in created:
         call("DELETE", f"/api/v1/ifsvc/management/delete/byName/{name}")
