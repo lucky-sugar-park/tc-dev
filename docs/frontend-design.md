@@ -38,7 +38,7 @@
 | 다국어 | 표 `I18N_ITEM`(CODE·LANG_CODE 키, VALUE, KIND, IS_USE), `GET /api/i18n/messages?lang=KO` → `{코드: 값}` (**로그인 전에도**) | `useI18n().t(key, 기본값)`, 메뉴는 `i18nCode`, 언어 KO·EN·JA·ZH | 한국어 기본값으로 보인다 |
 | LOV | 표 `COMMON_CODE`(CODE 키, NAME, I18N_CODE, PARENT, IS_USE), `GET /api/common-codes/lov?parent=&leaf=` | `useLov`·`LovSelect`·`useLovLabeler` | 목록이 빈다 |
 | 북마크 | 표 `BOOKMARK`(USER_ID·NAME 키, PATH_NAME, DESCRIPTION, STATE_JSON), `GET·POST /api/me/bookmarks`, `PUT·DELETE ?name=` | 머리말 북마크 메뉴·화면 상태 복원 | 빈 목록, 추가 때 오류 알림 |
-| 설정 | **백엔드 없음** — 테마·언어·탭 설정 모두 localStorage | `SettingsDialog` | — |
+| 설정 | **백엔드 없음** — 테마·언어·탭 설정 모두 localStorage | tc 것 `TcSettingsDialog`(shared `SettingsDialog` 를 옮김 — 시스템 탭·챗봇 도우미 없음, 화면 배치 미리보기는 WOW-TC, 2026-11-01) | — |
 
 MES 문서(CLAUDE.md)가 말하는 IndexedDB 캐시·버전 확인은 실제로는 없다(메모리·localStorage 뿐).
 
@@ -106,6 +106,8 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 `I18N_ITEM`, `COMMON_CODE`, `BOOKMARK` — mes-dev 와 같은 칼럼. 씨앗: shared 셸 문구(mes `i18n/screen/10-shared.tsv`)·tc 메뉴·화면 문구(KO·EN), LOV(`common.code.ui.tab_user_pref`·`tab_retention` + tc 코드: 프로토콜·프레임·인터페이스 형·점 형·커넥터 상태 …). 이미 있는 행은 덮지 않는다(mes 의 `ScreenI18nSeed` 와 같은 규칙).
 
 ## 5. 메뉴와 화면 (정적)
+
+왼쪽 1단계 메뉴 순서는 **홈 · 관리 · PLC · 전달 · 운영 · 가상 PLC**(2026-11-01, `screens.ts` 의 `GROUPS` 순서). 아래 표는 그룹별로 적었다.
 
 | 메뉴 | 화면 키 · 경로 | 권한 자원 | 내용 | 옛 화면 |
 |---|---|---|---|---|

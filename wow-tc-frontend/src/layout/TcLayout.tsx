@@ -7,11 +7,12 @@ import {
 import {
   AlertModal, Breadcrumbs, ChangePasswordPage, CommandBarSlotProvider, ConfirmModal, ConnectionSystemNotice, Footer,
   ForbiddenSnackbarHost, MAX_VISIBLE_TOASTS, MenuPanel, MenuRail, NotificationAlertStack, PwaUpdateSystemNotice, RichHeader,
-  ScreenTabs, SettingsDialog, ShellActionsProvider, SystemBannerHost, ToastHost, UnsavedChangesGuardHost, applyPermissionFilter,
+  ScreenTabs, ShellActionsProvider, SystemBannerHost, ToastHost, UnsavedChangesGuardHost, applyPermissionFilter,
   basePathOf, getTheme, showAlert, useBackendMenu, useI18nStore, usePermissions, useSessionStore, useSettingsStore,
   useTabController, useTabsStore, useThemeStore, useUiRoutes,
 } from 'wow-mes-frontend-shared';
 import { TcLoginPage } from './TcLoginPage';
+import { TcSettingsDialog } from './TcSettingsDialog';
 
 /**
  * tc 셸 (docs/frontend-design.md 결정 F1). mes-dev shared 의 {@code DefaultLayout} 과 같은 짜임(머리말·메뉴 레일·패널·빵 부스러기·탭·
@@ -20,6 +21,7 @@ import { TcLoginPage } from './TcLoginPage';
  *   <li>제목 "WOW-TC", 로그인은 tc 로그인 화면(회원가입·비밀번호 찾기가 없다).</li>
  *   <li>메뉴·화면 경로는 코드에 고정(결정 U2) — 서버의 /api/menus·/api/ui-routes 는 빈 목록을 돌려줘 셸이 코드 것을 쓴다.</li>
  *   <li>탭 보존 정책(MES 운영 옵션)·장식 없는 화면은 쓰지 않는다 — shared 가 그 도우미를 내보내지 않고 tc 에 필요 없다.</li>
+ *   <li>설정 창은 tc 것({@link TcSettingsDialog}) — 시스템 탭·챗봇 도우미가 없고 화면 배치 미리보기가 WOW-TC 화면이다.</li>
  * </ul>
  */
 export const TcLayout = ({ config }: LayoutContext): ReactNode => <Gated config={config} />;
@@ -197,7 +199,7 @@ function Shell({ config }: LayoutContext): ReactElement {
               </Box>
               <Footer />
             </Box>
-            <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+            <TcSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
             <AlertModal />
             <ConfirmModal />
             <ToastHost maxVisible={MAX_VISIBLE_TOASTS} />

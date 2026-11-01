@@ -12,10 +12,10 @@ export type ScreenMeta = {
 };
 
 export const GROUPS: { key: string; label: string; icon: string }[] = [
+  { key: 'tc.admin', label: '관리', icon: 'admin' },
   { key: 'tc.plc', label: 'PLC', icon: 'plc' },
   { key: 'tc.delivery', label: '전달', icon: 'delivery' },
   { key: 'tc.ops', label: '운영', icon: 'monitoring' },
-  { key: 'tc.admin', label: '관리', icon: 'admin' },
   { key: 'tc.vplc', label: '가상 PLC', icon: 'vplc' },
 ];
 
