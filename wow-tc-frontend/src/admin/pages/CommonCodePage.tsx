@@ -148,7 +148,7 @@ export default function CommonCodePage(): ReactElement {
   const groupCols = useMemo<GridColDef<CommonCode>[]>(() => [
     { field: 'name', headerName: t('i18n.tc.code.group', '그룹'), flex: 1, minWidth: 140 },
     { field: 'code', headerName: t('i18n.tc.i18n.code', '코드'), flex: 1, minWidth: 180 },
-    { field: 'actions', type: 'actions', headerName: '', width: 70, getActions: ({ row }) => actions(row) },
+    { field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 70, getActions: ({ row }) => actions(row) },
   ], [t, actions]);
 
   const codeCols = useMemo<GridColDef<CommonCode>[]>(() => [
@@ -157,7 +157,7 @@ export default function CommonCodePage(): ReactElement {
     { field: 'i18nCode', headerName: t('i18n.tc.code.i18nCode', '다국어 코드'), width: 220 },
     { field: 'isUse', headerName: t('i18n.tc.interface.use', '사용'), width: 70, type: 'boolean' },
     { field: 'description', headerName: t('i18n.tc.common.description', '설명'), flex: 1, minWidth: 160 },
-    { field: 'actions', type: 'actions', headerName: '', width: 70, getActions: ({ row }) => actions(row) },
+    { field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 70, getActions: ({ row }) => actions(row) },
   ], [t, actions]);
 
   const filteredGroups = useMemo(() => groups.filter((g) => matches(search, g.code, g.name)), [groups, search]);

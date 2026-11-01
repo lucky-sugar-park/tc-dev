@@ -21,9 +21,9 @@ import {
 import { usePerm } from '../../shared/usePerm';
 import { OpcUaTagPanel } from '../components/OpcUaTagPanel';
 import {
-  KIND_LABEL, MEMORY_TYPES, MODBUS_TABLES, OPCUA_NAME, STATUS_COLOR, addressLabel, isPublished, modbusApi, opcUaApi, vplcApi, type VplcControl,
+  MEMORY_TYPES, MODBUS_TABLES, PROTOCOL_LABEL, STATUS_COLOR, addressLabel, isPublished, protocolOf, vplcApi, type VplcControl,
 } from '../services/vplcApi';
-import type { ModbusDevice, ModbusTable, OpcUaInfo, Vplc, VplcKind } from '../types/vplc';
+import type { ModbusTable, Vplc, VplcProtocol } from '../types/vplc';
 
 const SCREEN = 'tc.vplc.memory';
 const PAGE_SIZES = [20, 50, 100];
@@ -35,15 +35,8 @@ const hex4 = (w: number) => (w & 0xFFFF).toString(16).toUpperCase().padStart(4, 
 const signed = (w: number) => (w << 16) >> 16;
 const ch = (b: number) => (b >= 0x20 && b <= 0x7E ? String.fromCharCode(b) : '·');
 
-/** 고를 수 있는 가상 장비 — key 는 종류:이름 */
-type Device = { key: string; kind: VplcKind; name: string; status: string; caption: string; mc?: Vplc; modbus?: ModbusDevice; opcua?: OpcUaInfo };
-
 /** 메모리 영역 — MC 메모리 종류 또는 Modbus 영역. bit 이면 한 줄(워드)이 비트 16개 */
 type Area = { code: string; label: string; max: number; hex?: boolean; bit?: boolean };
-
-/** 목록에서 ?kind=modbus|opcua&id= 로 들어온 장비(kind 가 없으면 MELSEC) */
-const keyOf = (kind: string | null, id: string | null): string =>
-  kind === 'opcua' ? 'OPCUA:' : kind === 'modbus' ? `MODBUS:${id ?? ''}` : id ? `MC:${id}` : '';
 
 /** Modbus 주소(프로토콜 주소, 0부터) — 레지스터는 칸 번호, 비트 영역은 그 줄의 비트 번호 */
 const modbusLabel = (area: Area, addr: number, bit = 0) => `${area.code.toUpperCase()}${area.bit ? addr * 16 + bit : addr}`;
@@ -107,11 +100,12 @@ function WriteDialog({ open, memoryType, start, label, textHelp, onClose, onWrit
 }
 
 /**
- * 가상 PLC 메모리 보기·제어 (docs/frontend-design.md §5, docs/virtual-devices.md) — 세 장비를 고른다.
- * - MELSEC(vplc)·Modbus(vplc-modbus): 메모리 종류(영역)·시작 주소·쪽 크기로 표(주소·10진·16진·비트·ASCII), 10진 칸을 고쳐 쓰기·비트를 눌러
- *   켜고 끄기·여러 값/문자열 쓰기, 종류 전체 지우기, 시작·일시정지(무응답)·재개(·정지). Modbus 코일·입력 비트는 16개를 한 줄로 묶고,
- *   문자열은 높은 바이트가 앞 글자(Modbus 보통 순서), 번호는 프로토콜 주소(0부터).
- * - OPC UA(vplc-opcua): 태그 표(값 고쳐 쓰기·태그 더하기·지우기).
+ * 가상 PLC 메모리 보기·제어 (docs/frontend-design.md §5, docs/virtual-devices.md) — 게시된 가상 PLC(종류별로 묶음)를 고른다.
+ * 시작·일시정지(무응답)·재개·정지는 모든 종류에.
+ * - MELSEC·Modbus: 메모리 종류(영역)·시작 주소·쪽 크기로 표(주소·10진·16진·비트·ASCII), 10진 칸을 고쳐 쓰기·비트를 눌러 켜고 끄기·
+ *   여러 값/문자열 쓰기, 종류 전체 지우기. Modbus 코일·입력 비트는 16개를 한 줄로 묶고, 문자열은 높은 바이트가 앞 글자(Modbus 보통 순서),
+ *   번호는 프로토콜 주소(0부터).
+ * - OPC UA: 태그 표(값 고쳐 쓰기 — 실행 중일 때, 태그 더하기·지우기 — 정의는 vplc DB 에 남는다).
  * 자동 새로 고침은 모두에.
  */
 export default function VplcMemoryPage(): ReactElement {
@@ -120,10 +114,10 @@ export default function VplcMemoryPage(): ReactElement {
   const canWrite = perm('U');
   const canControl = perm('X');
   const active = useIsActiveScreen();
-  // 목록에서 ?kind=&id= 로 들어오면 그 장비 — 고른 장비를 주소에 다시 쓰지 않는다(주소가 바뀌면 탭이 하나 더 열린다)
+  // 목록에서 ?id= 로 들어오면 그 가상 PLC — 고른 것을 주소에 다시 쓰지 않는다(주소가 바뀌면 탭이 하나 더 열린다)
   const [params] = useSearchParams();
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [deviceKey, setDeviceKey] = useState(keyOf(params.get('kind'), params.get('id')));
+  const [devices, setDevices] = useState<Vplc[]>([]);
+  const [deviceKey, setDeviceKey] = useState(params.get('id') ?? '');
   const [memType, setMemType] = useState('');
   const [start, setStart] = useState(0);
   const [startInput, setStartInput] = useState('0');
@@ -131,50 +125,30 @@ export default function VplcMemoryPage(): ReactElement {
   const [refresh, setRefresh] = useState(0);
   const [words, setWords] = useState<number[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [down, setDown] = useState<string[]>([]);
   const [writeOpen, setWriteOpen] = useState(false);
   const [tagAddOpen, setTagAddOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
-  const device = devices.find((d) => d.key === deviceKey) ?? null;
-  const vplc = device?.mc ?? null;
-  const mb = device?.modbus ?? null;
+  const device = devices.find((d) => d.id === deviceKey) ?? null;
+  const protocol = device ? protocolOf(device) : null;
+  /** MELSEC 이면 그 PLC */
+  const vplc = protocol === 'MELSEC_MC' ? device : null;
+  /** Modbus 이면 그 장치 */
+  const mb = protocol === 'MODBUS_TCP' ? device : null;
+  const mbSize = Number(mb?.settings?.size ?? 10000);
 
   const loadDevices = useCallback(async () => {
-    const sources: { kind: VplcKind; get: () => Promise<Device[]> }[] = [];
-    if (vplcApi.enabled()) {
-      sources.push({
-        kind: 'MC',
-        get: async () => (await vplcApi.list()).filter((v) => isPublished(v.status)).map((v) => ({
-          key: `MC:${v.id}`, kind: 'MC' as const, name: v.name, status: v.status ?? '-', mc: v,
-          caption: `${v.frameFormat} · ${v.ipAddress}:${v.startPort}${v.portCount > 1 ? `~${v.startPort + v.portCount - 1}` : ''}`,
-        })),
-      });
+    try {
+      // 종류(MELSEC → Modbus → OPC UA)·이름 차례 — 처음 고르는 것은 MELSEC
+      const order: VplcProtocol[] = ['MELSEC_MC', 'MODBUS_TCP', 'OPC_UA'];
+      const list = (await vplcApi.list()).filter((v) => isPublished(v.status))
+        .sort((a, b) => order.indexOf(protocolOf(a)) - order.indexOf(protocolOf(b)) || a.name.localeCompare(b.name));
+      setDevices(list);
+      setDeviceKey((cur) => (cur && list.some((d) => d.id === cur) ? cur : list[0]?.id ?? ''));
+    } catch (e) {
+      setError(extractApiError(e));
     }
-    if (modbusApi.enabled()) {
-      sources.push({
-        kind: 'MODBUS',
-        get: async () => (await modbusApi.list()).map((d) => ({
-          key: `MODBUS:${d.name}`, kind: 'MODBUS' as const, name: d.name, status: d.silent ? 'PAUSED' : 'RUNNING', modbus: d,
-          caption: `Modbus TCP · ${d.bindAddress}:${d.port} · ${t('i18n.tc.vplc.unitId', '단위 ID')} ${d.unitId} · ${d.delayMs}ms`,
-        })),
-      });
-    }
-    if (opcUaApi.enabled()) {
-      sources.push({
-        kind: 'OPCUA',
-        get: async () => {
-          const i = await opcUaApi.info();
-          return [{ key: 'OPCUA:', kind: 'OPCUA' as const, name: OPCUA_NAME, status: 'RUNNING', opcua: i, caption: `${i.endpointUrl} · ns=${i.namespaceIndex}` }];
-        },
-      });
-    }
-    const results = await Promise.allSettled(sources.map((s) => s.get()));
-    const list = results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
-    setDown(results.flatMap((r, i) => (r.status === 'rejected' ? [`${KIND_LABEL[sources[i].kind]}: ${extractApiError(r.reason)}`] : [])));
-    setDevices(list);
-    setDeviceKey((cur) => (cur && list.some((d) => d.key === cur) ? cur : list[0]?.key ?? ''));
-  }, [t]);
+  }, []);
   useEffect(() => { if (active) void loadDevices(); }, [active, loadDevices]);
 
   const areas = useMemo<Area[]>(() => {
@@ -185,10 +159,10 @@ export default function VplcMemoryPage(): ReactElement {
       });
     }
     if (mb) {
-      return MODBUS_TABLES.map((x) => ({ code: x.code, label: x.code.toUpperCase(), bit: x.bit, max: x.bit ? Math.ceil(mb.size / 16) - 1 : mb.size - 1 }));
+      return MODBUS_TABLES.map((x) => ({ code: x.code, label: x.code.toUpperCase(), bit: x.bit, max: x.bit ? Math.ceil(mbSize / 16) - 1 : mbSize - 1 }));
     }
     return [];
-  }, [vplc, mb]);
+  }, [vplc, mb, mbSize]);
   const area = areas.find((a) => a.code === memType) ?? null;
 
   // 장비를 바꾸면 그 장비의 첫 메모리 종류로
@@ -218,30 +192,30 @@ export default function VplcMemoryPage(): ReactElement {
         const rowsN = Math.max(0, Math.min(size, area.max - start + 1));
         if (area.bit) {
           const first = start * 16;
-          const count = Math.min(rowsN * 16, mb.size - first);
-          const bits = count > 0 ? (await modbusApi.read(mb.name, table, first, count)).values : [];
+          const count = Math.min(rowsN * 16, mbSize - first);
+          const bits = count > 0 ? (await vplcApi.modbusRead(mb.id, table, first, count)).values : [];
           setWords(Array.from({ length: rowsN }, (_, r) => {
             let w = 0;
             for (let b = 0; b < 16; b++) if (bits[r * 16 + b] === true) w |= 1 << b;
             return signed(w);
           }));
         } else {
-          setWords(rowsN > 0 ? (await modbusApi.read(mb.name, table, start, rowsN)).values.map((v) => signed(Number(v))) : []);
+          setWords(rowsN > 0 ? (await vplcApi.modbusRead(mb.id, table, start, rowsN)).values.map((v) => signed(Number(v))) : []);
         }
       }
       setError(null);
     } catch (e) {
       setError(extractApiError(e));
     }
-  }, [vplc, mb, area, start, size]);
+  }, [vplc, mb, mbSize, area, start, size]);
   const readRef = useRef(read);
   readRef.current = read;
   useEffect(() => { if (active) void read(); }, [active, read]);
   useEffect(() => {
-    if (!active || !refresh || device?.kind === 'OPCUA') return undefined;
+    if (!active || !refresh || protocol === 'OPC_UA') return undefined;
     const h = window.setInterval(() => { void readRef.current(); }, refresh);
     return () => window.clearInterval(h);
-  }, [active, refresh, device?.kind]);
+  }, [active, refresh, protocol]);
 
   const max = area?.max ?? 0xFFFFF;
   const go = (s: number) => { const n = Math.max(0, Math.min(s, max)); setStart(n); setStartInput(String(n)); };
@@ -254,13 +228,13 @@ export default function VplcMemoryPage(): ReactElement {
     } else if (mb) {
       const table = area.code as ModbusTable;
       if (area.bit) {
-        const bits = ws.flatMap((w) => Array.from({ length: 16 }, (_, b) => ((w >> b) & 1) === 1)).slice(0, Math.max(0, mb.size - addr * 16));
-        await modbusApi.write(mb.name, table, addr * 16, bits);
+        const bits = ws.flatMap((w) => Array.from({ length: 16 }, (_, b) => ((w >> b) & 1) === 1)).slice(0, Math.max(0, mbSize - addr * 16));
+        await vplcApi.modbusWrite(mb.id, table, addr * 16, bits);
       } else {
-        await modbusApi.write(mb.name, table, addr, ws);
+        await vplcApi.modbusWrite(mb.id, table, addr, ws);
       }
     }
-  }, [vplc, mb, area]);
+  }, [vplc, mb, mbSize, area]);
 
   const writeWords = useCallback(async (addr: number, ws: number[]) => {
     try {
@@ -297,9 +271,9 @@ export default function VplcMemoryPage(): ReactElement {
 
   const control = async (op: VplcControl) => {
     if (op === 'pause' && !(await confirmPause())) return;
+    if (!device) return;
     try {
-      if (vplc) await vplcApi.control(op, vplc.id);
-      else if (mb) await modbusApi.behavior(mb.name, { silent: op === 'pause' });
+      await vplcApi.control(op, device.id);
     } catch (e) {
       showToast(extractApiError(e), 'error');
     }
@@ -314,7 +288,7 @@ export default function VplcMemoryPage(): ReactElement {
     if (!ok) return;
     try {
       if (vplc) await vplcApi.clearAll(vplc, area.code, start);
-      else if (mb) await modbusApi.write(mb.name, area.code as ModbusTable, 0, Array.from({ length: mb.size }, () => (area.bit ? false : 0)));
+      else if (mb) await vplcApi.modbusWrite(mb.id, area.code as ModbusTable, 0, Array.from({ length: mbSize }, () => (area.bit ? false : 0)));
       await readRef.current();
     } catch (e) {
       showToast(extractApiError(e), 'error');
@@ -361,32 +335,35 @@ export default function VplcMemoryPage(): ReactElement {
     { field: 'text', headerName: 'ASCII', width: 80, sortable: false },
   ], [t, canWrite, rowLabel, bitLabel, writeWords]);
 
-  const opc = device?.kind === 'OPCUA';
+  const opc = protocol === 'OPC_UA';
   const lastRow = Math.min(start + size - 1, max);
   // Modbus 비트 영역은 마지막 줄이 영역 끝에서 잘린다(칸 1000 이면 CO999 까지)
   const rangeText = !area ? '' : area.bit && mb
-    ? `${rowLabel(start)} ~ ${area.code.toUpperCase()}${Math.min(lastRow * 16 + 15, mb.size - 1)}`
+    ? `${rowLabel(start)} ~ ${area.code.toUpperCase()}${Math.min(lastRow * 16 + 15, mbSize - 1)}`
     : `${rowLabel(start)} ~ ${rowLabel(lastRow)}`;
-  const kindOf = (k: VplcKind) => devices.filter((d) => d.kind === k);
+  const kindOf = (k: VplcProtocol) => devices.filter((d) => protocolOf(d) === k);
+  /** 고른 가상 PLC 한 줄 설명 */
+  const caption = !device ? '' : protocol === 'MODBUS_TCP'
+    ? `Modbus TCP · ${device.ipAddress}:${device.startPort} · ${t('i18n.tc.vplc.unitId', '단위 ID')} ${String(device.settings?.unitId ?? 1)} · ${String(device.settings?.delayMs ?? 0)}ms`
+    : protocol === 'OPC_UA'
+      ? `OPC UA · opc.tcp://${device.ipAddress}:${device.startPort}${String(device.settings?.path ?? '')}`
+      : `${device.frameFormat} · ${device.ipAddress}:${device.startPort}${device.portCount > 1 ? `~${device.startPort + device.portCount - 1}` : ''}`;
   const onTagError = useCallback((m: string | null) => setError(m), []);
 
   return (
     <PageContainer>
       <CommandBarActions>
         <ScreenAction kind="refresh" onClick={() => { void loadDevices(); if (opc) setReloadKey((k) => k + 1); else void read(); }} />
-        {canControl && vplc && (vplc.status === 'RUNNING'
+        {canControl && device && (device.status === 'RUNNING'
           ? (
             <>
               <ScreenAction icon={<PauseIcon fontSize="small" />} label={t('i18n.tc.vplc.pause', '일시정지')} onClick={() => { void control('pause'); }} />
               <ScreenAction icon={<StopIcon fontSize="small" />} label={t('i18n.tc.vplc.stop', '정지')} onClick={() => { void control('stop'); }} />
             </>
           )
-          : vplc.status === 'PAUSED'
+          : device.status === 'PAUSED'
             ? <ScreenAction icon={<PlayArrowIcon fontSize="small" />} label={t('i18n.tc.connector.resume', '재개')} onClick={() => { void control('resume'); }} />
             : <ScreenAction icon={<PlayArrowIcon fontSize="small" />} label={t('i18n.tc.vplc.start', '시작')} onClick={() => { void control('start'); }} />)}
-        {canControl && mb && (mb.silent
-          ? <ScreenAction icon={<PlayArrowIcon fontSize="small" />} label={t('i18n.tc.connector.resume', '재개')} onClick={() => { void control('resume'); }} />
-          : <ScreenAction icon={<PauseIcon fontSize="small" />} label={t('i18n.tc.vplc.pause', '일시정지')} onClick={() => { void control('pause'); }} />)}
         {canWrite && (vplc || mb) && (
           <>
             <ScreenAction icon={<EditIcon fontSize="small" />} label={t('i18n.tc.vplc.write', '값 쓰기')} onClick={() => setWriteOpen(true)} />
@@ -402,8 +379,8 @@ export default function VplcMemoryPage(): ReactElement {
         <TextField select size="small" label={t('i18n.tc.vplc.title', '가상 PLC')} value={device ? deviceKey : ''} sx={{ width: 220 }}
           onChange={(e) => setDeviceKey(e.target.value)}
           slotProps={{ inputLabel: { shrink: true }, htmlInput: { 'aria-label': t('i18n.tc.vplc.title', '가상 PLC') } }}>
-          {(['MC', 'MODBUS', 'OPCUA'] as const).flatMap((k) => (kindOf(k).length
-            ? [<ListSubheader key={`h-${k}`}>{KIND_LABEL[k]}</ListSubheader>, ...kindOf(k).map((d) => <MenuItem key={d.key} value={d.key}>{d.name}</MenuItem>)]
+          {(['MELSEC_MC', 'MODBUS_TCP', 'OPC_UA'] as const).flatMap((k) => (kindOf(k).length
+            ? [<ListSubheader key={`h-${k}`}>{PROTOCOL_LABEL[k]}</ListSubheader>, ...kindOf(k).map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)]
             : []))}
         </TextField>
         {opc ? (
@@ -432,8 +409,8 @@ export default function VplcMemoryPage(): ReactElement {
         </TextField>
       </FilterBar>
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', px: 0.5 }}>
-        {device && <Chip size="small" color={STATUS_COLOR[device.status] ?? 'default'} label={device.status} />}
-        {device && <Typography variant="caption" color="text.secondary">{device.caption}</Typography>}
+        {device && <Chip size="small" color={STATUS_COLOR[device.status ?? ''] ?? 'default'} label={device.status} />}
+        {device && <Typography variant="caption" color="text.secondary">{caption}</Typography>}
         {mb && (
           <Typography variant="caption" color="text.secondary">
             · {t('i18n.tc.vplc.modbusAddrNote', '번호는 프로토콜 주소(0부터) — tc 주소 HR1 은 여기 HR0')}
@@ -448,13 +425,12 @@ export default function VplcMemoryPage(): ReactElement {
           </>
         )}
       </Stack>
-      {!devices.length && !error && !down.length && (
+      {!devices.length && !error && (
         <Alert severity="info">{t('i18n.tc.vplc.nonePublished', '게시된 가상 PLC 가 없습니다 — 가상 PLC 목록에서 게시하세요.')}</Alert>
       )}
-      {down.map((d) => <Alert key={d} severity="warning">{t('i18n.tc.vplc.deviceDown', '가상 장비에 붙지 못했습니다(떠 있는지 확인)')} — {d}</Alert>)}
       {error && <Alert severity="error">{error}</Alert>}
       {opc ? (
-        <OpcUaTagPanel active={active} search={tagSearch} reloadKey={reloadKey} refreshMs={refresh} canWrite={canWrite} canDelete={perm('D')}
+        <OpcUaTagPanel vplcId={device?.id ?? ''} running={device?.status === 'RUNNING' || device?.status === 'PAUSED'} active={active} search={tagSearch} reloadKey={reloadKey} refreshMs={refresh} canWrite={canWrite} canDelete={perm('D')}
           addOpen={tagAddOpen} onAddClose={() => setTagAddOpen(false)} onError={onTagError} />
       ) : (
         <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>

@@ -1,15 +1,15 @@
 import { tcConfig } from '../../shared/tcConfig';
-import type { ModbusDevice, ModbusTable, OpcUaInfo, OpcUaTag, OpcUaTagSpec, Vplc, VplcConnection, VplcKind, VplcMemory } from '../types/vplc';
+import type { ModbusTable, OpcUaInfo, OpcUaTag, OpcUaTagSpec, Vplc, VplcConnection, VplcMemory, VplcProtocol } from '../types/vplc';
 
 const enc = encodeURIComponent;
 
 /**
- * 가상 장비(vplc·vplc-modbus·vplc-opcua) — 화면이 장비를 바로 부른다(결정 F8, 주소는 tc-config.json). tc 의 토큰은 보내지 않는다 — 시험
- * 장비라 인증이 없다. 오류 본문 {message} 를 그대로 던진다.
+ * 가상 PLC(vplc) — 화면이 vplc 를 바로 부른다(결정 F8, 주소는 tc-config.json 의 vplcUrl). 한 vplc 가 MELSEC·Modbus·OPC UA 가상 PLC 를
+ * 여러 대 띄운다(docs/virtual-devices.md). tc 의 토큰은 보내지 않는다 — 시험 장비라 인증이 없다. 오류 본문 {errorCode, message} 의 message 를 그대로 던진다.
  */
-async function request<T>(baseUrl: string | undefined, method: string, path: string, body?: unknown): Promise<T> {
-  const base = (baseUrl ?? '').replace(/\/$/, '');
-  const res = await fetch(`${base}${path}`, {
+async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const base = (tcConfig().vplcUrl ?? '').replace(/\/$/, '');
+  const res = await fetch(`${base}/api/v1/vplc${path}`, {
     method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -23,12 +23,9 @@ async function request<T>(baseUrl: string | undefined, method: string, path: str
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-const call = <T>(method: string, path: string, body?: unknown) => request<T>(tcConfig().vplcUrl, method, `/api/v1/vplc${path}`, body);
-
 export type VplcControl = 'start' | 'stop' | 'pause' | 'resume';
 
 export const vplcApi = {
-  enabled: () => !!tcConfig().vplcUrl,
   list: () => call<Vplc[]>('GET', '/management/search'),
   find: (id: string) => call<Vplc>('GET', `/management/find/${enc(id)}`),
   register: (v: Vplc) => call<void>('POST', '/management/register', v),
@@ -50,25 +47,25 @@ export const vplcApi = {
     }),
   clearAll: (v: Vplc, memoryType: string, currentPosition: number) =>
     call<VplcMemory>('POST', '/manipulation/clear/all', { vplcId: v.id, memoryType, frameFormat: v.frameFormat, currentPosition }),
-};
+  /** 붙은 연결을 모두 끊는다(모든 종류) — tc 재연결 시험 */
+  dropConnections: (id: string) => call<{ dropped: number }>('POST', `/control/drop-connections/${enc(id)}`),
 
-const modbus = <T>(method: string, path: string, body?: unknown) =>
-  request<T>(tcConfig().vplcModbusUrl, method, `/api/v1/modbus/devices${path}`, body);
-
-/** 가상 Modbus 장치(vplc-modbus, docs/virtual-devices.md §2) — 번호는 프로토콜 주소(0부터) */
-export const modbusApi = {
-  enabled: () => !!tcConfig().vplcModbusUrl,
-  list: () => modbus<ModbusDevice[]>('GET', ''),
-  add: (d: { name: string; port: number; unitId: number; size: number; delayMs: number }) => modbus<ModbusDevice>('POST', '', d),
-  remove: (name: string) => modbus<void>('DELETE', `/${enc(name)}`),
+  // Modbus — 번호는 프로토콜 주소(0부터)
   /** 비트 영역은 true/false, 레지스터는 0~65535 */
-  read: (name: string, table: ModbusTable, start: number, count: number) =>
-    modbus<{ start: number; values: (number | boolean)[] }>('GET', `/${enc(name)}/${table}?start=${start}&count=${count}`),
-  write: (name: string, table: ModbusTable, start: number, values: (number | boolean)[]) =>
-    modbus<{ start: number; values: (number | boolean)[] }>('PUT', `/${enc(name)}/${table}`, { start, values }),
-  /** 늦게 답하기(ms)·답하지 않기 */
-  behavior: (name: string, b: { delayMs?: number; silent?: boolean }) => modbus<ModbusDevice>('PUT', `/${enc(name)}/behavior`, b),
-  dropConnections: (name: string) => modbus<{ port: number; dropped: number }>('POST', `/${enc(name)}/drop-connections`),
+  modbusRead: (id: string, table: ModbusTable, start: number, count: number) =>
+    call<{ start: number; values: (number | boolean)[] }>('GET', `/modbus/${enc(id)}/${table}?start=${start}&count=${count}`),
+  modbusWrite: (id: string, table: ModbusTable, start: number, values: (number | boolean)[]) =>
+    call<{ start: number; values: (number | boolean)[] }>('PUT', `/modbus/${enc(id)}/${table}`, { start, values }),
+  /** 응답 지연(ms) — 설정에도 남는다 */
+  modbusDelay: (id: string, delayMs: number) => call<Vplc>('POST', `/control/delay/${enc(id)}`, { delayMs }),
+
+  // OPC UA — 태그 경로는 Line1.Temp 처럼
+  opcUaInfo: (id: string) => call<OpcUaInfo>('GET', `/opcua/${enc(id)}`),
+  opcUaTags: (id: string) => call<OpcUaTag[]>('GET', `/opcua/${enc(id)}/tags`),
+  opcUaAddTag: (id: string, spec: OpcUaTagSpec) => call<void>('POST', `/opcua/${enc(id)}/tags`, spec),
+  /** 지금 값 — 실행 중일 때만 */
+  opcUaSetValue: (id: string, path: string, value: unknown) => call<OpcUaTag>('PUT', `/opcua/${enc(id)}/tags/${enc(path)}`, { value }),
+  opcUaRemoveTag: (id: string, path: string) => call<void>('DELETE', `/opcua/${enc(id)}/tags/${enc(path)}`),
 };
 
 /** Modbus 영역 — 코일·입력 비트는 16개를 한 줄(워드)로 묶어 보인다. 입력 영역(IR·DI)도 화면에서는 바꿀 수 있다(장비 쪽 값 흉내) */
@@ -79,26 +76,14 @@ export const MODBUS_TABLES: { code: ModbusTable; label: string; bit: boolean }[]
   { code: 'di', label: 'DI — Discrete input', bit: true },
 ];
 
-const opcua = <T>(method: string, path: string, body?: unknown) => request<T>(tcConfig().vplcOpcuaUrl, method, `/api/v1/opcua${path}`, body);
-
-/** 가상 OPC UA 서버(vplc-opcua, docs/virtual-devices.md §3) — 태그 경로는 Line1.Temp 처럼 */
-export const opcUaApi = {
-  enabled: () => !!tcConfig().vplcOpcuaUrl,
-  info: () => opcua<OpcUaInfo>('GET', ''),
-  tags: () => opcua<OpcUaTag[]>('GET', '/tags'),
-  add: (spec: OpcUaTagSpec) => opcua<OpcUaTag>('POST', '/tags', spec),
-  set: (path: string, value: unknown) => opcua<OpcUaTag>('PUT', `/tags/${enc(path)}`, { value }),
-  remove: (path: string) => opcua<void>('DELETE', `/tags/${enc(path)}`),
-};
-
 /** OPC UA 태그 형 — tc 점 형과 같은 이름 */
 export const OPCUA_TYPES = ['BOOL', 'INT16', 'UINT16', 'INT32', 'UINT32', 'INT64', 'FLOAT32', 'FLOAT64', 'STRING'] as const;
 
-/** 장비 종류 이름 */
-export const KIND_LABEL: Record<VplcKind, string> = { MC: 'MELSEC MC', MODBUS: 'Modbus TCP', OPCUA: 'OPC UA' };
+/** 종류 이름 */
+export const PROTOCOL_LABEL: Record<VplcProtocol, string> = { MELSEC_MC: 'MELSEC MC', MODBUS_TCP: 'Modbus TCP', OPC_UA: 'OPC UA' };
 
-/** 가상 OPC UA 서버는 하나 — 목록·메모리 화면의 이름 */
-export const OPCUA_NAME = 'vplc-opcua';
+/** 종류(예전 줄은 MELSEC_MC) */
+export const protocolOf = (v: Pick<Vplc, 'protocol'>): VplcProtocol => v.protocol ?? 'MELSEC_MC';
 
 /** MC 메모리 종류 — vplc Types.MemoryType 과 같다(코드·이름·마지막 주소·16진 주소 여부) */
 export const MEMORY_TYPES: { code: string; label: string; max: number; hex?: boolean; bit?: boolean }[] = [

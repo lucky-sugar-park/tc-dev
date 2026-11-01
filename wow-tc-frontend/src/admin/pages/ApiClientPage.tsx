@@ -107,7 +107,7 @@ export default function ApiClientPage(): ReactElement {
     },
     { field: 'allowedIps', headerName: t('i18n.tc.apiclient.ips', '허용 IP'), width: 160, sortable: false, valueGetter: (_v, r) => r.allowedIps.join(', ') },
     {
-      field: 'actions', type: 'actions', headerName: '', width: 110,
+      field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 110,
       getActions: ({ row }) => {
         const acts: ReactElement[] = [
           <GridActionsCellItem key="keys" icon={<KeyIcon />} label={t('i18n.tc.apiclient.keys', 'API 키')} onClick={() => setKeysOf(row.clientId)} />,

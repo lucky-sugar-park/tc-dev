@@ -1,17 +1,43 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactElement } from 'react';
-import { Alert, Autocomplete, Box, Button, Chip, Dialog, DialogContent, MenuItem, Stack, TextField } from '@mui/material';
+import {
+  Alert, Autocomplete, Box, Button, Chip, Dialog, DialogContent, FormControlLabel, MenuItem, Stack, Switch, TextField,
+} from '@mui/material';
 import { DataGridPro, type GridColDef } from '@mui/x-data-grid-pro';
 import { DialogFooter, DialogTitleClose, DraggablePaper, extractApiError, useI18n } from 'wow-mes-frontend-shared';
 import { fmtTime } from '../../shared/format';
-import { MEMORY_TYPES, vplcApi } from '../services/vplcApi';
-import type { ModbusDevice, Vplc, VplcConnection } from '../types/vplc';
+import { MEMORY_TYPES, PROTOCOL_LABEL, protocolOf, vplcApi } from '../services/vplcApi';
+import type { Vplc, VplcConnection, VplcProtocol } from '../types/vplc';
 
 const EMPTY: Vplc = {
-  id: '', name: '', frameFormat: 'BINARY', manufacturer: 'MITSUBISHI', ipAddress: '127.0.0.1', startPort: 15100, portCount: 1, portConnLimit: 4,
-  description: '', memoryTypeList: ['D*', 'M*'], published: false,
+  id: '', name: '', protocol: 'MELSEC_MC', frameFormat: 'BINARY', manufacturer: 'MITSUBISHI', ipAddress: '127.0.0.1', startPort: 15100, portCount: 1,
+  portConnLimit: 4, description: '', memoryTypeList: ['D*', 'M*'], published: false,
 };
 
-/** 가상 PLC 등록·수정 — 이름·프레임(BINARY·ASCII)·포트(시작·수·포트당 연결)·메모리 종류. 포트는 실행 중에는 바꿀 수 없다 */
+/** 종류를 고르면 바뀌는 기본값 — Modbus·OPC UA 는 포트 하나(메모리 종류는 vplc 가 채운다) */
+const DEFAULTS: Record<VplcProtocol, Partial<Vplc>> = {
+  MELSEC_MC: { startPort: 15100, portConnLimit: 4, manufacturer: 'MITSUBISHI', memoryTypeList: ['D*', 'M*'] },
+  MODBUS_TCP: { startPort: 15021, portConnLimit: 8, manufacturer: '', memoryTypeList: [] },
+  OPC_UA: { startPort: 4841, portConnLimit: 8, manufacturer: '', memoryTypeList: [] },
+};
+
+/** 종류별 설정 칸(글) — 저장할 때 settings 로 */
+type SettingsForm = { unitId: string; size: string; delayMs: string; path: string; requireLogin: boolean; trustAllClients: boolean };
+
+const settingsForm = (v?: Vplc): SettingsForm => {
+  const s = v?.settings ?? {};
+  return {
+    unitId: String(s.unitId ?? 1), size: String(s.size ?? 10000), delayMs: String(s.delayMs ?? 0),
+    path: String(s.path ?? '/vplc'), requireLogin: s.requireLogin === true, trustAllClients: s.trustAllClients !== false,
+  };
+};
+
+const int = (s: string) => (/^-?\d+$/.test(s.trim()) ? Number(s) : NaN);
+
+/**
+ * 가상 PLC 등록·수정 — 종류(MELSEC MC·Modbus TCP·OPC UA, 등록 때만 고른다)와 이름·IP·포트·포트당 연결, 종류별 칸.
+ * MELSEC: 프레임·포트 수·메모리 종류, Modbus: 단위 ID·칸 수·응답 지연(같은 포트에 단위 ID 를 달리 두면 게이트웨이 뒤 장치들),
+ * OPC UA: 엔드포인트 경로·로그인 필요·클라이언트 인증서 모두 믿기(태그는 메모리 화면에서). 포트는 실행 중에는 다시 시작해야 반영된다.
+ */
 export function VplcFormDialog({ open, initial, onClose, onSubmit, error }: {
   open: boolean;
   initial?: Vplc;
@@ -22,21 +48,43 @@ export function VplcFormDialog({ open, initial, onClose, onSubmit, error }: {
   const { t } = useI18n();
   const edit = !!initial;
   const [v, setV] = useState<Vplc>(EMPTY);
+  const [st, setSt] = useState<SettingsForm>(settingsForm());
   const [errors, setErrors] = useState<Record<string, string>>({});
-  useEffect(() => { if (open) { setV(initial ? { ...EMPTY, ...initial } : EMPTY); setErrors({}); } }, [open, initial]);
+  useEffect(() => {
+    if (!open) return;
+    setV(initial ? { ...EMPTY, ...initial, protocol: protocolOf(initial) } : EMPTY);
+    setSt(settingsForm(initial));
+    setErrors({});
+  }, [open, initial]);
   const set = (patch: Partial<Vplc>) => setV((s) => ({ ...s, ...patch }));
+  const setS = (patch: Partial<SettingsForm>) => setSt((s) => ({ ...s, ...patch }));
   const running = initial?.status === 'RUNNING' || initial?.status === 'PAUSED';
+  const protocol = protocolOf(v);
+  const mc = protocol === 'MELSEC_MC';
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!/^[A-Za-z0-9_.-]{1,100}$/.test(v.name)) errs.name = t('i18n.tc.connector.nameRule', '영숫자·_ . - 100자까지');
-    if (!(v.startPort >= 1 && v.startPort + v.portCount - 1 <= 65535)) errs.port = t('i18n.tc.vplc.portRule', '1~65535 안');
-    if (!(v.portCount >= 1 && v.portCount <= 32)) errs.portCount = '1~32';
+    if (!(v.startPort >= 1 && v.startPort + (mc ? v.portCount : 1) - 1 <= 65535)) errs.port = t('i18n.tc.vplc.portRule', '1~65535 안');
+    if (mc && !(v.portCount >= 1 && v.portCount <= 32)) errs.portCount = '1~32';
     if (!(v.portConnLimit >= 1)) errs.conn = t('i18n.tc.apiclient.positive', '1 이상');
-    if (v.memoryTypeList.length === 0) errs.mem = t('i18n.tc.vplc.memRequired', '메모리 종류를 하나 이상');
+    if (mc && v.memoryTypeList.length === 0) errs.mem = t('i18n.tc.vplc.memRequired', '메모리 종류를 하나 이상');
+    let settings: Record<string, unknown> | undefined;
+    if (protocol === 'MODBUS_TCP') {
+      const unitId = int(st.unitId);
+      const size = int(st.size);
+      const delayMs = int(st.delayMs);
+      if (!(unitId >= 0 && unitId <= 255)) errs.unitId = '0~255';
+      if (!(size >= 1 && size <= 65536)) errs.size = '1~65536';
+      if (!(delayMs >= 0)) errs.delayMs = t('i18n.tc.vplc.zeroOrMore', '0 이상');
+      settings = { unitId, size, delayMs };
+    } else if (protocol === 'OPC_UA') {
+      if (!/^\/?[A-Za-z0-9_\-/.]{0,100}$/.test(st.path)) errs.path = t('i18n.tc.vplc.pathRule', '영숫자·_ - / .');
+      settings = { path: st.path, requireLogin: st.requireLogin, trustAllClients: st.trustAllClients };
+    }
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    onSubmit(v);
+    onSubmit({ ...v, protocol, ...(mc ? {} : { portCount: 1, settings }) });
   };
 
   return (
@@ -47,29 +95,63 @@ export function VplcFormDialog({ open, initial, onClose, onSubmit, error }: {
         <Stack spacing={2} sx={{ mt: 0.5 }}>
           {error && <Alert severity="error">{error}</Alert>}
           {running && <Alert severity="info">{t('i18n.tc.vplc.runningHelp', '실행 중에는 포트를 바꿔도 다시 시작해야 반영됩니다.')}</Alert>}
-          <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: 2 }}>
+            <TextField select label={t('i18n.tc.vplc.kind', '종류')} value={protocol} disabled={edit}
+              onChange={(e) => { const p = e.target.value as VplcProtocol; set({ protocol: p, ...DEFAULTS[p] }); setErrors({}); }}
+              helperText={edit ? t('i18n.tc.vplc.kindFixed', '종류는 바꿀 수 없습니다') : undefined}>
+              {(Object.keys(PROTOCOL_LABEL) as VplcProtocol[]).map((p) => <MenuItem key={p} value={p}>{PROTOCOL_LABEL[p]}</MenuItem>)}
+            </TextField>
             <TextField label={t('i18n.tc.point.name', '이름')} required value={v.name} onChange={(e) => set({ name: e.target.value })}
               error={!!errors.name} helperText={errors.name} />
-            <TextField select label={t('i18n.tc.vplc.frame', '프레임')} value={v.frameFormat} onChange={(e) => set({ frameFormat: e.target.value as Vplc['frameFormat'] })}>
-              <MenuItem value="BINARY">BINARY</MenuItem>
-              <MenuItem value="ASCII">ASCII</MenuItem>
-            </TextField>
+            {mc ? (
+              <TextField select label={t('i18n.tc.vplc.frame', '프레임')} value={v.frameFormat} onChange={(e) => set({ frameFormat: e.target.value as Vplc['frameFormat'] })}>
+                <MenuItem value="BINARY">BINARY</MenuItem>
+                <MenuItem value="ASCII">ASCII</MenuItem>
+              </TextField>
+            ) : <Box />}
           </Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: mc ? '2fr 1fr 1fr 1fr' : '2fr 1fr 1fr', gap: 2 }}>
             <TextField label="IP" value={v.ipAddress ?? ''} onChange={(e) => set({ ipAddress: e.target.value })} />
-            <TextField label={t('i18n.tc.vplc.startPort', '시작 포트')} type="number" value={v.startPort} onChange={(e) => set({ startPort: Number(e.target.value) })}
-              error={!!errors.port} helperText={errors.port} />
-            <TextField label={t('i18n.tc.vplc.portCount', '포트 수')} type="number" value={v.portCount} onChange={(e) => set({ portCount: Number(e.target.value) })}
-              error={!!errors.portCount} helperText={errors.portCount} />
+            <TextField label={mc ? t('i18n.tc.vplc.startPort', '시작 포트') : t('i18n.tc.vplc.port', '포트')} type="number" value={v.startPort}
+              onChange={(e) => set({ startPort: Number(e.target.value) })} error={!!errors.port} helperText={errors.port} />
+            {mc && (
+              <TextField label={t('i18n.tc.vplc.portCount', '포트 수')} type="number" value={v.portCount} onChange={(e) => set({ portCount: Number(e.target.value) })}
+                error={!!errors.portCount} helperText={errors.portCount} />
+            )}
             <TextField label={t('i18n.tc.vplc.connLimit', '포트당 연결')} type="number" value={v.portConnLimit} onChange={(e) => set({ portConnLimit: Number(e.target.value) })}
               error={!!errors.conn} helperText={errors.conn} />
           </Box>
-          <Autocomplete multiple options={MEMORY_TYPES.map((m) => m.code)} value={v.memoryTypeList}
-            getOptionLabel={(c) => MEMORY_TYPES.find((m) => m.code === c)?.label ?? c}
-            onChange={(_e, val) => set({ memoryTypeList: val })}
-            renderValue={(vals, getItemProps) => vals.map((x, i) => <Chip size="small" label={x.replace('*', '')} {...getItemProps({ index: i })} key={x} />)}
-            renderInput={(p) => <TextField {...p} label={t('i18n.tc.vplc.memoryTypes', '메모리 종류')} error={!!errors.mem} helperText={errors.mem} />} />
-          <TextField label={t('i18n.tc.vplc.manufacturer', '제조사')} value={v.manufacturer ?? ''} onChange={(e) => set({ manufacturer: e.target.value })} />
+          {mc && (
+            <Autocomplete multiple options={MEMORY_TYPES.map((m) => m.code)} value={v.memoryTypeList}
+              getOptionLabel={(c) => MEMORY_TYPES.find((m) => m.code === c)?.label ?? c}
+              onChange={(_e, val) => set({ memoryTypeList: val })}
+              renderValue={(vals, getItemProps) => vals.map((x, i) => <Chip size="small" label={x.replace('*', '')} {...getItemProps({ index: i })} key={x} />)}
+              renderInput={(p) => <TextField {...p} label={t('i18n.tc.vplc.memoryTypes', '메모리 종류')} error={!!errors.mem} helperText={errors.mem} />} />
+          )}
+          {protocol === 'MODBUS_TCP' && (
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
+              <TextField label={t('i18n.tc.vplc.unitId', '단위 ID')} type="number" value={st.unitId} onChange={(e) => setS({ unitId: e.target.value })}
+                error={!!errors.unitId} helperText={errors.unitId ?? t('i18n.tc.vplc.unitIdHelp', '같은 포트에 단위 ID 를 달리 두면 게이트웨이 뒤 장치들')} />
+              <TextField label={t('i18n.tc.vplc.size', '칸 수')} type="number" value={st.size} onChange={(e) => setS({ size: e.target.value })}
+                error={!!errors.size} helperText={errors.size ?? t('i18n.tc.vplc.sizeHelp', 'HR·IR·CO·DI 영역마다')} />
+              <TextField label={t('i18n.tc.vplc.delayMs', '응답 지연(ms)')} type="number" value={st.delayMs} onChange={(e) => setS({ delayMs: e.target.value })}
+                error={!!errors.delayMs} helperText={errors.delayMs} />
+            </Box>
+          )}
+          {protocol === 'OPC_UA' && (
+            <>
+              <TextField label={t('i18n.tc.vplc.endpointPath', '엔드포인트 경로')} value={st.path} onChange={(e) => setS({ path: e.target.value })}
+                error={!!errors.path}
+                helperText={errors.path ?? `opc.tcp://${v.ipAddress || '127.0.0.1'}:${v.startPort}${st.path} — ${t('i18n.tc.vplc.tagsInMemory', '태그는 메모리 보기·제어 화면에서')}`} />
+              <Stack direction="row" spacing={3}>
+                <FormControlLabel control={<Switch checked={st.requireLogin} onChange={(e) => setS({ requireLogin: e.target.checked })} />}
+                  label={t('i18n.tc.vplc.requireLogin', '로그인 필요(익명 거절)')} />
+                <FormControlLabel control={<Switch checked={st.trustAllClients} onChange={(e) => setS({ trustAllClients: e.target.checked })} />}
+                  label={t('i18n.tc.vplc.trustAllClients', '클라이언트 인증서 모두 믿기')} />
+              </Stack>
+            </>
+          )}
+          {mc && <TextField label={t('i18n.tc.vplc.manufacturer', '제조사')} value={v.manufacturer ?? ''} onChange={(e) => set({ manufacturer: e.target.value })} />}
           <TextField label={t('i18n.tc.common.description', '설명')} value={v.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
         </Stack>
       </DialogContent>
@@ -78,71 +160,29 @@ export function VplcFormDialog({ open, initial, onClose, onSubmit, error }: {
   );
 }
 
-export type ModbusDeviceForm = { name: string; port: number; unitId: number; size: number; delayMs: number };
-
-const MODBUS_EMPTY: ModbusDeviceForm = { name: '', port: 15021, unitId: 1, size: 1000, delayMs: 0 };
-
-/**
- * 가상 Modbus 장치 더하기·지연 바꾸기(vplc-modbus) — 장치 = 포트 + 단위 ID. 같은 포트에 단위 ID 를 달리 두면 게이트웨이 뒤 장치들.
- * 이미 있는 장치는 지연(ms)만 바꾼다(포트·단위 ID·칸은 지우고 다시 더한다).
- */
-export function ModbusDeviceDialog({ open, initial, onClose, onSubmit, error }: {
-  open: boolean;
-  initial?: ModbusDevice;
+/** Modbus 응답 지연 바꾸기 — 메모리에 바로, 설정에도 남는다 */
+export function DelayDialog({ vplc, onClose, onSubmit }: {
+  vplc: Vplc | null;
   onClose: () => void;
-  onSubmit: (d: ModbusDeviceForm) => void;
-  error?: string | null;
+  onSubmit: (delayMs: number) => void;
 }): ReactElement {
   const { t } = useI18n();
-  const edit = !!initial;
-  const [v, setV] = useState<ModbusDeviceForm>(MODBUS_EMPTY);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  useEffect(() => {
-    if (!open) return;
-    setV(initial ? { name: initial.name, port: initial.port, unitId: initial.unitId, size: initial.size, delayMs: initial.delayMs } : MODBUS_EMPTY);
-    setErrors({});
-  }, [open, initial]);
-  const set = (patch: Partial<ModbusDeviceForm>) => setV((s) => ({ ...s, ...patch }));
-
+  const [value, setValue] = useState('0');
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { if (vplc) { setValue(String(vplc.settings?.delayMs ?? 0)); setError(null); } }, [vplc]);
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const errs: Record<string, string> = {};
-    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(v.name)) errs.name = t('i18n.tc.vplc.modbusNameRule', '영숫자·_ . - 64자까지');
-    if (!(Number.isInteger(v.port) && v.port >= 1 && v.port <= 65535)) errs.port = t('i18n.tc.vplc.portRule', '1~65535 안');
-    if (!(Number.isInteger(v.unitId) && v.unitId >= 0 && v.unitId <= 255)) errs.unitId = '0~255';
-    if (!(Number.isInteger(v.size) && v.size >= 1 && v.size <= 65536)) errs.size = '1~65536';
-    if (!(Number.isInteger(v.delayMs) && v.delayMs >= 0)) errs.delayMs = t('i18n.tc.vplc.zeroOrMore', '0 이상');
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    onSubmit(v);
+    const n = int(value);
+    if (!(n >= 0 && n <= 600000)) { setError('0~600000'); return; }
+    onSubmit(n);
   };
-
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperComponent={DraggablePaper}
+    <Dialog open={!!vplc} onClose={onClose} maxWidth="xs" fullWidth PaperComponent={DraggablePaper}
       slotProps={{ paper: { component: 'form', onSubmit: submit } as never }}>
-      <DialogTitleClose onClose={onClose}>
-        {edit ? t('i18n.tc.vplc.modbusEdit', 'Modbus 장치 — 응답 지연') : t('i18n.tc.vplc.modbusAdd', 'Modbus 장치 추가')}
-      </DialogTitleClose>
+      <DialogTitleClose onClose={onClose}>{t('i18n.tc.vplc.delay', '응답 지연')} — {vplc?.name}</DialogTitleClose>
       <DialogContent dividers>
-        <Stack spacing={2} sx={{ mt: 0.5 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          {!edit && (
-            <Alert severity="info">
-              {t('i18n.tc.vplc.modbusAddHelp', '가상 Modbus 장비는 메모리에만 둡니다 — 장비를 다시 띄우면 설정(application.yml)의 장치만 남습니다.')}
-            </Alert>
-          )}
-          <TextField label={t('i18n.tc.point.name', '이름')} required value={v.name} disabled={edit} onChange={(e) => set({ name: e.target.value })}
-            error={!!errors.name} helperText={errors.name} />
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 2 }}>
-            <TextField label={t('i18n.tc.vplc.port', '포트')} type="number" value={v.port} disabled={edit} onChange={(e) => set({ port: Number(e.target.value) })}
-              error={!!errors.port} helperText={errors.port} />
-            <TextField label={t('i18n.tc.vplc.unitId', '단위 ID')} type="number" value={v.unitId} disabled={edit}
-              onChange={(e) => set({ unitId: Number(e.target.value) })} error={!!errors.unitId} helperText={errors.unitId} />
-            <TextField label={t('i18n.tc.vplc.size', '칸 수')} type="number" value={v.size} disabled={edit} onChange={(e) => set({ size: Number(e.target.value) })}
-              error={!!errors.size} helperText={errors.size} />
-            <TextField label={t('i18n.tc.vplc.delayMs', '응답 지연(ms)')} type="number" value={v.delayMs} onChange={(e) => set({ delayMs: Number(e.target.value) })}
-              error={!!errors.delayMs} helperText={errors.delayMs} />
-          </Box>
-        </Stack>
+        <TextField fullWidth label={t('i18n.tc.vplc.delayMs', '응답 지연(ms)')} type="number" value={value} autoFocus onChange={(e) => setValue(e.target.value)}
+          error={!!error} helperText={error ?? t('i18n.tc.vplc.delayHelp', '요청마다 이만큼 늦게 답한다 — tc 시간 초과 시험')} sx={{ mt: 0.5 }} />
       </DialogContent>
       <DialogFooter onClose={onClose}><Button type="submit" variant="contained">{t('i18n.common.save', '저장')}</Button></DialogFooter>
     </Dialog>

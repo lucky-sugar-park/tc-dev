@@ -11,7 +11,7 @@ import com.wow.be.tc.vplc.Types.PlcStatus;
 import com.wow.be.tc.vplc.VirtualPlcException;
 import com.wow.be.tc.vplc.machine.ClientConnectionEventDispatcher;
 import com.wow.be.tc.vplc.machine.MemoryInfo;
-import com.wow.be.tc.vplc.machine.VirtualProgrammableController;
+import com.wow.be.tc.vplc.machine.VirtualDevice;
 import com.wow.be.tc.vplc.machine.VirtualProgrammableControllerManager;
 import com.wow.be.tc.vplc.management.ConnectionClientEventDbHandler;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
@@ -51,8 +51,7 @@ public class VirtualPlcLoader {
 						vplcInfo.setMemInfos(extractMemList(vplcInfo.getMemoryTypeList()));
 						// RELEASED 또는 REGISTERED 상태인 PLC는 메모리로 로드하지 않음
 						vplcManipulationService.publishVirtualPlc(vplcInfo);
-						VirtualProgrammableController vplc=
-								VirtualProgrammableControllerManager.getManager().getVirtualProgrammableController(vplcInfo.getId());
+						VirtualDevice vplc=VirtualProgrammableControllerManager.getManager().get(vplcInfo.getId());
 						vplc.setStatus(vplcInfo.getStatus());
 						// DB 상에서의 마지막 상태가 Running 중이었었던 Virtual PLC민 start 시킴
 						if(vplcInfo.getStatus()==PlcStatus.RUNNING) {

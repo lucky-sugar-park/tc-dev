@@ -1,4 +1,4 @@
-"""OPC UA 커넥터(인터페이스 세부 정의 D단계, docs/opcua-design.md) — 가상 OPC UA 서버(vplc-opcua)를 상대로.
+"""OPC UA 커넥터(인터페이스 세부 정의 D단계, docs/opcua-design.md) — vplc 의 가상 OPC UA 서버(ua-e2e)를 상대로.
 
 - 커넥터 등록(어댑터 클래스·설정 기본값)·연결 시험·게시(연결 상태)
 - 노드 찾아보기(Objects → Line1 → 변수·점 형 추정), OPC UA 가 아닌 커넥터 400
@@ -6,7 +6,8 @@
 - SUBSCRIBE 인터페이스 — 흉내 값(Line1.Counter, 1초마다)이 바뀌면 감사 RESPONSE(sender opcua-subscription)가 쌓인다. WRITE 에 SUBSCRIBE 는 400
 - D2(§7): Basic256Sha256 + 사용자 이름 커넥터, 비밀번호는 조회에 안 나옴(passwordSet), nsu= 점, 틀린 비밀번호 연결 시험 실패,
   클라이언트 인증서 내려받기, 믿은 서버 인증서 지문·잊기
-전제: vplc-opcua 가 떠 있다(TC_E2E_VPLC_OPCUA_URL, 기본 http://localhost:8092 — OPC UA opc.tcp://127.0.0.1:4840/vplc). 없으면 건너뛴다.
+전제: vplc 가 떠 있다(TC_E2E_VPLC_URL). 가상 PLC ua-e2e(opc.tcp://127.0.0.1:4840/vplc, 태그 common.E2E_OPCUA_TAGS)가 없으면 등록·실행한다.
+vplc 가 없으면 건너뛴다.
 """
 import json
 import os
@@ -18,7 +19,6 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common  # noqa: E402
 
-SIM = os.environ.get("TC_E2E_VPLC_OPCUA_URL", "http://localhost:8092")
 RUN = str(int(time.time()))
 PLC = "plc-opcua-e2e"
 results = []
@@ -46,13 +46,12 @@ def http(method, url, body=None, token=None):
             return e.code, raw
 
 
-try:
-    s, info = http("GET", SIM + "/api/v1/opcua")
-except urllib.error.URLError:
-    s, info = 0, None
-if s != 200:
-    print(f"SKIP 가상 OPC UA 서버가 없습니다({SIM}) — wow-tc-backend 에서 gradlew :vplc-opcua:bootRun")
+UA = common.ensure_vplc(common.E2E_OPCUA, common.E2E_OPCUA_TAGS)
+if UA is None:
+    print(f"SKIP vplc 가 없습니다({common.VPLC_BASE}) — wow-tc-backend 에서 vplc 를 띄우세요")
     sys.exit(0)
+SIM = common.VPLC_BASE + "/api/v1/vplc/opcua/" + UA["id"]
+s, info = http("GET", SIM)
 NS = info["namespaceIndex"]
 
 
@@ -64,7 +63,7 @@ def expanded(path):
     return f"nsu={info['namespaceUri']};s={path}"
 
 
-SIM_PASSWORD = os.environ.get("VPLC_OPCUA_PASSWORD", "tc-e2e-pass")
+SIM_PASSWORD = common.VPLC_OPCUA_PASSWORD
 SEC = "plc-opcua-sec-e2e"
 SEC_BAD = "plc-opcua-bad-e2e"
 
@@ -133,8 +132,8 @@ try:
                    {"name": "raw", "address": node("Line1.Raw"), "type": "INT16", "scale": 0.1, "unit": "℃"}]})
     check("READ 등록 200", s == 200, (s, b))
     created.append(rd)
-    http("PUT", SIM + "/api/v1/opcua/tags/Line1.Temp", {"value": 25.5})
-    http("PUT", SIM + "/api/v1/opcua/tags/Line1.Raw", {"value": 253})
+    http("PUT", SIM + "/tags/Line1.Temp", {"value": 25.5})
+    http("PUT", SIM + "/tags/Line1.Raw", {"value": 253})
     s, r = plc(rd)
     d = r.get("data", {}) if isinstance(r, dict) else {}
     check("읽기 200 — 값·형·배율(253×0.1)", s == 200 and d.get("temp") == 25.5 and isinstance(d.get("speed"), int) and d.get("running") in (True, False)
@@ -149,7 +148,8 @@ try:
     created.append(wr)
     s, w = plc(wr, {"count": 1234, "recipe": f"R-{RUN[-4:]}"})
     check("쓰기 200, readBack 값", s == 200 and w.get("data") == {"count": 1234, "recipe": f"R-{RUN[-4:]}"}, (s, w))
-    s, tag = http("GET", SIM + "/api/v1/opcua/tags/Line1.Count")
+    s, tags = http("GET", SIM + "/tags")
+    tag = next((t for t in tags if t["path"] == "Line1.Count"), {}) if isinstance(tags, list) else {}
     check("가상 서버 태그 값이 바뀜(1234)", tag.get("value") == 1234, tag)
 
     bad = f"e2e.ua.bad.{RUN}"
@@ -206,6 +206,8 @@ try:
                settings={"endpointPath": "/vplc", "securityPolicy": "BASIC256SHA256", "authMode": "USERNAME", "username": "tc-e2e"})
     s, b = call("POST", "/api/v1/plc-connector/register", sec)
     check("D2: 보안 커넥터 등록 200(Basic256Sha256 + 사용자 이름)", s == 200, (s, b))
+    # 가상 서버 인증서는 시작할 때마다 새로 만든다 — 앞선 실행이 믿어 둔 것을 잊는다(지운 커넥터의 신뢰는 남는다)
+    call("POST", f"/api/v1/plc-connector/opcua/forget-server-certificate/byName/{SEC}")
     s, c = call("GET", f"/api/v1/plc-connector/find/byName/{SEC}")
     check("D2: 조회에 비밀번호 없음, passwordSet true, 모드 SIGN_AND_ENCRYPT", isinstance(c, dict) and "password" not in c and "passwordEnc" not in c
           and c.get("passwordSet") is True and c.get("settings", {}).get("securityMode") == "SIGN_AND_ENCRYPT", c)
@@ -219,7 +221,7 @@ try:
     call("POST", "/api/v1/ifsvc/management/register", {"name": rs, "plcName": SEC, "interfaceType": "READ", "use": True,
                                                        "points": [{"name": "temp", "address": expanded("Line1.Temp"), "type": "FLOAT64"}]})
     created.append(rs)
-    http("PUT", SIM + "/api/v1/opcua/tags/Line1.Temp", {"value": 31.5})
+    http("PUT", SIM + "/tags/Line1.Temp", {"value": 31.5})
     s, r = plc(rs)
     check("D2: 보안 세션으로 nsu= 점 읽기(31.5)", s == 200 and r.get("data") == {"temp": 31.5}, (s, r))
     bad = dict(sec, name=SEC_BAD, password="wrong-password")

@@ -33,9 +33,9 @@ const PAGES: Record<string, Loader> = {
 const comingSoon = (m: ScreenMeta): Loader => () =>
   Promise.resolve({ default: () => <ComingSoon title={m.label} /> });
 
-/** 가상 PLC 메뉴는 가상 장비(vplc·vplc-modbus·vplc-opcua) 주소가 하나라도 있을 때만(결정 F8) */
+/** 가상 PLC 메뉴는 vplc 주소가 있을 때만(결정 F8) */
 const visible = (m: { group?: string; key: string }): boolean =>
-  !(m.group === 'tc.vplc' || m.key === 'tc.vplc') || !!(tcConfig().vplcUrl || tcConfig().vplcModbusUrl || tcConfig().vplcOpcuaUrl);
+  !(m.group === 'tc.vplc' || m.key === 'tc.vplc') || !!tcConfig().vplcUrl;
 
 function screens(): ScreenDef[] {
   return SCREENS.filter(visible).map((m) => ({

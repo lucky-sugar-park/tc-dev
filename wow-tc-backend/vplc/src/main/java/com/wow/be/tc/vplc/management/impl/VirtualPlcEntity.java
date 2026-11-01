@@ -1,12 +1,17 @@
 package com.wow.be.tc.vplc.management.impl;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.annotations.ColumnDefault;
 
 import com.wow.be.tc.vplc.Types.FrameFormat;
 import com.wow.be.tc.vplc.Types.PlcStatus;
+import com.wow.be.tc.vplc.Types.Protocol;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.wow.be.tc.vplc.machine.VirtualProgrammableController;
 import com.wow.be.framework.persist.PersistentEntity;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
@@ -45,6 +50,14 @@ public class VirtualPlcEntity extends PersistentEntity<VirtualPlcInfo>{
 
 	@Column(name="NAME", unique=true)
 	private String name;
+
+	/** 종류 — 비어 있으면 MELSEC_MC(예전 줄) */
+	@Column(name="PROTOCOL", length=20)
+	private String protocol;
+
+	/** 종류별 설정(JSON) */
+	@Column(name="SETTINGS", length=2000)
+	private String settings;
 
 	@Column(name="STATUS")
 	private String status;
@@ -97,6 +110,13 @@ public class VirtualPlcEntity extends PersistentEntity<VirtualPlcInfo>{
 		VirtualPlcInfo info=new VirtualPlcInfo();
 		info.setId(this.getId());
 		info.setName(this.getName());
+		info.setProtocol(Protocol.of(this.getProtocol()));
+		if(this.getSettings()!=null && !this.getSettings().isBlank()) {
+			Map<String, Object> m=new Gson().fromJson(this.getSettings(), new TypeToken<LinkedHashMap<String, Object>>(){}.getType());
+			// Gson 은 숫자를 모두 double 로 읽는다 — 정수면 정수로
+			m.replaceAll((k, v)->v instanceof Double d && d==Math.rint(d) && !Double.isInfinite(d) ? (Object)Long.valueOf(d.longValue()) : v);
+			info.setSettings(m);
+		}
 		info.setFrameFormat(FrameFormat.valueOf(this.getFrameFormat()));
 		info.setStatus(PlcStatus.valueOf(this.getStatus()));
 		info.setIpAddress(this.getIpAddress());
@@ -131,6 +151,8 @@ public class VirtualPlcEntity extends PersistentEntity<VirtualPlcInfo>{
 		if(info.getName()!=null) {
 			this.setName(info.getName());
 		}
+		this.setProtocol((info.getProtocol()!=null ? info.getProtocol() : Protocol.MELSEC_MC).name());
+		this.setSettings(info.getSettings()==null || info.getSettings().isEmpty() ? null : new Gson().toJson(info.getSettings()));
 		if(info.getFrameFormat()!=null) {
 			this.setFrameFormat(info.getFrameFormat().name());
 		}

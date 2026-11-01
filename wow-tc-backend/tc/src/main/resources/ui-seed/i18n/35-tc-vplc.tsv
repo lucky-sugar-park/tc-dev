@@ -53,25 +53,17 @@ i18n.tc.vplc.textHelp	한 워드에 두 글자 — 낮은 바이트가 앞 글�
 i18n.tc.vplc.addrRule	0 이상의 정수 주소	An integer address of 0 or more	0以上の整数アドレス	不小于 0 的整数地址
 i18n.tc.vplc.wordRule	-32768~65535 정수(0x 로 시작하면 16진)를 쉼표로	Integers -32768–65535 (0x prefix for hex), comma-separated	-32768〜65535の整数(0xで始まれば16進)をカンマ区切りで	-32768~65535 的整数(以 0x 开头为十六进制),逗号分隔
 i18n.tc.vplc.textRule	ASCII 글자만	ASCII characters only	ASCII文字のみ	仅限 ASCII 字符
-# Modbus·OPC UA 가상 장비(vplc-modbus·vplc-opcua) — 목록·메모리 화면
+# Modbus·OPC UA 가상 PLC(한 vplc 안) — 목록·등록·메모리 화면
 i18n.tc.vplc.kind	종류	Kind	種類	类型
-i18n.tc.vplc.modbusAdd	Modbus 장치 추가	Add Modbus device	Modbusデバイス追加	添加 Modbus 设备
-i18n.tc.vplc.modbusEdit	Modbus 장치 — 응답 지연	Modbus device — response delay	Modbusデバイス — 応答遅延	Modbus 设备 — 响应延迟
-i18n.tc.vplc.modbusAddHelp	가상 Modbus 장비는 메모리에만 둡니다 — 장비를 다시 띄우면 설정(application.yml)의 장치만 남습니다.	The virtual Modbus device keeps devices in memory only — after a restart only the devices in application.yml remain.	仮想Modbus装置はメモリのみに保持します — 再起動すると設定(application.yml)のデバイスだけが残ります。	虚拟 Modbus 设备只保存在内存中 — 重启后只保留配置(application.yml)中的设备。
-i18n.tc.vplc.modbusNameRule	영숫자·_ . - 64자까지	Letters, digits, _ . - up to 64	英数字・_ . - 64文字まで	字母数字・_ . - 最多 64 个
 i18n.tc.vplc.zeroOrMore	0 이상	0 or more	0以上	0 以上
 i18n.tc.vplc.unitId	단위 ID	Unit ID	ユニットID	单元 ID
 i18n.tc.vplc.size	칸 수	Size	サイズ	大小
 i18n.tc.vplc.delayMs	응답 지연(ms)	Response delay (ms)	応答遅延(ms)	响应延迟(ms)
 i18n.tc.vplc.delay	응답 지연	Response delay	応答遅延	响应延迟
 i18n.tc.vplc.dropConnections	연결 끊기	Drop connections	接続を切断	断开连接
-i18n.tc.vplc.confirmDrop	포트 {port} 의 연결을 모두 끊을까요? (tc 재연결 시험)	Drop all connections on port {port}? (tc reconnect test)	ポート {port} の接続をすべて切断しますか?(tc 再接続試験)	断开端口 {port} 的所有连接吗?(tc 重连测试)
 i18n.tc.vplc.modbusDesc	단위 ID {unit} · 영역마다 {size}칸 · 지연 {delay}ms	Unit ID {unit} · {size} per area · delay {delay}ms	ユニットID {unit} · 領域ごと {size} · 遅延 {delay}ms	单元 ID {unit} · 每区 {size} · 延迟 {delay}ms
-i18n.tc.vplc.tagCount	태그 {n}	{n} tags	タグ {n}	标签 {n}
 i18n.tc.vplc.tags	태그	Tags	タグ	标签
-i18n.tc.vplc.deviceDown	가상 장비에 붙지 못했습니다(떠 있는지 확인)	Could not reach the virtual device (is it running?)	仮想装置に接続できません(起動しているか確認)	无法连接虚拟设备(请确认已启动)
 i18n.tc.vplc.tagAdd	태그 추가	Add tag	タグ追加	添加标签
-i18n.tc.vplc.tagMemoryOnly	가상 OPC UA 서버는 메모리에만 둡니다 — 다시 띄우면 설정(application.yml)의 태그만 남습니다.	The virtual OPC UA server keeps tags in memory only — after a restart only the tags in application.yml remain.	仮想OPC UAサーバーはメモリのみに保持します — 再起動すると設定(application.yml)のタグだけが残ります。	虚拟 OPC UA 服务器只保存在内存中 — 重启后只保留配置(application.yml)中的标签。
 i18n.tc.vplc.tagPath	경로	Path	パス	路径
 i18n.tc.vplc.tagPathHelp	앞부분은 폴더 — Line3.Temp	Leading parts are folders — Line3.Temp	先頭部分はフォルダ — Line3.Temp	前面部分是文件夹 — Line3.Temp
 i18n.tc.vplc.tagPathRule	영문자·_ 로 시작하는 이름을 . 으로 잇는다(예 Line3.Temp)	Names starting with a letter or _, joined by . (e.g. Line3.Temp)	英字・_ で始まる名前を . でつなぐ(例 Line3.Temp)	以字母或 _ 开头的名称用 . 连接(例 Line3.Temp)
@@ -85,3 +77,15 @@ i18n.tc.vplc.value	값	Value	値	值
 i18n.tc.vplc.tagSearch	태그 검색	Search tags	タグ検索	搜索标签
 i18n.tc.vplc.modbusAddrNote	번호는 프로토콜 주소(0부터) — tc 주소 HR1 은 여기 HR0	Numbers are protocol addresses (from 0) — tc address HR1 is HR0 here	番号はプロトコルアドレス(0から) — tc アドレス HR1 はここで HR0	编号为协议地址(从 0 开始) — tc 地址 HR1 即此处 HR0
 i18n.tc.vplc.textHelpModbus	한 레지스터에 두 글자 — 높은 바이트가 앞 글자(Modbus 보통 순서)	Two characters per register — high byte first (usual Modbus order)	1レジスタに2文字 — 上位バイトが先の文字(Modbus の通常順)	每个寄存器两个字符 — 高字节在前(Modbus 常用顺序)
+i18n.tc.vplc.kindFixed	종류는 바꿀 수 없습니다	Kind cannot be changed	種類は変更できません	类型不能更改
+i18n.tc.vplc.settings	설정	Settings	設定	设置
+i18n.tc.vplc.unitIdHelp	같은 포트에 단위 ID 를 달리 두면 게이트웨이 뒤 장치들	Different unit IDs on one port act as devices behind a gateway	同じポートでユニットIDを変えるとゲートウェイ配下の装置	同一端口不同单元 ID 即网关后的设备
+i18n.tc.vplc.sizeHelp	HR·IR·CO·DI 영역마다	For each of HR · IR · CO · DI	HR・IR・CO・DI 領域ごと	HR・IR・CO・DI 各区
+i18n.tc.vplc.endpointPath	엔드포인트 경로	Endpoint path	エンドポイントパス	端点路径
+i18n.tc.vplc.pathRule	영숫자·_ - / .	Letters, digits, _ - / .	英数字・_ - / .	字母数字・_ - / .
+i18n.tc.vplc.tagsInMemory	태그는 메모리 보기·제어 화면에서	Tags are managed on the memory screen	タグはメモリ表示・制御画面で	标签在内存查看・控制画面中管理
+i18n.tc.vplc.requireLogin	로그인 필요(익명 거절)	Require login (reject anonymous)	ログイン必須(匿名拒否)	需要登录(拒绝匿名)
+i18n.tc.vplc.trustAllClients	클라이언트 인증서 모두 믿기	Trust all client certificates	クライアント証明書をすべて信頼	信任所有客户端证书
+i18n.tc.vplc.delayHelp	요청마다 이만큼 늦게 답한다 — tc 시간 초과 시험	Each reply is delayed by this much — tc timeout test	要求ごとにこの分だけ遅れて応答 — tc タイムアウト試験	每次请求延迟这么多再应答 — tc 超时测试
+i18n.tc.vplc.confirmDropAll	{name} 에 붙은 연결을 모두 끊을까요? (tc 재연결 시험)	Drop all connections to {name}? (tc reconnect test)	{name} の接続をすべて切断しますか?(tc 再接続試験)	断开 {name} 的所有连接吗?(tc 重连测试)
+i18n.tc.vplc.tagSaved	태그 정의는 vplc DB 에 남습니다 — 지금 값은 메모리(정지했다 시작하면 처음 값).	Tag definitions are stored in the vplc DB — current values live in memory (reset to initial on restart).	タグ定義は vplc DB に残ります — 現在値はメモリ(停止・開始で初期値)。	标签定义保存在 vplc DB — 当前值在内存(停止再启动恢复初始值)。

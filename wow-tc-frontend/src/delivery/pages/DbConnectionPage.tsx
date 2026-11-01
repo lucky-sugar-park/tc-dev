@@ -102,7 +102,7 @@ export default function DbConnectionPage(): ReactElement {
     { field: 'description', headerName: t('i18n.tc.common.description', '설명'), width: 180 },
     { field: 'updatedDate', headerName: t('i18n.tc.common.updated', '고친 때'), width: 160, valueFormatter: (v: string) => fmtTime(v) },
     {
-      field: 'actions', type: 'actions', headerName: '', width: 110,
+      field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 110,
       getActions: ({ row }) => [
         ...(perm('U') ? [<GridActionsCellItem key="edit" icon={<EditIcon />} label={t('i18n.common.edit', '수정')} onClick={() => setForm({ open: true, initial: row })} />] : []),
         ...(perm('X') ? [<GridActionsCellItem key="test" icon={<NetworkCheckIcon />} label={t('i18n.tc.dbconn.test', '연결 시험')} onClick={() => test(row)} />] : []),

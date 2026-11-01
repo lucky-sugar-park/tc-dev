@@ -14,7 +14,13 @@ test.beforeEach(async ({ page }) => {
 async function rowMenu(page: Page, rowText: string, item: string) {
   const row = page.getByRole('row').filter({ hasText: rowText }).filter({ visible: true }).first();
   await row.locator('button[aria-haspopup="menu"]').click();
-  await page.getByRole('menuitem', { name: item }).click();
+  await page.getByRole('menuitem', { name: item, exact: true }).click();
+}
+
+/** 장비를 고른다(메모리 화면) — 종류별로 묶인 선택 칸 */
+async function pickDevice(page: Page, name: string) {
+  await page.getByRole('combobox', { name: '가상 PLC' }).filter({ visible: true }).click();
+  await page.getByRole('option', { name, exact: true }).click();
 }
 
 test('가상 PLC 목록 — 등록·게시·시작·연결·정지·해제·삭제', async ({ page }) => {
@@ -51,7 +57,7 @@ test('가상 PLC 목록 — 등록·게시·시작·연결·정지·해제·삭�
 
 test('가상 PLC 메모리 — 값 쓰기·10진 칸 고치기·비트·문자열', async ({ page }) => {
   await openScreen(page, '가상 PLC', '메모리 보기·제어');
-  await expect(page.getByRole('combobox', { name: '가상 PLC' }).filter({ visible: true })).toContainText('vplc-e2e');
+  await pickDevice(page, 'vplc-e2e');
   const start = page.getByRole('spinbutton', { name: '시작 주소' }).filter({ visible: true });
   await start.fill('900');
   await start.press('Enter');
@@ -105,41 +111,52 @@ test('가상 PLC 메모리 — 값 쓰기·10진 칸 고치기·비트·문자�
   await expect(r900).toContainText('0000');
 });
 
-/** 장비를 고른다(메모리 화면) — 종류별로 묶인 선택 칸 */
-async function pickDevice(page: Page, name: string) {
-  await page.getByRole('combobox', { name: '가상 PLC' }).filter({ visible: true }).click();
-  await page.getByRole('option', { name, exact: true }).click();
-}
 
-test('가상 PLC 목록 — Modbus·OPC UA 장비, Modbus 장치 추가·일시정지·재개·삭제', async ({ page }) => {
+test('가상 PLC 목록 — Modbus·OPC UA 가상 PLC, Modbus 등록·게시·시작·일시정지·재개·정지·해제·삭제', async ({ page }) => {
   const name = `e2e-ui-mb-${RUN}`;
   const port = 15950 + (RUN % 40);
   await openScreen(page, '가상 PLC', '가상 PLC 목록');
   const mb = page.getByRole('row').filter({ hasText: 'mb-e2e-2' }).filter({ visible: true }).first();
   await expect(mb).toContainText('Modbus TCP');
   await expect(mb).toContainText('단위 ID 2');
-  const ua = page.getByRole('row').filter({ hasText: 'vplc-opcua' }).filter({ visible: true }).first();
+  const ua = page.getByRole('row').filter({ hasText: 'ua-e2e' }).filter({ visible: true }).first();
   await expect(ua).toContainText('OPC UA');
-  await expect(ua).toContainText('4840');
+  await expect(ua).toContainText('opc.tcp://127.0.0.1:4840/vplc');
   await page.screenshot({ path: 'test-results/vplc-list.png' });
 
-  await page.getByRole('button', { name: 'Modbus 장치 추가' }).click();
+  // 등록 — 종류 Modbus TCP 를 고르면 단위 ID·칸 수·응답 지연 칸
+  await page.getByRole('button', { name: '추가', exact: true }).click();
   const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: '종류', exact: true }).click();
+  await page.getByRole('option', { name: 'Modbus TCP' }).click();
   await dialog.getByRole('textbox', { name: /^이름/ }).fill(name);
-  await dialog.getByLabel('포트').fill(String(port));
+  await dialog.getByRole('spinbutton', { name: '포트', exact: true }).fill(String(port));
   await dialog.getByLabel('칸 수').fill('100');
   await dialog.getByRole('button', { name: '저장' }).click();
   await expect(dialog).toBeHidden();
 
+  // MELSEC 과 같은 상태 단계
   await searchFor(page, name);
   const row = page.getByRole('row').filter({ hasText: name }).filter({ visible: true }).first();
+  await expect(row.getByText('REGISTERED')).toBeVisible();
+  await expect(row).toContainText('영역마다 100칸');
+  await rowMenu(page, name, '게시');
+  await expect(row.getByText('PUBLISHED')).toBeVisible();
+  await row.getByRole('button', { name: '시작' }).click();
   await expect(row.getByText('RUNNING')).toBeVisible();
-  await expect(row).toContainText(String(port));
   await row.getByRole('button', { name: '일시정지' }).click();
   await page.getByRole('dialog').getByRole('button', { name: /확인|OK/ }).last().click();
   await expect(row.getByText('PAUSED')).toBeVisible();
   await row.getByRole('button', { name: '재개' }).click();
   await expect(row.getByText('RUNNING')).toBeVisible();
+  await rowMenu(page, name, '응답 지연');
+  await page.getByRole('dialog').getByLabel('응답 지연(ms)').fill('20');
+  await page.getByRole('dialog').getByRole('button', { name: '저장' }).click();
+  await expect(row).toContainText('지연 20ms');
+  await rowMenu(page, name, '정지');
+  await expect(row.getByText('STOPPED')).toBeVisible();
+  await rowMenu(page, name, '해제');
+  await expect(row.getByText('RELEASED')).toBeVisible();
   await rowMenu(page, name, '삭제');
   await page.getByRole('dialog').getByRole('button', { name: /확인|삭제|OK/ }).last().click();
   await expect(page.getByRole('row').filter({ hasText: name }).filter({ visible: true })).toHaveCount(0);
@@ -198,7 +215,7 @@ test('가상 PLC 메모리 — Modbus 레지스터·코일·문자열(mb-e2e-2 �
 test('가상 PLC 메모리 — OPC UA 태그 추가·값 고치기·지우기', async ({ page }) => {
   const path = `E2eUi.T${RUN}`;
   await openScreen(page, '가상 PLC', '메모리 보기·제어');
-  await pickDevice(page, 'vplc-opcua');
+  await pickDevice(page, 'ua-e2e');
   await expect(page.getByRole('row').filter({ hasText: 'Line1.Temp' })).toContainText('nsu=urn:wow:tc:vplc-opcua;s=Line1.Temp');
 
   await page.getByTestId('command-bar-slot').getByRole('button', { name: '태그 추가' }).click();

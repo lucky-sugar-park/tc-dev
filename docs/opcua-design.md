@@ -99,7 +99,9 @@ OPC UA 는 **세션**이다 — 보안 채널을 열고 세션을 만든 뒤 Rea
 | O16 | 서버 인증서 믿기 | 설정 `serverTrust` = `TRUST_ON_FIRST_USE`(기본) · `TRUST_ALL`(시험용 — 화면에 경고). 처음 연결 때 받은 서버 인증서를 커넥터별로 `pki/opcua/trusted/<커넥터>.der` 에 남기고, 다음부터 다른 인증서면 거절한다(서버가 바뀌었거나 가로채기). 서버 인증서를 바꾼 게 맞으면 관리자가 **"서버 인증서 잊기"**(`POST /api/v1/plc-connector/opcua/forget-server-certificate/byName/{name}`, 수정 권한)로 지우고 다시 믿는다. 연결 시험·찾아보기도 같은 규칙. 보안 정책이 NONE 이어도 사용자 이름 토큰을 암호화하려면 서버 인증서를 쓰므로 같은 규칙을 탄다 |
 | O17 | `nsu=` 주소 | 점 주소에 `nsu=<네임스페이스 URI>;s=…`(i=·g=·b= 도)를 받는다. 실행할 때 세션의 네임스페이스 표로 번호를 찾는다(세션마다 한 번 읽어 둔다). 네임스페이스 번호는 서버가 다시 뜨거나 설정이 바뀌면 달라질 수 있어 **찾아보기는 이제 `nsu=` 형태로 돌려준다**(ns=0 표준 노드는 `i=…` 그대로). `ns=2;…` 형태도 계속 받는다 |
 
-### 7.2 가상 서버(vplc-opcua) — 시험 상대
+### 7.2 가상 서버 — 시험 상대
+
+같은 날 vplc 안으로 옮겼다 — 종류 `OPC_UA` 가상 PLC(e2e `ua-e2e`), 설정은 가상 PLC 의 `settings`(`requireLogin`·`trustAllClients`)와 vplc 의 `vplc.opcua.users`(docs/virtual-devices.md). 아래 표는 처음 만든 vplc-opcua 기준.
 
 | 것 | 내용 |
 |---|---|

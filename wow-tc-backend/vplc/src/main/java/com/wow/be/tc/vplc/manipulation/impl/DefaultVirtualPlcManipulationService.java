@@ -11,8 +11,9 @@ import com.wow.be.tc.vplc.Types.MemoryType;
 import com.wow.be.tc.vplc.Types.PlcStatus;
 import com.wow.be.tc.vplc.VirtualPlcException;
 import com.wow.be.tc.vplc.machine.MemoryInfo;
+import com.wow.be.tc.vplc.machine.VirtualDevice;
+import com.wow.be.tc.vplc.machine.VirtualDeviceFactory;
 import com.wow.be.tc.vplc.machine.VirtualProgrammableController;
-import com.wow.be.tc.vplc.machine.VirtualProgrammableControllerBuilder;
 import com.wow.be.tc.vplc.machine.VirtualProgrammableControllerManager;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcManagementService;
@@ -32,6 +33,9 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	
 	@Autowired
 	private VirtualPlcManagementService vplcManagementService;
+
+	@Autowired
+	private VirtualDeviceFactory deviceFactory;
 	
 	public DefaultVirtualPlcManipulationService() {
 		vplcManager=VirtualProgrammableControllerManager.getManager();
@@ -39,21 +43,9 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	
 	private void addVirtualProgrammableController(VirtualPlcInfo vplcInfo) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.addVirtualProgrammableController(VirtualPlcInfo vplcInfo)...");
-
-		VirtualProgrammableController vplc=new VirtualProgrammableControllerBuilder()
-				.withId(vplcInfo.getId())
-				.withName(vplcInfo.getName())
-				.withIpAddress(vplcInfo.getIpAddress())
-				.withStatus(PlcStatus.PUBLISHED)
-				.withStartPort(vplcInfo.getStartPort())
-				.withFrameFormat(vplcInfo.getFrameFormat())
-				.withPortCount(vplcInfo.getPortCount())
-				.withConnLimit(vplcInfo.getPortConnLimit())
-				.withMemoryTypes(vplcInfo.getMemInfos())
-				.withManufacturer(vplcInfo.getManufacturer())
-				.withDescription(vplcInfo.getDescription())
-				.build();
-		vplcManager.addVirtualProgrammableController(vplc.getId(), vplc);
+		VirtualDevice device=deviceFactory.create(vplcInfo);
+		device.setStatus(PlcStatus.PUBLISHED);
+		vplcManager.addVirtualProgrammableController(device.getId(), device);
 	}
 	
 	@Override
@@ -67,7 +59,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	@Transactional
 	public void publishVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.publishVirtualPlc(String vplcId)...");
-		if(vplcManager.getVirtualProgrammableController(vplcId)!=null) {
+		if(vplcManager.get(vplcId)!=null) {
 			throw new VirtualPlcException(VirtualPlcException.ERR_409, "이미 게시된 가상 PLC 입니다: " + vplcId);
 		}
 		VirtualPlcInfo vplcInfo=updateVirtualPlcStatus(vplcId, null, PlcStatus.PUBLISHED);
@@ -78,92 +70,74 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	@Transactional
 	public void publishVirtualPlcByName(String vplcName) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.publishVirtualPlcByName(String vplcName)...");
-		VirtualPlcInfo vplcInfo=updateVirtualPlcStatus(null, vplcName, PlcStatus.PUBLISHED);
-		this.addVirtualProgrammableController(vplcInfo);
+		publishVirtualPlc(idOf(vplcName));
 	}
-	
-	private void startVirtualProgrammableController(String vplcId) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.startVirtualProgrammableController(String vplcId)...");
-		vplcManager.getVirtualProgrammableController(vplcId).start();
+
+	/**
+	 * 게시된 가상 PLC 에 동작을 하고, 된 뒤에 상태를 DB 에 남긴다 — 포트를 열지 못하면(409) 상태는 그대로다.
+	 * 예전에는 DB 를 먼저 RUNNING 으로 바꿔, 시작에 실패해도 RUNNING 으로 남았다.
+	 */
+	private void control(String vplcId, PlcStatus to, DeviceAction action) throws VirtualPlcException {
+		vplcManagementService.findVirtualPlc(vplcId);	// 없는 가상 PLC 는 404
+		VirtualDevice device=published(vplcId);
+		action.run(device);
+		updateVirtualPlcStatus(vplcId, null, to);
+	}
+
+	private interface DeviceAction {
+		void run(VirtualDevice device) throws VirtualPlcException;
 	}
 	
 	@Override
 	@Transactional
 	public void startVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.startVirtualPlc(String vplcId)...");
-		updateVirtualPlcStatus(vplcId, null, PlcStatus.RUNNING);
-		this.startVirtualProgrammableController(vplcId);
+		control(vplcId, PlcStatus.RUNNING, VirtualDevice::start);
 	}
 
 	@Override
 	@Transactional
 	public void startVirtualPlcByName(String vplcName) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.startVirtualPlcByName(String vplcName)...");
-		VirtualPlcInfo vplcInfo=updateVirtualPlcStatus(null, vplcName, PlcStatus.RUNNING);
-		this.startVirtualProgrammableController(vplcInfo.getId());
+		startVirtualPlc(idOf(vplcName));
 	}
 
-	private void stopVirtualProgrammableController(String vplcId) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.stopVirtualProgrammableController(String vplcId)...");
-		vplcManager.getVirtualProgrammableController(vplcId).stop();
-	}
-	
 	@Override
 	@Transactional
 	public void stopVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.stopVirtualPlc(String vplcId)...");
-		updateVirtualPlcStatus(vplcId, null, PlcStatus.STOPPED);
-		this.stopVirtualProgrammableController(vplcId);
+		control(vplcId, PlcStatus.STOPPED, VirtualDevice::stop);
 	}	
 
 	@Override
 	@Transactional
 	public void stopVirtualPlcByName(String vplcName) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.stopVirtualPlcByName(String vplcName)...");
-		VirtualPlcInfo vplcInfo=updateVirtualPlcStatus(null, vplcName, PlcStatus.STOPPED);
-		this.stopVirtualProgrammableController(vplcInfo.getId());
-	}
-	
-	private void pauseVirtualProgrammableController(String vplcId) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.pauseVirtualProgrammableController(String vplcId)...");
-		vplcManager.getVirtualProgrammableController(vplcId).pause();
+		stopVirtualPlc(idOf(vplcName));
 	}
 
 	@Override
 	@Transactional
 	public void pauseVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.pauseVirtualPlc(String vplcId)...");
-		updateVirtualPlcStatus(vplcId, null, PlcStatus.PAUSED);
-		this.pauseVirtualProgrammableController(vplcId);
+		control(vplcId, PlcStatus.PAUSED, VirtualDevice::pause);
 	}
 
 	@Override
 	@Transactional
 	public void pauseVirtualPlcByName(String vplcName) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.pauseVirtualPlcByName(String vplcName)...");
-		VirtualPlcInfo vplcInfo=updateVirtualPlcStatus(null, vplcName, PlcStatus.PAUSED);
-		this.pauseVirtualProgrammableController(vplcInfo.getId());
-	}
-	
-	private void resumeVirtualProgrammableController(String vplcId) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.resumeVirtualProgrammableController(String vplcId)...");
-		vplcManager.getVirtualProgrammableController(vplcId).resume();
+		pauseVirtualPlc(idOf(vplcName));
 	}
 
 	@Override
 	@Transactional
 	public void resumeVirtualPlc(String vplcId) throws VirtualPlcException {
 		log.debug("DefaultVirtualPlcManipulationService.resumeVirtualPlc(String vplcId)...");
-		updateVirtualPlcStatus(vplcId, null, PlcStatus.RUNNING);
-		this.resumeVirtualProgrammableController(vplcId);
+		control(vplcId, PlcStatus.RUNNING, VirtualDevice::resume);
 	}
 
 	@Override
 	@Transactional
 	public void resumeVirtualPlcByName(String vplcName) throws VirtualPlcException {
-		log.debug("DefaultVirtualPlcManipulationService.resumeVirtualPlcByName(String vplcName)...");
-		VirtualPlcInfo vplcInfo=updateVirtualPlcStatus(null, vplcName, PlcStatus.RUNNING);
-		this.resumeVirtualProgrammableController(vplcInfo.getId());
+		resumeVirtualPlc(idOf(vplcName));
 	}
 	
 	public void releaseVirtualPlc(String plcId) throws VirtualPlcException {
@@ -199,7 +173,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	public MemoryInfo read(String vplcId, String memoryType, String frameFormat, int startAddress, int wordCount) throws VirtualPlcException {
 		log.debug("");
 		MemoryType memType=MemoryType.toMemoryType(memoryType);
-		byte[] bytes=published(vplcId).read(startAddress, wordCount, memType);
+		byte[] bytes=publishedMc(vplcId).read(startAddress, wordCount, memType);
 		MemoryInfo mInfo=new MemoryInfo();
 		mInfo.setVplcId(vplcId);
 		mInfo.setFrameFormat(FrameFormat.valueOf(frameFormat));
@@ -240,7 +214,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 
 	private MemoryInfo writeBytes(String vplcId, MemoryType memType, String frameFormat, int startAddress, int wordCount, byte[] data)
 			throws VirtualPlcException {
-		VirtualProgrammableController vplc=published(vplcId);
+		VirtualProgrammableController vplc=publishedMc(vplcId);
 		vplc.write(startAddress, wordCount, data, memType);
 		byte[] bytes=vplc.read(startAddress, 20, memType);
 		MemoryInfo mInfo=new MemoryInfo();
@@ -263,7 +237,7 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	public MemoryInfo clearAll(String vplcId, String memoryType, String frameFormat, int currentPosition) throws VirtualPlcException {
 		log.debug("");
 		MemoryType memType=MemoryType.toMemoryType(memoryType);
-		VirtualProgrammableController vplc=published(vplcId);
+		VirtualProgrammableController vplc=publishedMc(vplcId);
 		vplc.clear(memType);
 		byte[] bytes=vplc.read(currentPosition, 20, memType);
 		MemoryInfo mInfo=new MemoryInfo();
@@ -283,12 +257,20 @@ public class DefaultVirtualPlcManipulationService implements VirtualPlcManipulat
 	}
 
 	/** 게시(메모리에 올라온)된 가상 PLC — 아니면 409. 예전에는 NPE 로 500 이었다 */
-	private VirtualProgrammableController published(String vplcId) throws VirtualPlcException {
-		VirtualProgrammableController vplc=vplcManager.getVirtualProgrammableController(vplcId);
+	private VirtualDevice published(String vplcId) throws VirtualPlcException {
+		VirtualDevice vplc=vplcManager.get(vplcId);
 		if(vplc==null) {
 			throw new VirtualPlcException(VirtualPlcException.ERR_409, "게시되지 않은 가상 PLC 입니다 — 먼저 게시하세요: " + vplcId);
 		}
 		return vplc;
+	}
+
+	/** 게시된 가상 MELSEC PLC — 다른 종류면 400(메모리 종류·워드 읽기·쓰기는 MELSEC 만) */
+	private VirtualProgrammableController publishedMc(String vplcId) throws VirtualPlcException {
+		if(published(vplcId) instanceof VirtualProgrammableController mc) {
+			return mc;
+		}
+		throw new VirtualPlcException(VirtualPlcException.ERR_400, "MELSEC 가상 PLC 가 아닙니다 — 종류별 메모리 API 를 쓰세요: " + vplcId);
 	}
 
 	/** 이름 → 아이디. 예전 이름으로 하는 읽기·쓰기·지우기는 null 을 돌려줬다 */

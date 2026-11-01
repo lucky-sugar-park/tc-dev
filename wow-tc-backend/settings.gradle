@@ -2,9 +2,8 @@
 //
 // 설비 데이터 수집 및 제어 시스템. 하위 폴더 하나가 서브프로젝트 하나다.
 // - tc   : Tool Control — MES 와 PLC 사이 게이트웨이 (com.wow.be.tc, :8080)
-// - vplc : 가상 PLC 시뮬레이터 (com.wow.be.tc.vplc, :8088) — MELSEC MC
-// - vplc-modbus : 가상 Modbus TCP 장치 (:8091, Modbus :15020)
-// - vplc-opcua  : 가상 OPC UA 서버 (:8092, OPC UA :4840)
+// - vplc : 가상 PLC 시뮬레이터 (com.wow.be.tc.vplc, :8088) — MELSEC MC·Modbus TCP·OPC UA 가상 PLC 를 여러 대 (docs/virtual-devices.md)
+// - vplc-modbus·vplc-opcua : vplc 로 합치기 전의 독립 가상 장비 — 확인 뒤 지운다. vplc 와 같은 포트(15020·4840)라 함께 띄우지 않는다
 
 pluginManagement {
     repositories {

@@ -3,8 +3,9 @@ import { Alert, Box, Button, Dialog, DialogContent, MenuItem, Stack, TextField }
 import { DataGridPro, GridActionsCellItem, type GridColDef } from '@mui/x-data-grid-pro';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { DialogFooter, DialogTitleClose, DraggablePaper, extractApiError, showConfirm, showToast, useI18n } from 'wow-mes-frontend-shared';
+import { MoreActionsIcon, withActionTooltips } from '../../shared/components/actionTooltips';
 import { matches } from '../../shared/format';
-import { OPCUA_TYPES, opcUaApi } from '../services/vplcApi';
+import { OPCUA_TYPES, vplcApi } from '../services/vplcApi';
 import type { OpcUaSimulation, OpcUaTag, OpcUaTagSpec } from '../types/vplc';
 
 const SIM_KINDS: OpcUaSimulation['kind'][] = ['RAMP', 'SINE', 'TOGGLE', 'RANDOM'];
@@ -27,7 +28,7 @@ export function parseTagValue(type: string, text: string): unknown {
 const simText = (s?: OpcUaSimulation | null) => (s ? `${s.kind} ${s.periodMs ?? ''}ms${s.min != null ? ` ${s.min}~${s.max}` : ''}` : '');
 
 /** 태그 더하기 — 경로(폴더.이름)·형·처음 값·설명·값 흉내 */
-function AddTagDialog({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }): ReactElement {
+function AddTagDialog({ vplcId, open, onClose, onAdded }: { vplcId: string; open: boolean; onClose: () => void; onAdded: () => void }): ReactElement {
   const { t } = useI18n();
   const [path, setPath] = useState('');
   const [type, setType] = useState('INT16');
@@ -56,7 +57,7 @@ function AddTagDialog({ open, onClose, onAdded }: { open: boolean; onClose: () =
     }
     if (sim) spec.simulation = { kind: sim as OpcUaSimulation['kind'], periodMs: Number(period) || 1000, min: Number(min), max: Number(max) };
     try {
-      await opcUaApi.add(spec);
+      await vplcApi.opcUaAddTag(vplcId, spec);
       showToast(t('i18n.common.saved', '저장했습니다'), 'success');
       onAdded();
     } catch (err) {
@@ -71,7 +72,7 @@ function AddTagDialog({ open, onClose, onAdded }: { open: boolean; onClose: () =
       <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
           {error && <Alert severity="error">{error}</Alert>}
-          <Alert severity="info">{t('i18n.tc.vplc.tagMemoryOnly', '가상 OPC UA 서버는 메모리에만 둡니다 — 다시 띄우면 설정(application.yml)의 태그만 남습니다.')}</Alert>
+          <Alert severity="info">{t('i18n.tc.vplc.tagSaved', '태그 정의는 vplc DB 에 남습니다 — 지금 값은 메모리(정지했다 시작하면 처음 값).')}</Alert>
           <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
             <TextField label={t('i18n.tc.vplc.tagPath', '경로')} required value={path} autoFocus onChange={(e) => setPath(e.target.value)}
               helperText={t('i18n.tc.vplc.tagPathHelp', '앞부분은 폴더 — Line3.Temp')} />
@@ -100,10 +101,13 @@ function AddTagDialog({ open, onClose, onAdded }: { open: boolean; onClose: () =
 type Row = OpcUaTag & { text: string };
 
 /**
- * 가상 OPC UA 태그 표 — 경로·형·값(고쳐 쓰기)·값 흉내·NodeId(nsu=)·설명, 태그 더하기·지우기. 흉내 중인 태그는 다음 주기에 다시 흉내 값이 된다.
+ * 가상 OPC UA 태그 표 — 경로·형·값(실행 중일 때 고쳐 쓰기)·값 흉내·NodeId(nsu=)·설명, 태그 더하기·지우기. 흉내 중인 태그는 다음 주기에 다시 흉내 값이 된다.
  * 새로 고침은 화면이 {@code reloadKey} 를 올려서, 자동 새로 고침은 {@code refreshMs}.
  */
-export function OpcUaTagPanel({ active, search, reloadKey, refreshMs, canWrite, canDelete, addOpen, onAddClose, onError }: {
+export function OpcUaTagPanel({ vplcId, running, active, search, reloadKey, refreshMs, canWrite, canDelete, addOpen, onAddClose, onError }: {
+  vplcId: string;
+  /** 실행 중(일시정지 포함)이면 값을 고쳐 쓸 수 있다 */
+  running: boolean;
   active: boolean;
   search: string;
   reloadKey: number;
@@ -119,15 +123,16 @@ export function OpcUaTagPanel({ active, search, reloadKey, refreshMs, canWrite, 
 
   const load = useCallback(async () => {
     try {
-      setTags(await opcUaApi.tags());
+      if (!vplcId) { setTags([]); return; }
+      setTags(await vplcApi.opcUaTags(vplcId));
       onError(null);
     } catch (e) {
       onError(extractApiError(e));
     }
-  }, [onError]);
+  }, [onError, vplcId]);
   const loadRef = useRef(load);
   loadRef.current = load;
-  useEffect(() => { if (active) void loadRef.current(); }, [active, reloadKey]);
+  useEffect(() => { if (active) void loadRef.current(); }, [active, reloadKey, vplcId]);
   useEffect(() => {
     if (!active || !refreshMs) return undefined;
     const h = window.setInterval(() => { void loadRef.current(); }, refreshMs);
@@ -137,12 +142,12 @@ export function OpcUaTagPanel({ active, search, reloadKey, refreshMs, canWrite, 
   const remove = useCallback(async (path: string) => {
     if (!(await showConfirm({ message: t('i18n.tc.vplc.confirmDelete', '{name} 을(를) 지울까요?').replace('{name}', path), severity: 'warning' }))) return;
     try {
-      await opcUaApi.remove(path);
+      await vplcApi.opcUaRemoveTag(vplcId, path);
       await loadRef.current();
     } catch (e) {
       showToast(extractApiError(e), 'error');
     }
-  }, [t]);
+  }, [t, vplcId]);
 
   const rows = useMemo<Row[]>(() => tags.filter((x) => matches(search, x.path, x.description ?? '', x.type))
     .map((x) => ({ ...x, text: x.value == null ? '' : String(x.value) })), [tags, search]);
@@ -150,34 +155,34 @@ export function OpcUaTagPanel({ active, search, reloadKey, refreshMs, canWrite, 
   const columns = useMemo<GridColDef<Row>[]>(() => [
     { field: 'path', headerName: t('i18n.tc.vplc.tagPath', '경로'), width: 180 },
     { field: 'type', headerName: t('i18n.tc.point.type', '형'), width: 90 },
-    { field: 'text', headerName: t('i18n.tc.vplc.value', '값'), width: 160, editable: canWrite },
+    { field: 'text', headerName: t('i18n.tc.vplc.value', '값'), width: 160, editable: canWrite && running },
     { field: 'simulation', headerName: t('i18n.tc.vplc.simulation', '값 흉내'), width: 170, valueGetter: (_v, r) => simText(r.simulation) },
     { field: 'expandedNodeId', headerName: 'NodeId', width: 300 },
     { field: 'description', headerName: t('i18n.tc.common.description', '설명'), flex: 1, minWidth: 140 },
     {
-      field: 'actions', type: 'actions', headerName: '', width: 60,
+      field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 60,
       getActions: ({ row }) => (canDelete ? [<GridActionsCellItem key="del" icon={<DeleteOutlineIcon />} label={t('i18n.common.delete', '삭제')}
         onClick={() => { void remove(row.path); }} />] : []),
     },
-  ], [t, canWrite, canDelete, remove]);
+  ], [t, canWrite, canDelete, remove, running]);
 
   return (
     <>
       <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <Box sx={{ position: 'absolute', inset: 0 }}>
-          <DataGridPro rows={rows} columns={columns} getRowId={(r) => r.path} density="compact" hideFooter disableRowSelectionOnClick
+          <DataGridPro rows={rows} columns={withActionTooltips(columns)} slots={{ moreActionsIcon: MoreActionsIcon }} getRowId={(r) => r.path} density="compact" hideFooter disableRowSelectionOnClick
             showColumnVerticalBorder showCellVerticalBorder
             processRowUpdate={async (next: Row, prev: Row) => {
               if (next.text === prev.text) return prev;
               const v = parseTagValue(next.type, next.text);
               if (v === null) { showToast(t('i18n.tc.vplc.tagValueRule', '형에 맞지 않는 값입니다'), 'error'); return prev; }
-              const saved = await opcUaApi.set(next.path, v);
+              const saved = await vplcApi.opcUaSetValue(vplcId, next.path, v);
               return { ...saved, text: saved.value == null ? '' : String(saved.value) };
             }}
             onProcessRowUpdateError={(e) => showToast(extractApiError(e), 'error')} />
         </Box>
       </Box>
-      <AddTagDialog open={addOpen} onClose={onAddClose} onAdded={() => { onAddClose(); void loadRef.current(); }} />
+      <AddTagDialog vplcId={vplcId} open={addOpen} onClose={onAddClose} onAdded={() => { onAddClose(); void loadRef.current(); }} />
     </>
   );
 }

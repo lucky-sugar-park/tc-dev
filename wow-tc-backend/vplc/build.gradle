@@ -1,6 +1,6 @@
 // vplc — 가상 PLC 시뮬레이터 (실행형, :8088)
 //
-// 여러 대의 가상 Mitsubishi PLC 를 띄워 MELSEC MC 3E 프레임 요청에 응답한다.
+// 한 앱이 세 종류의 가상 PLC 를 여러 대 띄운다 — MELSEC MC(3E·4E), Modbus TCP, OPC UA(docs/virtual-devices.md).
 // tc 개발·통합 테스트의 상대 장비로 쓴다.
 
 apply plugin: 'org.springframework.boot'
@@ -15,6 +15,10 @@ dependencies {
     implementation 'io.netty:netty-handler'
 
     implementation 'org.apache.commons:commons-collections4:4.4'
+
+    // 가상 OPC UA 서버
+    implementation 'org.eclipse.milo:milo-sdk-server:1.1.8'
+    testImplementation 'org.eclipse.milo:milo-sdk-client:1.1.8'
 
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 }

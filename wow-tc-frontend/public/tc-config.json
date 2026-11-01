@@ -1,5 +1,3 @@
 {
-  "vplcUrl": "/vplc-api",
-  "vplcModbusUrl": "/vplc-modbus-api",
-  "vplcOpcuaUrl": "/vplc-opcua-api"
+  "vplcUrl": "/vplc-api"
 }

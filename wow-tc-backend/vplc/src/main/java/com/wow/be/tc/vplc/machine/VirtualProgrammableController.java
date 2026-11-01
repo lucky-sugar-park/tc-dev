@@ -16,15 +16,17 @@ import com.wow.be.framework.sse.PushEventPayload;
 import com.wow.be.tc.vplc.Types.FrameFormat;
 import com.wow.be.tc.vplc.Types.MemoryType;
 import com.wow.be.tc.vplc.Types.PlcStatus;
+import com.wow.be.tc.vplc.Types.Protocol;
 import com.wow.be.tc.vplc.VirtualPlcException;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
+/** 가상 MELSEC PLC(MC 3E·4E) — Netty 로 포트를 열고 MC 메모리를 둔다 */
 @Data
 @Slf4j
-public class VirtualProgrammableController {
+public class VirtualProgrammableController implements VirtualDevice {
 	
 	private static int NAME_COUNT=0;
 	
@@ -121,6 +123,31 @@ public class VirtualProgrammableController {
 		}
 	}
 	
+	@Override
+	public Protocol getProtocol() {
+		return Protocol.MELSEC_MC;
+	}
+
+	/** 이 PLC 포트들에 붙은 채널을 닫는다 — 끊김은 채널 이벤트로 이력에 남는다 */
+	@Override
+	public int dropConnections() {
+		if (channelEventHandler == null) {
+			return 0;
+		}
+		int n = 0;
+		for (int p = startPort; p < startPort + portCount; p++) {
+			Map<String, ClientChannel> chs = channelEventHandler.getConnectedChannelMap().get(p);
+			if (chs == null) {
+				continue;
+			}
+			for (ClientChannel c : new ArrayList<>(chs.values())) {
+				c.getChannel().close();
+				n++;
+			}
+		}
+		return n;
+	}
+
 	public void setChannelEventHandler(ClientChannelStatusChangeEventHandler channelEventHandler) {
 		this.channelEventHandler=channelEventHandler;
 		PortConnectionLimitEvent event=new PortConnectionLimitEvent(this, "", null, null);

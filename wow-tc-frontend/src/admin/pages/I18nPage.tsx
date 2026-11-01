@@ -143,7 +143,7 @@ export default function I18nPage(): ReactElement {
       cellClassName: (p) => (p.value ? '' : 'cell-missing'),
     })),
     {
-      field: 'actions', type: 'actions', headerName: '', width: 80,
+      field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 80,
       getActions: ({ row }) => [
         ...(perm('U') ? [<GridActionsCellItem key="edit" icon={<EditIcon />} label={t('i18n.common.edit', '수정')} onClick={() => setForm({ open: true, initial: row })} />] : []),
         ...(perm('D') ? [<GridActionsCellItem key="del" icon={<DeleteOutlineIcon />} label={t('i18n.common.delete', '삭제')} onClick={() => remove(row)} showInMenu />] : []),

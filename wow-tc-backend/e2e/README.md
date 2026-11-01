@@ -22,8 +22,8 @@
 | `test_plc_points.py` | 점 인터페이스(PLC 일반화 1단계) — 같은 주소를 읽는 인터페이스와 같은 값, 여러 형 쓰기·readBack, 값 기반 변경 감지, plcStatus, 등록 검증(주소·형·커넥터·plcName·points·형식)·쓰기 값 검증, 커넥터 설정 정규화, 요청 미리보기(`/plan` — READ·WRITE·없는 커넥터·잘못된 주소), 인터페이스 settings(덮어쓰기·저장·거절), 인터페이스 삭제. 비트 디바이스는 vplc 에 M 메모리가 있을 때만 | 33(+1) |
 | `test_plc_mc.py` | MELSEC 보강(PLC 일반화 2단계) — vplc 오류 종료 코드(없는 메모리), 포트별 연결 시험(TCP+루프백), 4E 프레임(두 인터페이스 같은 값, 시간 초과에 연결 유지), 주기적 루프백(멈춘 PLC 연결 닫고 다시 잇기). **vplc 를 잠시 멈추고 plc-e2e 설정을 바꿨다가 되돌린다** | 12 |
 | `test_plc_modbus.py` | Modbus TCP(PLC 일반화 3단계) — 가짜 장치(:15200)를 띄워 커넥터 자동 설정·연결 시험, 점 없음 거절, 점 검증, HR·IR·DI 읽기·HR·CO 쓰기(readBack), 워드 순서 LITTLE, 예외 응답 → plcStatus, 시간 초과에 연결 유지, 쉬는 연결 확인으로 닫고 다시 잇기. 커넥터 `plc-modbus-e2e` 를 만들고 지운다 | 23 |
-| `test_plc_vmodbus.py` | 가상 Modbus 장치(vplc-modbus) — 게이트웨이 한 포트 뒤 단위 ID 1·2(인터페이스 settings `unitId`), 없는 단위 ID → 예외 0x0B, 레지스터 안 비트·배율 읽기, 배율 쓰기 → 장치에 원시 값. **vplc-modbus(:8091, Modbus :15020)가 없으면 건너뜀** | 8 |
-| `test_plc_opcua.py` | OPC UA(D단계) — 가상 OPC UA 서버(vplc-opcua) 상대로 커넥터 등록·연결 시험·게시, 노드 찾아보기, 읽기·쓰기(readBack)·배율, 없는 노드 plcStatus, 범위 밖 400, 미리보기, SUBSCRIBE 구독 알림 감사, D2(Basic256Sha256·사용자 이름·nsu=·틀린 비밀번호·인증서 내려받기·잊기). **vplc-opcua(:8092, OPC UA :4840)가 없으면 건너뜀** — 구독 확인에 최대 30초 | 30 |
+| `test_plc_vmodbus.py` | vplc 의 가상 Modbus PLC(`mb-e2e`·`mb-e2e-2`, 없으면 등록·실행) — 게이트웨이 한 포트 뒤 단위 ID 1·2(인터페이스 settings `unitId`), 없는 단위 ID → 예외 0x0B, 레지스터 안 비트·배율 읽기, 배율 쓰기 → 장치에 원시 값. **vplc 가 없으면 건너뜀** | 8 |
+| `test_plc_opcua.py` | OPC UA(D단계) — vplc 의 가상 OPC UA 서버(`ua-e2e`, 없으면 태그와 함께 등록·실행) 상대로 커넥터 등록·연결 시험·게시, 노드 찾아보기, 읽기·쓰기(readBack)·배율, 없는 노드 plcStatus, 범위 밖 400, 미리보기, SUBSCRIBE 구독 알림 감사, D2(Basic256Sha256·사용자 이름·nsu=·틀린 비밀번호·인증서 내려받기·잊기). **vplc 가 없으면 건너뜀** — 구독 확인에 최대 30초 | 30 |
 | `test_ui_api.py` | 새 화면 백엔드 계약(5단계 5-1) — 로그인 본문 토큰·재발급, 내 권한(역할별·화면 권한), 셸 빈 응답, 다국어(공개·4개 언어·관리), 공통 코드, 북마크, SSE(공개 연결·구독 권한·audit_message 수신), 홈 요약, 감사 조회(기간·실패만·쪽), 사용 이력·로그인 제한 풀기, 시험 읽기, 프로토콜 설명, 화면 서빙(`TC_E2E_UI_DIR` 이 tc 의 `TC_UI_DIR` 과 같을 때만). 시험 사용자를 만들고 지운다 | 38 |
 | `test_shutdown.py` | 헬스 체크, 정상 종료 순서(웹 서버 → PLC 연결) — **tc 를 종료시킨다** | 5 |
 | `fake_plc.py` | 시험용 가짜 MELSEC PLC(3E, 워드 읽기). n번째 요청에 값 n, 지연·끊기 지정 | |

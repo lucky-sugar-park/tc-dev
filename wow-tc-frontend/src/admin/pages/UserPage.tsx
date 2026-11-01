@@ -115,7 +115,7 @@ export default function UserPage(): ReactElement {
     { field: 'lastLoginIp', headerName: 'IP', width: 130 },
     { field: 'passwordChangedAt', headerName: t('i18n.tc.user.passwordChanged', '비밀번호 바꾼 때'), width: 160, valueFormatter: (v: string) => fmtTime(v) },
     {
-      field: 'actions', type: 'actions', headerName: '', width: 110,
+      field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 110,
       getActions: ({ row }) => {
         const acts: ReactElement[] = [];
         if (perm('U')) {

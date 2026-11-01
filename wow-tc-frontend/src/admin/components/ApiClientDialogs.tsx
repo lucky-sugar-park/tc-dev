@@ -9,6 +9,7 @@ import BlockIcon from '@mui/icons-material/Block';
 import {
   DialogFooter, DialogTitleClose, DraggablePaper, extractApiError, showConfirm, showToast, useI18n,
 } from 'wow-mes-frontend-shared';
+import { MoreActionsIcon, withActionTooltips } from '../../shared/components/actionTooltips';
 import { fmtTime } from '../../shared/format';
 import { apiClientApi } from '../services/adminApi';
 import type { ApiClient, ApiKey, IssuedApiKey } from '../types/admin';
@@ -184,7 +185,7 @@ export function ApiKeysDialog({ clientId, canManage, onClose, onChanged }: {
     { field: 'lastUsedIp', headerName: 'IP', width: 130 },
     { field: 'revokedAt', headerName: t('i18n.tc.apiclient.revokedAt', '폐기한 때'), width: 160, valueFormatter: (v: string) => fmtTime(v) },
     {
-      field: 'actions', type: 'actions', headerName: '', width: 60,
+      field: 'actions', type: 'actions', headerName: t('i18n.tc.common.actions', '작업'), width: 60,
       getActions: ({ row }) => (canManage && row.status === 'ACTIVE'
         ? [<GridActionsCellItem key="revoke" icon={<BlockIcon />} label={t('i18n.tc.apiclient.revoke', '폐기')} onClick={() => revoke(row)} />]
         : []),
@@ -227,7 +228,7 @@ export function ApiKeysDialog({ clientId, canManage, onClose, onChanged }: {
           )}
           <Box sx={{ height: 320, position: 'relative' }}>
             <Box sx={{ position: 'absolute', inset: 0 }}>
-              <DataGridPro rows={keys} columns={cols} getRowId={(r) => r.keyId} loading={loading} density="compact" disableRowSelectionOnClick hideFooter />
+              <DataGridPro rows={keys} columns={withActionTooltips(cols)} slots={{ moreActionsIcon: MoreActionsIcon }} getRowId={(r) => r.keyId} loading={loading} density="compact" disableRowSelectionOnClick hideFooter />
             </Box>
           </Box>
         </Stack>

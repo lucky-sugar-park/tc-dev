@@ -1,12 +1,15 @@
 package com.wow.be.tc.vplc.management;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.wow.be.framework.AbstractInfo;
 import com.wow.be.tc.vplc.Types.FrameFormat;
 import com.wow.be.tc.vplc.Types.PlcStatus;
+import com.wow.be.tc.vplc.Types.Protocol;
 import com.wow.be.tc.vplc.machine.MemoryInfo;
 
 import lombok.Data;
@@ -22,6 +25,9 @@ public class VirtualPlcInfo extends AbstractInfo {
 	private String id;
 
 	private String name;
+	
+	/** 종류 — MELSEC_MC(기본)·MODBUS_TCP·OPC_UA */
+	private Protocol protocol;
 	
 	private PlcStatus status;
 	
@@ -44,6 +50,12 @@ public class VirtualPlcInfo extends AbstractInfo {
 	
 	private List<String> memoryTypeList;
 	
+	/**
+	 * 종류별 설정(docs/virtual-devices.md) — MODBUS_TCP: unitId·size·delayMs, OPC_UA: path·requireLogin·trustAllClients.
+	 * MELSEC_MC 는 비어 있다.
+	 */
+	private Map<String, Object> settings;
+	
 	private boolean published;
 	
 	private List<MemoryInfo> memInfos;
@@ -55,6 +67,7 @@ public class VirtualPlcInfo extends AbstractInfo {
 		memInfos=new ArrayList<>();
 		connections=new ArrayList<>();
 		memoryTypeList=new ArrayList<>();
+		settings=new LinkedHashMap<>();
 	}
 	
 	public void addMemoryType(String memoryType) {
