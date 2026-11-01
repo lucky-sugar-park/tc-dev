@@ -23,6 +23,9 @@ import lombok.extern.slf4j.Slf4j;
  * <p>messageType 은 REQUEST / RESPONSE / ERROR 다. 레거시는 요청·응답만 남기고 실패는 남기지 않았다.
  * 감사 저장이 실패해도 PLC 처리는 막지 않는다 — 경고 로그만 남긴다.
  *
+ * <p>실패만 남기는 요청({@link TcMessageRequest#isAuditFailuresOnly()}, 스케줄 Job 의 {@code auditMode=FAILURE_ONLY})은 REQUEST 를
+ * 응답을 볼 때까지 붙잡아 두었다가, 성공이면 버리고 실패(PLC 오류 종료 코드·ERROR)면 REQUEST 와 함께 남긴다.
+ *
  * <p>callback 을 바라는 요청(pushResult·pushUrl)은 REQUEST 의 DESCRIPTION 에 {@code pushUrl: 주소} 를 남긴다 — 응답 기록으로
  * callback 주소에 다시 보낼 때 쓴다(docs/redelivery-design.md §2 빈 곳 3).
  */
@@ -41,8 +44,13 @@ public class AuditDispatchInterceptor implements DispatchInterceptor {
 
 	@Override
 	public void preDispatch(RequestMessage request) {
-		write(request, audit("REQUEST", request.getTransactionId(), request.getMessageId(), request.getOpcode(),
-			request.getTimestamp(), request.getSender(), request.getReceiver(), request.getData(), requestDescription(request)));
+		ExchangedMessageAuditInfo info = audit("REQUEST", request.getTransactionId(), request.getMessageId(), request.getOpcode(),
+			request.getTimestamp(), request.getSender(), request.getReceiver(), request.getData(), requestDescription(request));
+		if (request instanceof TcMessageRequest tc && tc.isAuditFailuresOnly()) {
+			tc.setHeldRequestAudit(info);
+			return;
+		}
+		write(request, info);
 	}
 
 	private static String requestDescription(RequestMessage request) {
@@ -60,14 +68,18 @@ public class AuditDispatchInterceptor implements DispatchInterceptor {
 
 	@Override
 	public void postDispatch(RequestMessage request, ResponseMessage response) {
-		String description = Boolean.FALSE.equals(response.getSuccess())
-			? response.getErrorCode() + ": " + response.getErrorMessage() : "";
+		boolean failed = Boolean.FALSE.equals(response.getSuccess());
+		if (!releaseHeld(request, failed)) {
+			return;
+		}
+		String description = failed ? response.getErrorCode() + ": " + response.getErrorMessage() : "";
 		write(request, audit("RESPONSE", response.getTransactionId(), response.getMessageId(), response.getOpcode(),
 			response.getTimestamp(), response.getSender(), response.getReceiver(), response.getData(), description));
 	}
 
 	@Override
 	public void onError(RequestMessage request, Throwable cause) {
+		releaseHeld(request, true);
 		String errorCode = cause instanceof MesGeneralException mes ? mes.getErrorCode() : null;
 		Map<String, Object> data = new LinkedHashMap<>();
 		data.put("errorCode", errorCode);
@@ -75,6 +87,23 @@ public class AuditDispatchInterceptor implements DispatchInterceptor {
 		write(request, audit("ERROR", request.getTransactionId(), RequestMessage.generateMessageId(), request.getOpcode(),
 			System.currentTimeMillis(), request.getReceiver(), request.getSender(), data,
 			errorCode + ": " + cause.getMessage()));
+	}
+
+	/**
+	 * 붙잡아 둔 REQUEST 를 정리한다 — 실패면 남기고, 성공이면 버린다.
+	 *
+	 * @return 이어서 응답(또는 ERROR)을 남겨야 하는가
+	 */
+	private boolean releaseHeld(RequestMessage request, boolean failed) {
+		if (!(request instanceof TcMessageRequest tc) || !tc.isAuditFailuresOnly()) {
+			return true;
+		}
+		ExchangedMessageAuditInfo held = tc.getHeldRequestAudit();
+		tc.setHeldRequestAudit(null);
+		if (failed && held != null) {
+			write(request, held);
+		}
+		return failed;
 	}
 
 	private void write(RequestMessage request, ExchangedMessageAuditInfo info) {

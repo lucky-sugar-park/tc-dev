@@ -1,7 +1,6 @@
 package com.wow.be.tc.plc.management.impl;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,19 +63,5 @@ public class DefaultPlcConnectionEventHistoryService
 		response.setTotalRowsCount(count);
 		response.setRows(infoList);
 		return response;
-	}
-
-	@Override
-	public long deleteByTimestamp(Date timestamp) {
-		log.debug("");
-		long delCount=plcConnectionEventHistRepository.countByTimestamp(timestamp);
-		plcConnectionEventHistRepository.deleteByTimestamp(timestamp);
-		return delCount;
-	}
-	
-	@Override
-	@Transactional
-	public long flushBySavingPeriod(String targetName, Date timestamp) {
-		return this.deleteByTimestamp(timestamp);
 	}
 }

@@ -44,7 +44,6 @@ def check(name, cond, detail=""):
 
 NO = "no-such-e2e-x"
 DELETES = [
-    "/api/v1/ifsvc/audit/delete/999999999",
     "/api/v1/ifsvc/management/delete/999999999",
     f"/api/v1/ifsvc/management/delete/byName/{NO}",
     "/api/v1/plc-connector/delete/999999999",

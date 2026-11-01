@@ -47,6 +47,9 @@ i18n.tc.schedule.remark	비고	Remark	備考	备注
 i18n.tc.schedule.repeat	반복 간격(ms)	Repeat interval (ms)	繰り返し間隔(ms)	重复间隔(ms)
 i18n.tc.schedule.repeatRule	1000ms 이상	At least 1000 ms	1000ms以上	至少 1000ms
 i18n.tc.schedule.reschedule	다시 예약	Reschedule	再予約	重新调度
+i18n.tc.schedule.runNow	지금 실행	Run now	今すぐ実行	立即执行
+i18n.tc.schedule.confirmRunNow	{name} 을(를) 지금 한 번 실행할까요? 주기는 그대로입니다.	Run {name} once now? The schedule stays the same.	{name} を今すぐ一度実行しますか？スケジュールはそのままです。	立即执行一次 {name}？调度保持不变。
+i18n.tc.schedule.runNowRequested	실행을 요청했습니다 — 결과는 실행 이력에서 봅니다.	Run requested — see the run history for the result.	実行を要求しました — 結果は実行履歴で確認します。	已请求执行 — 结果见执行历史。
 i18n.tc.schedule.result	결과	Result	結果	结果
 i18n.tc.schedule.saveHelp	사용이면 저장하면서 이 주기로 (다시) 예약한다. 쓰지 않음으로 저장하면 예약을 취소한다.	When enabled, saving (re)schedules it with this cycle. Saving as disabled cancels the schedule.	使用にすると保存時にこの周期で(再)予約します。不使用で保存すると予約を取り消します。	启用时保存会按此周期(重新)调度。以停用保存会取消调度。
 i18n.tc.schedule.search	이름·설명	Name · description	名前・説明	名称・说明
@@ -75,6 +78,8 @@ i18n.tc.schedule.propHelp.savingDays	보관 일수 — 이보다 오래된 행�
 i18n.tc.schedule.option.EXCHANGED_MESSAGE_AUDIT	송수신 기록	Message records	送受信記録	收发记录
 i18n.tc.schedule.option.PLC_CONNECTION_HIST	PLC 연결 이벤트 이력	PLC connection events	PLC接続イベント履歴	PLC 连接事件历史
 i18n.tc.schedule.option.SCHEDULE_JOB_EXEC_HIST	스케줄 Job 실행 이력	Schedule job run history	スケジュールJob実行履歴	计划任务执行历史
+i18n.tc.schedule.option.ALL	모두 남김	Keep all	すべて記録	全部记录
+i18n.tc.schedule.option.FAILURE_ONLY	실패만 남김	Failures only	失敗のみ記録	仅记录失败
 i18n.tc.schedule.lastRun	최근 실행	Last run	直近実行	最近执行
 i18n.tc.schedule.lastResult	최근 결과	Last result	直近結果	最近结果
 i18n.tc.schedule.recentFails	최근 24시간 실패	Failures (24h)	直近24時間の失敗	最近24小时失败

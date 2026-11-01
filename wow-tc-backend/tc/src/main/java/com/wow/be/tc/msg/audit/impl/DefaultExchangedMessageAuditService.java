@@ -1,6 +1,5 @@
 package com.wow.be.tc.msg.audit.impl;
 
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -58,35 +57,6 @@ public class DefaultExchangedMessageAuditService implements ExchangedMessageAudi
 		payload.setComment("audit message");
 		payload.setReconnectTime(3000L);
 		EventPusher.newPusher().push(payload);
-	}
-
-	@Override
-	@Transactional
-	public void deleteMessageAudit(long id) {
-		log.debug("");
-		exchangedMessageAuditRepository.deleteById(id);
-	}
-	
-	@Override
-	@Transactional
-	public void deleteMessageAudits(List<Long> idArr) {
-		log.debug("");
-		exchangedMessageAuditRepository.deleteAllByIdInBatch(idArr);
-	}
-	
-	@Override
-	@Transactional
-	public long flushBySavingPeriod(String targetName, Date timestamp) {
-		return this.deleteMessageAudits(timestamp);
-	}
-	
-	@Override
-	@Transactional
-	public long deleteMessageAudits(Date timestamp) {
-		log.debug("");
-		long count=exchangedMessageAuditRepository.countByTimestamp(timestamp);
-		exchangedMessageAuditRepository.deleteByTimestamp(timestamp);
-		return count;
 	}
 
 	@Override

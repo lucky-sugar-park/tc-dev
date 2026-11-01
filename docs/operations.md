@@ -79,6 +79,7 @@
 | `013_point_scaling.sql` | `interface_point` 에 `scale`·`offset_value`·`unit`·`min_value`·`max_value` 추가(점 배율·단위·쓰기 범위, 결정 I3). ddl-auto 환경은 앱이 만든다 |
 | `014_connector_password.sql` | `plc_connector` 에 `password_enc` 추가(OPC UA 로그인 비밀번호 암호문, docs/opcua-design.md O13). ddl-auto 환경은 앱이 만든다 |
 | `015_schedule_job_monitoring.sql` | 스케줄 실행 이력에 `instance_id`·`elapsed_ms`·색인, 정리 Job 속성을 `cleanupTarget` 으로, 빈 Spy Job 삭제, `SCHED_NAME` 의 `NO_ASSIGNED` 되돌림(docs/schedule-jobs.md §7). 2~4 는 스크립트로만 된다 |
+| `016_retention_indexes.sql` | 감사 `timestamp`·PLC 연결 이력 `event_timestamp` 색인(온라인 생성). **큰 표는 배포 전에 돌린다** — 안 돌리면 앱이 기동하며 만들어 기동이 늦어진다(docs/data-retention.md §7) |
 
 ```bash
 mysql -u root -p tc < migration/002_api_client.sql
@@ -323,6 +324,7 @@ redis-cli DEL tc:apikey-block:<ip> tc:apikey-fail:<ip>
 | 로그인·로그아웃·비밀번호 변경 | `USER_HIST` |
 | PLC 연결·끊김 | `PLC_CONNECTION_HIST`, 로그 `PLC 연결 끊김`, `PLC 응답 시간 초과로 연결을 닫습니다` |
 | 스케줄 실행 | `SCHEDULE_JOB_EXEC_HIST`(실패면 `REMARK` 에 사유) |
+| 기록 정리 | 정리 Job `cleanup-…`(기동 때 없으면 만든다 — 감사·PLC 연결 이력 90일, 실행 이력 30일), 로그 `정리: 표 … 이전 n건`(docs/data-retention.md) |
 | 경고 로그 키워드 | `API 키 만료 임박`, `인증 실패가 1분에`, `로그인 실패가`, `통과시킴`(Redis 문제) |
 | PLC 연결 상태·주인 | `GET /api/v1/plc-connector/connection-states`(Redis `tc:plc-state:*`), 다중화면 Redis `tc:plc-owner:*`(주인), `tc:instance:*`(살아 있는 인스턴스와 내부 주소) |
 | 다중화 로그 키워드 | `임대를 얻었습니다`, `다른 인스턴스가 가졌습니다`(강등), `요청을 그쪽으로 넘깁니다`, `소유권(Redis)에 닿지 않습니다`, `서명이 맞지 않는` |

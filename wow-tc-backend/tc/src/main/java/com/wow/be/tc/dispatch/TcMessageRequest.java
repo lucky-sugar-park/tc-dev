@@ -2,6 +2,7 @@ package com.wow.be.tc.dispatch;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.wow.be.framework.dispatch.RequestMessage;
+import com.wow.be.tc.msg.audit.ExchangedMessageAuditInfo;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -31,6 +32,19 @@ public class TcMessageRequest extends RequestMessage {
 	 */
 	@JsonIgnore
 	private String principal;
+
+	/**
+	 * 실패만 감사에 남긴다 — 스케줄 Job 의 {@code auditMode=FAILURE_ONLY}(docs/data-retention.md §6.1). 성공한 요청·응답·전달은 남기지 않고,
+	 * 실패하면 요청·응답(또는 ERROR)·실패한 전달을 남긴다. 서버 안에서만 쓴다(본문으로 받지 않음).
+	 */
+	@JsonIgnore
+	private boolean auditFailuresOnly;
+
+	/** {@link #auditFailuresOnly} 일 때 응답을 볼 때까지 붙잡아 둔 REQUEST 감사 */
+	@JsonIgnore
+	@ToString.Exclude
+	@EqualsAndHashCode.Exclude
+	private transient ExchangedMessageAuditInfo heldRequestAudit;
 
 	public TcMessageRequest() {
 		super();

@@ -147,7 +147,8 @@ POST /api/v1/ifsvc/redelivery/responses
 - **사람이 보기 전에는 아무도 다시 보내지 않는다.** 화면의 대상별 실패 수로 빨리 알아차리게 한다. 꼭 도착해야 하는 결과가 생기면 자동 재시도를 이 위에 더한다.
 - **순서 역전.** 옛 결과를 다시 보내면 받는 쪽의 최신 값을 덮을 수 있다. 받는 쪽은 `timestamp`(DB_TABLE 은 `COLLECTED_AT`)로 최신인지 판단해야 한다 — 받는 시스템 담당자에게 알린다.
 - **tc 가 전달 중에 죽은 결과는 전달 기록이 없다.** 응답 기록으로(§4.2) 다시 보낼 수 있지만 찾아 주지는 않는다. "응답은 있고 전달 기록이 없는 건"은 `onChangeOnly`·`deliverOn` 으로 걸러진 정상 건과 구별되지 않아(`changed` 를 남기지 않는다) 이번에는 만들지 않는다.
-- **감사 보존 기간이 곧 재전송 가능 기간이다.** 감사는 데이터 정리 스케줄 Job(`DataTableFlashJob`, 보존 기간 방식)을 등록했을 때만 지워진다 — 없으면 표가 계속 커진다. 보존 기간은 재전송 필요 기간보다 길게 잡는다.
+- **감사 보존 기간이 곧 재전송 가능 기간이다.** 감사는 정리 Job(`DataTableFlashJob`)이 지운다 — tc 가 기동할 때 없으면 기본 Job(`cleanup-exchanged-message-audit`, 90일)을 만든다([data-retention.md](data-retention.md) §3). 보존 기간은 재전송 필요 기간보다 길게 잡는다.
+- **`auditMode=FAILURE_ONLY` 스케줄 Job 의 성공한 실행은 감사가 없어 다시 보낼 수 없다.** 실패한 전달은 DELIVERY 한 줄로 다시 보낼 수 있다([data-retention.md](data-retention.md) §6.1).
 - 감사 저장 자체가 실패하면(경고 로그만 남는다) 그 결과는 다시 보낼 수 없다.
 
 ## 8. 시험

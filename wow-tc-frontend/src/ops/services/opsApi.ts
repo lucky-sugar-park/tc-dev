@@ -49,6 +49,10 @@ export const scheduleApi = {
   async control(op: 'pauseScheduleJob' | 'resumeScheduleJob' | 'unscheduleJob' | 'rescheduleJob', name: string): Promise<void> {
     await apiClient.post(`${MON}/${op}/${enc(name)}`);
   },
+  /** 지금 한 번 실행 — 주기는 그대로, 결과는 실행 이력에. 예약되지 않은 Job 은 409 */
+  async runNow(name: string): Promise<void> {
+    await apiClient.post(`${MON}/runScheduleJobNow/${enc(name)}`);
+  },
   /** 실행 이력 한 쪽 — 최신순. 결과·기간은 선택 */
   async history(q: JobHistoryQuery): Promise<JobHistoryPage> {
     return (await apiClient.post<JobHistoryPage>(`${J}/exec-histories/query`, q)).data;

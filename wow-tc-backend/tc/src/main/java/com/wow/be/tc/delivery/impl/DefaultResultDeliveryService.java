@@ -227,6 +227,9 @@ public class DefaultResultDeliveryService implements ResultDeliveryService {
 				target.type(), target.name(), target.destination(), request.getOpcode(), request.getTransactionId(), failure);
 		}
 
+		if (failure == null && request.isAuditFailuresOnly()) {
+			return;   // 실패만 남기는 요청 — 실패한 전달은 이 한 줄로 다시 보낼 수 있어 남긴다
+		}
 		try {
 			ExchangedMessageAuditInfo info = new ExchangedMessageAuditInfo();
 			info.setTransactionId(response.getTransactionId());

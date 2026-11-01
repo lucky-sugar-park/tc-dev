@@ -19,11 +19,12 @@
 
 | 종류 | 클래스 | 속성 | 비고(성공) |
 |---|---|---|---|
-| PLC 요청 | `PlcGeneralScheduleJob` | `interfaceName`(필수) + WRITE 인터페이스면 **점 이름마다 쓸 값**(모든 점). READ 는 `interfaceName` 만 | `plc.x 성공 (trx …) — 값 n개, 전달 m곳` |
+| PLC 요청 | `PlcGeneralScheduleJob` | `interfaceName`(필수), `auditMode`(선택 — `ALL` 기본·`FAILURE_ONLY` 실패만 송수신 기록, [data-retention.md](data-retention.md) §6.1) + WRITE 인터페이스면 **점 이름마다 쓸 값**(모든 점) | `plc.x 성공 (trx …) — 값 n개, 전달 m곳`(`FAILURE_ONLY` 면 ` (성공은 송수신 기록 생략)`) |
 | 오래된 기록 정리 | `DataTableFlashJob` | `cleanupTarget`(EXCHANGED_MESSAGE_AUDIT·PLC_CONNECTION_HIST·SCHEDULE_JOB_EXEC_HIST), `savingDays`(1 이상) | `표: n일 지난 k건 삭제 (기준 …)` |
 
 - PLC 요청의 결과는 인터페이스의 전달 정의대로 보낸다. 비고의 거래 ID 로 송수신 기록을 찾는다(화면의 "송수신 기록 보기").
-- 정리는 `DELETE … LIMIT n` 을 되풀이해 나눠 지운다(`tc.schedule.cleanup-batch-size`, 기본 5000). 실행 이력 자체도 이 Job 으로 정리한다 — 1분 주기 Job 하나가 1년에 약 52만 행을 쌓는다.
+- 정리는 기본 키 범위의 `DELETE … LIMIT n` 을 되풀이해 나눠 지운다(`tc.schedule.cleanup-batch-size`, 기본 5000). 실행 이력 자체도 이 Job 으로 정리한다 — 1분 주기 Job 하나가 1년에 약 52만 행을 쌓는다.
+- tc 는 기동할 때 표마다 정리 Job 이 없으면 기본 정리 Job(`cleanup-…`)을 만든다 — [data-retention.md](data-retention.md) §3.
 
 ## 3. 저장할 때 검사 (`ScheduleJobValidator`, 틀리면 400)
 
@@ -63,6 +64,7 @@
 | `GET /api/v1/schedule-job/management/job-kinds` | 종류와 속성 정의 |
 | `POST /api/v1/schedule-job/management/search` | 목록 — `kind`·`lastExecutionTime`·`lastResult`·`lastRemark`·`lastInstanceId`·`lastElapsedMs`·`nextFireTime`·`recentFailCount` 를 채운다 |
 | `POST /api/v1/schedule-job/management/register`·`/update` | 저장(검사, 속성 통째로) — 예약은 따로 `monitoring/rescheduleJob/{name}` |
+| `POST /api/v1/schedule-job/monitoring/runScheduleJobNow/{name}` | 지금 한 번 실행(주기 그대로) — 없는 Job 404, 예약되지 않은 Job 409. 화면 작업 메뉴 "지금 실행" |
 | `POST /api/v1/schedule-job/management/exec-histories/query` | 이력 `{jobName, jobSearch, jobState, from, to, result, page, size}` → `{items, total, page, size}`, 최신순, 쪽 크기 최대 500. `jobName` 은 같음, `jobSearch` 는 Job 이름·설명에 든 글(대소문자 무시, 지운 Job 은 이름으로), `jobState` 는 지금 있는 Job 의 상태 |
 
 ## 7. 운영 반영

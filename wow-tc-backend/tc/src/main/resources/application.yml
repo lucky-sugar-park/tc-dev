@@ -178,6 +178,17 @@ tc:
     cleanup-batch-size: ${TC_SCHEDULE_CLEANUP_BATCH_SIZE:5000}
     # 목록의 "최근 실패" 를 세는 기간(시간)
     recent-fail-hours: 24
+    # 기본 정리 Job(docs/data-retention.md §3) — 기동할 때 표마다 그 표를 정리하는 Job 이 없으면 만든다.
+    # 이미 있으면 손대지 않으므로, 만든 뒤의 보관 일수·주기는 화면(운영 › 스케줄 Job)에서 바꾼다
+    default-cleanup:
+      enabled: ${TC_SCHEDULE_DEFAULT_CLEANUP:true}
+      # Quartz cron — 매일 04:10
+      cron: "0 10 4 * * ?"
+      # 보관 일수. 송수신 감사는 결과 재전송의 원본이라 재전송이 필요한 기간보다 길게
+      days:
+        exchanged-message-audit: 90
+        plc-connection-hist: 90
+        schedule-job-exec-hist: 30
   # Quartz 설정(ScheduleConfig 가 이 값을 그대로 Quartz 속성으로 넘긴다).
   # JobStore 의 DataSource 는 ScheduleConfig 가 앱 DataSource 를 넘기므로 Quartz 자체 DataSource 는 두지 않는다.
   quartz:

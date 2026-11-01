@@ -4,6 +4,7 @@ import { GridActionsCellItem, type GridColDef } from '@mui/x-data-grid-pro';
 import EditIcon from '@mui/icons-material/Edit';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlineOutlined';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
@@ -140,6 +141,20 @@ export default function ScheduleJobPage(): ReactElement {
     })();
   }, []);
 
+  const runNow = useCallback((job: ScheduleJob) => {
+    void (async () => {
+      const ok = await showConfirm({ message: t('i18n.tc.schedule.confirmRunNow', '{name} 을(를) 지금 한 번 실행할까요? 주기는 그대로입니다.').replace('{name}', job.name) });
+      if (!ok) return;
+      try {
+        await scheduleApi.runNow(job.name);
+        showToast(t('i18n.tc.schedule.runNowRequested', '실행을 요청했습니다 — 결과는 실행 이력에서 봅니다.'), 'success');
+        setSelected(job.name);
+      } catch (e) {
+        showToast(extractApiError(e), 'error');
+      }
+    })();
+  }, [t]);
+
   const remove = useCallback((job: ScheduleJob) => {
     void (async () => {
       const ok = await showConfirm({ message: t('i18n.tc.schedule.confirmDelete', '{name} 을(를) 지울까요? 예약도 지운다.').replace('{name}', job.name), severity: 'error' });
@@ -193,6 +208,7 @@ export default function ScheduleJobPage(): ReactElement {
           acts.push(row.triggerState === 'PAUSED'
             ? <GridActionsCellItem key="resume" icon={<PlayArrowIcon />} label={t('i18n.tc.connector.resume', '재개')} onClick={() => control('resumeScheduleJob', row)} />
             : <GridActionsCellItem key="pause" icon={<PauseIcon />} label={t('i18n.tc.connector.pause', '멈춤')} onClick={() => control('pauseScheduleJob', row)} />);
+          acts.push(<GridActionsCellItem key="runNow" icon={<PlayCircleOutlineIcon />} label={t('i18n.tc.schedule.runNow', '지금 실행')} onClick={() => runNow(row)} showInMenu />);
           acts.push(<GridActionsCellItem key="unsched" icon={<EventBusyIcon />} label={t('i18n.tc.schedule.unschedule', '예약 취소')} onClick={() => control('unscheduleJob', row)} showInMenu />);
           acts.push(<GridActionsCellItem key="resched" icon={<EventAvailableIcon />} label={t('i18n.tc.schedule.reschedule', '다시 예약')} onClick={() => control('rescheduleJob', row)} showInMenu />);
         }
@@ -200,7 +216,7 @@ export default function ScheduleJobPage(): ReactElement {
         return acts;
       },
     },
-  ], [t, perm, control, remove]);
+  ], [t, perm, control, runNow, remove]);
 
   if (error && rows.length === 0) return <LoadErrorState message={error} onRetry={retry} retrying={loading} />;
 

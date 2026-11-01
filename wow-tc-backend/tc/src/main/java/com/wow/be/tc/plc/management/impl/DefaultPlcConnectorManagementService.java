@@ -2,7 +2,6 @@ package com.wow.be.tc.plc.management.impl;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -544,15 +543,6 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		return infoList;
 	}
 	
-	@Transactional
-	@Override
-	public long deletePlcConnectionEventHistories(Date timestamp) {
-		log.debug("");
-		long delCount=plcConnectionEventHistRepository.countByTimestamp(timestamp);
-		plcConnectionEventHistRepository.deleteByTimestamp(timestamp);
-		return delCount;
-	}
-
 	/**
 	 * 프로토콜 드라이버로 커넥터 설정을 검증하고 기본값을 채운다(잘못되면 IllegalArgumentException → 400).
 	 * <ul>

@@ -17,6 +17,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -28,7 +29,10 @@ import lombok.ToString;
 @ToString
 @Builder
 @Entity
-@Table(name="EXCHANGED_MESSAGE_AUDIT")
+// 색인: 기간 검색·보관 정리(docs/data-retention.md) — migration/016
+@Table(name="EXCHANGED_MESSAGE_AUDIT", indexes={
+	@Index(name="IX_EMA_TIMESTAMP", columnList="TIMESTAMP")
+})
 @Data
 @EqualsAndHashCode(callSuper=false)
 @AllArgsConstructor

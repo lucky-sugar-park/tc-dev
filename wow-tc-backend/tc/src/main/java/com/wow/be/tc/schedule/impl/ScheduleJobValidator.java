@@ -117,10 +117,12 @@ public class ScheduleJobValidator {
 		if (iface == null) throw invalid("인터페이스가 없습니다: " + interfaceName);
 		Set<String> points = new LinkedHashSet<>();
 		for (PointInfo p : iface.getPoints() == null ? List.<PointInfo>of() : iface.getPoints()) points.add(p.getName());
+		PlcGeneralScheduleJob.auditFailuresOnly(properties.get(PlcGeneralScheduleJob.AUDIT_MODE));
 		Set<String> extra = new LinkedHashSet<>(properties.keySet());
 		extra.remove(PlcGeneralScheduleJob.INTERFACE_NAME);
+		extra.remove(PlcGeneralScheduleJob.AUDIT_MODE);
 		if (iface.getInterfaceType() == InterfaceType.READ) {
-			if (!extra.isEmpty()) throw invalid("READ 인터페이스(" + interfaceName + ")에는 interfaceName 말고 속성을 둘 수 없습니다: " + extra);
+			if (!extra.isEmpty()) throw invalid("READ 인터페이스(" + interfaceName + ")에는 interfaceName·auditMode 말고 속성을 둘 수 없습니다: " + extra);
 			return;
 		}
 		List<String> unknown = new ArrayList<>(extra);

@@ -130,6 +130,19 @@ public class DefaultScheduleManager implements ScheduleManager {
 	}
 
 	@Override
+	public boolean triggerJob(String jobName, String jobGroupName) {
+		boolean result = false;
+		try {
+			scheduler.triggerJob(new JobKey(jobName, jobGroupName));
+			log.info(jobName + " is triggered now");
+			result = true;
+		} catch (SchedulerException e) {
+			log.error("", e);
+		}
+		return result;
+	}
+
+	@Override
 	public boolean pauseJob(String jobName, String jobGroupName) {
 		boolean result = false;
 		try {

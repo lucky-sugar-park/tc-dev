@@ -19,7 +19,10 @@ public enum ScheduleJobKind {
 	/** 주기마다 인터페이스 하나로 PLC 요청 — 나머지 속성은 요청 data(WRITE 면 점 이름마다 쓸 값) */
 	PLC(PlcGeneralScheduleJob.class, true, List.of(
 		new PropertySpec(PlcGeneralScheduleJob.INTERFACE_NAME, ScheduleConstants.ENTRY_VAULE_TYPE_STRING, true, null, List.of(),
-			"주기마다 실행할 인터페이스(opcode). WRITE 인터페이스면 점 이름마다 쓸 값을 속성으로 더한다"))),
+			"주기마다 실행할 인터페이스(opcode). WRITE 인터페이스면 점 이름마다 쓸 값을 속성으로 더한다"),
+		new PropertySpec(PlcGeneralScheduleJob.AUDIT_MODE, ScheduleConstants.ENTRY_VAULE_TYPE_STRING, false,
+			PlcGeneralScheduleJob.AUDIT_ALL, List.of(PlcGeneralScheduleJob.AUDIT_ALL, PlcGeneralScheduleJob.AUDIT_FAILURE_ONLY),
+			"송수신 기록 — ALL(모두 남김), FAILURE_ONLY(실패만 남김 — 짧은 주기 수집의 기록을 크게 줄인다). 없으면 ALL"))),
 
 	/** 오래된 행 정리 */
 	CLEANUP(DataTableFlashJob.class, false, List.of(

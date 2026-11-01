@@ -1,6 +1,5 @@
 package com.wow.be.tc.msg.audit;
 
-import java.util.Date;
 import java.util.List;
 
 import com.wow.be.framework.Condition.PageInfo;
@@ -13,12 +12,6 @@ import com.wow.be.tc.ToolControlException;
 public interface ExchangedMessageAuditService {
 
 	public abstract void writeAudit(ExchangedMessageAuditInfo auditInfo);
-
-	public abstract void deleteMessageAudit(long id);
-	
-	public abstract void deleteMessageAudits(List<Long> idArr);
-	
-	public abstract long deleteMessageAudits(Date timestamp);
 
 	public abstract ExchangedMessageAuditInfo findMessageAuditById(long id) throws ToolControlException;
 

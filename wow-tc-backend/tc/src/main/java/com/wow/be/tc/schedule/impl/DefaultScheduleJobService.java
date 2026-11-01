@@ -295,6 +295,22 @@ public class DefaultScheduleJobService implements ScheduleJobService, Persistent
 	}
 	
 	@Override
+	public void runNow(String scheduleJobName) throws ToolControlException {
+		ScheduleJobInfo scheduleJob=this.findScheduleJobByName(scheduleJobName);
+		if(scheduleJob==null) {
+			throw ToolControlException.of(ToolControlException.NOT_FOUND, "스케줄 Job 이 없습니다: " + scheduleJobName);
+		}
+		if(this.scheduleJobManager.getJobDetail(scheduleJob.getName(), scheduleJob.getGroupName())==null) {
+			throw ToolControlException.of(ToolControlException.CONFLICT, "예약되지 않은 Job 입니다(사용 안 함·예약 취소) — 다시 예약한 뒤 실행하세요: " + scheduleJobName);
+		}
+		boolean result=this.scheduleJobManager.triggerJob(scheduleJob.getName(), scheduleJob.getGroupName());
+		changeRecorder.controlled(TargetType.SCHEDULE_JOB, scheduleJob.getId(), scheduleJob.getName(), result ? "run-now" : "run-now-failed");
+		if(!result) {
+			throw ToolControlException.of(ToolControlException.ERR_TC, "지금 실행을 요청하지 못했습니다: " + scheduleJobName);
+		}
+	}
+
+	@Override
 	public boolean pause(String scheduleJobName) {
 		log.debug("");
 	

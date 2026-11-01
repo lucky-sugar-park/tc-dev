@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
+import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryInfo;
 import com.wow.be.tc.schedule.ScheduleJobInfo;
 import com.wow.be.tc.schedule.ScheduleJobService;
@@ -83,6 +84,15 @@ public class ScheduleJobMonitoringController {
 		return this.searchScheduleJobs();
 	}
 	
+	/** 지금 한 번 실행 — 주기는 그대로, 결과는 실행 이력에(docs/schedule-jobs.md §4) */
+	@Requires(action = 'X')
+	@RequestMapping(value="/runScheduleJobNow/{jobName}", method=RequestMethod.POST)
+	@ResponseStatus(value = HttpStatus.OK)
+	public void runScheduleJobNow(@PathVariable(value="jobName") String jobName) throws ToolControlException {
+		log.debug("");
+		scheduleJobService.runNow(jobName);
+	}
+
 	@Requires(action = 'X')
 	@RequestMapping(value="/pauseScheduleJob/{jobName}", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)

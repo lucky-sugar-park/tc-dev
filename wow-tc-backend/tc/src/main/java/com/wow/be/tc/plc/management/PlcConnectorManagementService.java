@@ -3,7 +3,6 @@ package com.wow.be.tc.plc.management;
 import com.wow.be.tc.interfs.PointInfo;
 import com.wow.be.tc.plc.protocol.PlcResult;
 
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +67,4 @@ public interface PlcConnectorManagementService {
 	
 	public abstract List<PlcConnectionEventHistInfo> searchPlcConnectionEventHist(Condition cond, PageInfo pageInfo);
 	
-	public abstract long deletePlcConnectionEventHistories(Date timestamp);
-
 }

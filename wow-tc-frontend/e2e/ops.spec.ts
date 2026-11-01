@@ -72,7 +72,8 @@ test('스케줄 Job·설정 변경 이력 — PLC 요청 Job 등록·속성 탭�
 
   // 행을 고르면 아래에 속성·실행 이력 탭 — 시작 지연 0 이라 한 번 돌았다
   await row.getByText(name).click();
-  await expect(page.getByRole('tab', { name: /속성 \(1\)/ })).toBeVisible();
+  // interfaceName + auditMode(종류의 선택 속성, 기본 ALL)
+  await expect(page.getByRole('tab', { name: /속성 \(2\)/ })).toBeVisible();
   await expect(page.getByLabel('interfaceName 값')).toHaveValue('plc.e2e.d100.read');
   await page.getByRole('tab', { name: '실행 이력' }).click();
   await page.getByRole('button', { name: '새로 고침' }).filter({ visible: true }).last().click();

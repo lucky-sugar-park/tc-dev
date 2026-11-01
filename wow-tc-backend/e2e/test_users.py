@@ -95,7 +95,8 @@ check("운영자: 전달 정의 조회 200", st("GET", "/api/v1/ifsvc/delivery",
 check("운영자: 커넥터 검색(POST R) 200", st("POST", "/api/v1/plc-connector/search", op, {"conditions": []}) == 200)
 check("운영자: 인터페이스 사용 변경(POST U) 허용(200)", st("POST", "/api/v1/ifsvc/management/update/apply-use/" +
       sql("select id from interface where name='plc.fake.read'") + "/true", op) == 200)
-check("운영자: 감사 삭제(DELETE D) 403", st("DELETE", "/api/v1/ifsvc/audit/delete/999999999", op) == 403)
+check("운영자: DB 연결 삭제(DELETE D, 조회만) 403", st("DELETE", "/api/v1/db-connections/no-such-e2e-x", op) == 403)
+check("감사 삭제 API 없음(조회만, docs/data-retention.md)", st("DELETE", "/api/v1/ifsvc/audit/delete/999999999", ad) in (404, 405))
 check("운영자: 결과 재전송(관리자만) 403", st("POST", "/api/v1/ifsvc/redelivery/deliveries", op, {"auditIds": [1]}) == 403)
 check("운영자: 사용자 목록 403", st("GET", "/api/v1/users", op) == 403)
 check("운영자: API 클라이언트 목록 403", st("GET", "/api/v1/api-clients", op) == 403)

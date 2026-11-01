@@ -10,6 +10,7 @@
 | `test_paths.py` | WRITE·콜백과 허용 목록·커넥터 해제 (docs/dispatch-redesign.md §4.1.2) | 10 |
 | `test_schedule_jobs.py` | 스케줄 Job(docs/schedule-jobs.md) — 종류 API, 저장 검사(클래스·인터페이스·점·값 형·주기), 성공·실패 이력과 비고(거래 ID → 송수신 기록), 이력 검색(결과·기간·쪽), WRITE Job 이 쓴 값, 정리 Job, 목록의 최근 실행·다음 실행·최근 실패, 속성 통째로 바꾸기, 멈춤·재개·삭제, 모든 Job 이력 검색(Job 이름·설명·상태·지운 Job). 약 40초 | 39 |
 | `test_config_history.py` | 설정 변경 이력 (§5) | 11 |
+| `test_retention.py` | 기록 보관(docs/data-retention.md) — PLC 요청 Job `auditMode=FAILURE_ONLY`(성공 기록 없음·실패는 REQUEST 와 함께), 저장 검사, 정리 Job 지금 실행(404·409·설정 변경 이력), 감사 삭제 API 없음, 기본 정리 Job. 커넥터 `plc-e2e` 를 잠깐 멈춘다. DB 이름은 `TC_E2E_DB`(기본 tc). 약 25초 | 18 |
 | `test_users.py` | 권한(§4)·사용자(§3)·로그인 실패 제한·전환 스위치 | 61 |
 | `test_framework_046.py` | framework 0.8.46 반영 — 공개 경로 설정, 검색 조건(conjType 없음 AND, 없는 항목 400) | 8 |
 | `test_http_methods.py` | 상태를 바꾸는 API 의 메서드(#9) — 예전 GET 은 405, 삭제는 DELETE·제어·사용 변경은 POST 로 처리, 토큰 없으면 401. 없는 대상은 404(`ERR_404`) — 500 이 나오면 실패 | 71 |

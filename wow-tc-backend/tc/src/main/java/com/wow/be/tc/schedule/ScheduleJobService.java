@@ -29,6 +29,12 @@ public interface ScheduleJobService {
 	public abstract boolean reschedule(ScheduleJobInfo scheduleJob);
 	public abstract boolean rescheduleByBatch(List<String> scheduleJobNames);
 	
+	/**
+	 * 지금 한 번 실행한다 — 주기는 그대로. 실행 중이면 끝난 뒤에 돈다(겹쳐 돌지 않음). 결과는 실행 이력에 남는다.
+	 *
+	 * @throws ToolControlException 없는 Job(404), 예약되지 않은 Job(409)
+	 */
+	public void runNow(String scheduleJobName) throws ToolControlException;
 	public boolean pause(String scheduleJobName);
 	public boolean pause(ScheduleJobInfo scheduleJob);
 	public abstract boolean pauseByBatch(List<String> scheduleJobNames);

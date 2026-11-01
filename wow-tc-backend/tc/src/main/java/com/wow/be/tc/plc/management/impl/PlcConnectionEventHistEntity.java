@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -22,7 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 @ToString
 @Builder
 @Entity
-@Table(name="PLC_CONNECTION_HIST")
+// 색인: 기간 검색·보관 정리(docs/data-retention.md) — migration/016
+@Table(name="PLC_CONNECTION_HIST", indexes={
+	@Index(name="IX_PCH_EVENT_TIMESTAMP", columnList="EVENT_TIMESTAMP")
+})
 @Data
 @EqualsAndHashCode(callSuper=false)
 @AllArgsConstructor

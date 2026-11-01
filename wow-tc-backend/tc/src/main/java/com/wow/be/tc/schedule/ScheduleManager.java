@@ -19,6 +19,8 @@ public interface ScheduleManager {
 	
 	public JobDetail getJobDetail(String jobName, String jobGroupName);
 	public boolean pauseJob(String jobName, String jobGroupName);
+	/** 주기와 상관없이 지금 한 번 실행한다(예약된 Job 만) */
+	public boolean triggerJob(String jobName, String jobGroupName);
 	public boolean resumeJob(String jobName, String jobGroupName);
 	public boolean deleteJob(String jobName, String jobGroupName);
 	
