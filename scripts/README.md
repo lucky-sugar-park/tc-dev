@@ -7,6 +7,7 @@ Windows 기준. 레포 루트(`D:\Source\claude-code\Projects\tc-dev`)에서 실
 | `deploy-frontend.ps1` | 화면(`wow-tc-frontend`) 빌드 → 백엔드(tc)가 서빙하는 폴더(`run\ui`)로 배포. **재기동 없음** |
 | `deploy-backend.ps1` | 백엔드(tc) 빌드(+테스트) → Nexus 배포(`com.wow.be:wow-tc:<버전>`) → Nexus 에서 받아 **재기동** |
 | `run-backend.ps1` | 백엔드(tc) 구동 — 띄우기·멈추기·재기동·상태 |
+| `run-vplc.ps1` | 가상 PLC(vplc, 8088) 구동 — 빌드·띄우기·멈추기·재기동·상태. Nexus 에 올리지 않는다 |
 
 실행 폴더는 레포 루트의 `run\`(git 에 넣지 않는다):
 
@@ -14,7 +15,8 @@ Windows 기준. 레포 루트(`D:\Source\claude-code\Projects\tc-dev`)에서 실
 run\tc\tc.jar        띄우는 jar        (tc.jar.new = 적용 대기, tc.jar.prev = 바로 전 jar)
 run\tc\tc.pid
 run\ui\              화면 — tc 가 TC_UI_DIR 로 서빙(tc-config.json 은 이곳의 값, 배포 때 덮지 않는다)
-run\logs\            tc.out.log / tc.err.log (직전 것은 .1)
+run\vplc\vplc.jar    vplc 가 띄우는 jar(띄울 때마다 빌드 산출물 중 가장 새 것을 복사), vplc.pid
+run\logs\            tc.out.log / tc.err.log, vplc.out.log / vplc.err.log (직전 것은 .1)
 run\local\           로컬 비밀값(jwt-secret.txt, secret-key.txt) — 처음 기동 때 만든다
 ```
 
@@ -90,9 +92,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-backend.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\deploy-backend.ps1 -SkipTests
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-backend.ps1 -Restart
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\deploy-frontend.ps1 -UiDir D:\wow-tc\ui -NoVplc
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-vplc.ps1 -Restart -Build
 ```
 
-종료 코드는 `echo %ERRORLEVEL%` 로 본다(0 성공, 1 실패, 2 새 jar 로 뜨지 않아 전 jar 로 되돌림, `run-backend.ps1 -Status` 는 0 실행 중·3 멈춤).
+종료 코드는 `echo %ERRORLEVEL%` 로 본다(0 성공, 1 실패, 2 새 jar 로 뜨지 않아 전 jar 로 되돌림, `run-backend.ps1 -Status`·`run-vplc.ps1 -Status` 는 0 실행 중·3 멈춤).
 
 ## 1) 화면 빌드 → 배포 (`deploy-frontend.ps1`)
 
@@ -140,11 +143,30 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\deploy-frontend.ps1 
 - Windows 에는 SIGTERM 이 없어, 멈출 때는 로컬 JMX 로 Spring 에 종료를 요청한다(`wow-tc-backend\e2e\ShutdownViaJmx.java`). 90초 안에 끝나지 않을 때만 강제로 끝낸다.
 - 화면: http://localhost:8087 (tc 가 `run\ui` 를 서빙). 화면 개발은 `wow-tc-frontend` 에서 `npm run dev`(5180).
 
+## 4) 가상 PLC 구동 (`run-vplc.ps1`)
+
+```powershell
+.\scripts\run-vplc.ps1 -Restart -Build   # 빌드(gradlew :vplc:bootJar) → 재기동 — vplc 코드가 바뀌었을 때
+.\scripts\run-vplc.ps1 -Restart          # 재기동(빌드 산출물 중 가장 새 jar 로)
+.\scripts\run-vplc.ps1 -Status           # 실행 여부와 가상 PLC 목록(이름·종류·상태·포트)
+.\scripts\run-vplc.ps1 -Stop             # 정상 종료
+.\scripts\run-vplc.ps1                   # 백그라운드로 8088 에 띄우고 기동 확인
+.\scripts\run-vplc.ps1 -Foreground       # 이 창에서 띄우기(Ctrl+C 로 종료)
+.\scripts\run-vplc.ps1 -Port 8098        # 다른 포트(시험 DB 로 띄울 때는 $env:VPLC_DB_URL 도)
+```
+
+- vplc 는 시험 장비라 Nexus 에 올리지 않는다. 빌드 산출물(`wow-tc-backend\vplc\build\libs\vplc-<버전>.jar`)을 `run\vplc\vplc.jar` 로 복사해 띄운다 — 빌드 폴더의 jar 를 바로 띄우면 Windows 가 파일을 잠가 다음 빌드가 실패한다.
+- DB 비밀번호는 `wow-tc-backend\vplc\src\main\resources\application-local.yml`(git 제외)을 읽게 해서 띄운다. 없으면 환경 변수 `VPLC_DB_PASSWORD`.
+- 멈출 때는 tc 와 같이 로컬 JMX 로 정상 종료를 요청한다(가상 PLC 포트를 닫고 끊김 이력을 남김). 60초 안에 끝나지 않거나 JMX 가 꺼진 예전 jar(0.5.0 전)면 강제로 끝낸다.
+- 스크립트 없이 띄운 vplc(pid 파일 없음)도 8088 을 쥔 프로세스가 vplc jar 면 알아보고 멈춘다.
+- **재기동하면 붙어 있던 tc 커넥터가 끊겼다가 다시 붙는다.** 게시·실행 중이던 가상 PLC 는 vplc 가 기동하며 되살린다(기동 완료 때 목록을 보여 준다).
+
 ## 일반 흐름
 
 ```powershell
 .\scripts\deploy-frontend.ps1     # 화면만 바뀌었을 때 — 재기동 없음
 .\scripts\deploy-backend.ps1      # 백엔드가 바뀌었을 때 — 빌드 → Nexus → 재기동
+.\scripts\run-vplc.ps1 -Restart -Build   # 가상 PLC(vplc)가 바뀌었을 때 — 빌드 → 재기동
 ```
 
 처음에는 `deploy-frontend.ps1` → `deploy-backend.ps1`(또는 `run-backend.ps1`) 순서로.
