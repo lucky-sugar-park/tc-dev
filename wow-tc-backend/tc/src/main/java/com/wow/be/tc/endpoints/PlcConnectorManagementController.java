@@ -233,6 +233,47 @@ public class PlcConnectorManagementController {
 	 * 본문 {@code { "points": [ { "name", "address", "type", "count", "length" } ] }} → {@code { "values", "plcStatus", "elapsedMs" }}.
 	 * PLC 가 오류로 답하면 200 + plcStatus(code ≠ 0).
 	 */
+	/**
+	 * tc OPC UA 클라이언트 인증서(DER) — 서버 관리자가 tc 를 믿게 할 때 준다(docs/opcua-design.md O15). 없으면 만든다.
+	 */
+	@Requires(action = 'R')
+	@RequestMapping(value="/opcua/client-certificate", method=RequestMethod.GET)
+	public org.springframework.http.ResponseEntity<byte[]> opcUaClientCertificate() throws ToolControlException {
+		com.wow.be.tc.plc.protocol.opcua.OpcUaPki pki=com.wow.be.tc.plc.protocol.opcua.OpcUaPki.current();
+		byte[] der=pki.clientCertificateDer();
+		return org.springframework.http.ResponseEntity.ok()
+			.header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"wow-tc-opcua-client.der\"")
+			.contentType(org.springframework.http.MediaType.parseMediaType("application/pkix-cert"))
+			.body(der);
+	}
+
+	/** 커넥터가 믿은 OPC UA 서버 인증서 지문 — 없으면 null(아직 연결한 적 없음) */
+	@Requires(action = 'R')
+	@RequestMapping(value="/opcua/server-certificate/byName/{plcConnectorName}", method=RequestMethod.GET)
+	@ResponseBody
+	public Map<String, Object> opcUaServerCertificate(@PathVariable("plcConnectorName") String plcConnectorName) throws ToolControlException {
+		if(plcConnectorManagementService.findPlcConnectorByName(plcConnectorName)==null) {
+			throw ToolControlException.of(ToolControlException.NOT_FOUND, "PLC 커넥터가 없습니다: " + plcConnectorName);
+		}
+		Map<String, Object> body=new LinkedHashMap<>();
+		body.put("thumbprint", com.wow.be.tc.plc.protocol.opcua.OpcUaPki.current().trustedThumbprint(plcConnectorName));
+		return body;
+	}
+
+	/** 믿은 서버 인증서 잊기 — 서버 인증서를 바꾼 것이 맞을 때. 다음 연결 때 다시 처음 믿는다(O16) */
+	@Requires(action = 'U')
+	@RequestMapping(value="/opcua/forget-server-certificate/byName/{plcConnectorName}", method=RequestMethod.POST)
+	@ResponseBody
+	public Map<String, Object> opcUaForgetServerCertificate(@PathVariable("plcConnectorName") String plcConnectorName)
+			throws ToolControlException, java.io.IOException {
+		if(plcConnectorManagementService.findPlcConnectorByName(plcConnectorName)==null) {
+			throw ToolControlException.of(ToolControlException.NOT_FOUND, "PLC 커넥터가 없습니다: " + plcConnectorName);
+		}
+		Map<String, Object> body=new LinkedHashMap<>();
+		body.put("forgotten", com.wow.be.tc.plc.protocol.opcua.OpcUaPki.current().forgetServer(plcConnectorName));
+		return body;
+	}
+
 	/** 본문 {@code { "nodeId": "ns=2;s=Line1" }}(비우면 Objects 폴더) → 자식 노드 — OPC UA 커넥터만(docs/opcua-design.md O10) */
 	public record BrowseRequest(String nodeId) {
 	}

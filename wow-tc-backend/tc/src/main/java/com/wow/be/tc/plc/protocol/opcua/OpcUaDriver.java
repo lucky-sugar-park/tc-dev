@@ -67,6 +67,20 @@ public class OpcUaDriver implements PlcDriver {
 
 	public static final String ACCESS_SUBSCRIBE = "SUBSCRIBE";
 
+	public static final String POLICY_NONE = "NONE";
+
+	static final List<String> POLICIES = List.of(POLICY_NONE, "BASIC256SHA256", "AES128_SHA256_RSAOAEP", "AES256_SHA256_RSAPSS");
+
+	static final List<String> MODES = List.of("NONE", "SIGN", "SIGN_AND_ENCRYPT");
+
+	public static final String AUTH_ANONYMOUS = "ANONYMOUS";
+
+	public static final String AUTH_USERNAME = "USERNAME";
+
+	public static final String TRUST_ON_FIRST_USE = "TRUST_ON_FIRST_USE";
+
+	public static final String TRUST_ALL = "TRUST_ALL";
+
 	private static final Pattern NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_.\\-]{0,99}");
 
 	@Override
@@ -91,13 +105,46 @@ public class OpcUaDriver implements PlcDriver {
 		out.put("maxNodesPerRequest", number(in, "maxNodesPerRequest", MAX_NODES, 1, 10_000));
 		out.put("publishingIntervalMs", number(in, "publishingIntervalMs", 1000, 50, 3_600_000));
 		out.put("samplingIntervalMs", number(in, "samplingIntervalMs", 500, 0, 3_600_000));
+		// 보안(docs/opcua-design.md O13~O16) — 정책이 NONE 이면 모드도 NONE, 정책이 있는데 모드가 NONE 이면 SIGN_AND_ENCRYPT
+		String policy = option(in, "securityPolicy", POLICY_NONE, POLICIES);
+		String mode = option(in, "securityMode", POLICY_NONE.equals(policy) ? "NONE" : "SIGN_AND_ENCRYPT", MODES);
+		if (POLICY_NONE.equals(policy)) {
+			mode = "NONE";
+		} else if ("NONE".equals(mode)) {
+			mode = "SIGN_AND_ENCRYPT";
+		}
+		out.put("securityPolicy", policy);
+		out.put("securityMode", mode);
+		String auth = option(in, "authMode", AUTH_ANONYMOUS, List.of(AUTH_ANONYMOUS, AUTH_USERNAME));
+		out.put("authMode", auth);
+		Object user = in.get("username");
+		String u = user != null ? user.toString().trim() : "";
+		if (AUTH_USERNAME.equals(auth) && u.isEmpty()) {
+			throw new IllegalArgumentException("OPC UA 로그인(authMode=USERNAME)에는 username 이 필요합니다");
+		}
+		if (u.length() > 200) {
+			throw new IllegalArgumentException("OPC UA username 은 200자까지입니다");
+		}
+		out.put("username", AUTH_USERNAME.equals(auth) ? u : "");
+		out.put("serverTrust", option(in, "serverTrust", TRUST_ON_FIRST_USE, List.of(TRUST_ON_FIRST_USE, TRUST_ALL)));
 		for (String key : in.keySet()) {
 			if (!out.containsKey(key)) {
-				throw new IllegalArgumentException("OPC UA 설정에 없는 항목입니다: " + key
-					+ " (endpointPath, requestTimeoutMs, sessionTimeoutMs, maxNodesPerRequest, publishingIntervalMs, samplingIntervalMs)");
+				throw new IllegalArgumentException("OPC UA 설정에 없는 항목입니다: " + key + " (" + String.join(", ", out.keySet()) + ")");
 			}
 		}
 		return out;
+	}
+
+	private static String option(Map<String, Object> in, String key, String def, List<String> options) {
+		Object v = in.get(key);
+		if (v == null || v.toString().isBlank()) {
+			return def;
+		}
+		String t = v.toString().trim().toUpperCase(java.util.Locale.ROOT);
+		if (!options.contains(t)) {
+			throw new IllegalArgumentException("OPC UA 설정 " + key + " 은 " + options + " 중 하나입니다: " + v);
+		}
+		return t;
 	}
 
 	private static int number(Map<String, Object> in, String key, int def, int min, int max) {
@@ -127,7 +174,7 @@ public class OpcUaDriver implements PlcDriver {
 		if (p.getType() == null) {
 			throw new IllegalArgumentException(p.getName() + ": 형(type)이 없습니다");
 		}
-		nodeId(p);
+		checkAddress(p);
 		if (p.getCount() < 1 || p.getCount() > 10_000) {
 			throw new IllegalArgumentException(p.getName() + ": count 는 1~10000 입니다");
 		}
@@ -136,14 +183,48 @@ public class OpcUaDriver implements PlcDriver {
 		}
 	}
 
-	/** @throws IllegalArgumentException NodeId 문법이 틀림(400) */
-	public static NodeId nodeId(PointInfo p) {
+	private static final String ADDRESS_HELP = " — ns=2;s=Line1.Temp, nsu=urn:example;s=Line1.Temp, ns=2;i=1001, i=2258";
+
+	/** 문법만 본다(서버 없이) — ns= 형태와 nsu=(네임스페이스 URI, O17) 형태. @throws IllegalArgumentException 틀림(400) */
+	public static void checkAddress(PointInfo p) {
+		String a = address(p);
+		boolean ok = a.startsWith("nsu=")
+			? safe(() -> org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId.parse(a)) != null
+			: NodeId.parseSafe(a).isPresent();
+		if (!ok) {
+			throw new IllegalArgumentException(p.getName() + ": OPC UA 주소는 NodeId 입니다" + ADDRESS_HELP + ": " + a);
+		}
+	}
+
+	/**
+	 * 주소 → 이 세션의 NodeId. {@code nsu=} 는 서버 네임스페이스 표에서 번호를 찾는다.
+	 * @throws IllegalArgumentException 문법이 틀리거나 서버에 그 네임스페이스가 없음
+	 */
+	public static NodeId nodeId(PointInfo p, org.eclipse.milo.opcua.stack.core.NamespaceTable namespaces) {
+		checkAddress(p);
+		String a = address(p);
+		if (!a.startsWith("nsu=")) {
+			return NodeId.parse(a);
+		}
+		var expanded = org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId.parse(a);
+		return expanded.toNodeId(namespaces).orElseThrow(() -> new IllegalArgumentException(p.getName()
+			+ ": 서버에 네임스페이스가 없습니다 — " + expanded.getNamespaceUri()));
+	}
+
+	private static String address(PointInfo p) {
 		String a = p.getAddress() != null ? p.getAddress().trim() : "";
 		if (a.isEmpty()) {
 			throw new IllegalArgumentException(p.getName() + ": 주소(NodeId)가 없습니다");
 		}
-		return NodeId.parseSafe(a).orElseThrow(() -> new IllegalArgumentException(p.getName()
-			+ ": OPC UA 주소는 NodeId 입니다 — ns=2;s=Line1.Temp, ns=2;i=1001, i=2258: " + a));
+		return a;
+	}
+
+	private static <T> T safe(java.util.function.Supplier<T> f) {
+		try {
+			return f.get();
+		} catch (RuntimeException e) {
+			return null;
+		}
 	}
 
 	// ── 실행 ──
@@ -159,8 +240,9 @@ public class OpcUaDriver implements PlcDriver {
 		List<PointInfo> points = op.points();
 		List<NodeId> nodes = new ArrayList<>(points.size());
 		try {
+			var namespaces = client.getNamespaceTable();
 			for (PointInfo p : points) {
-				nodes.add(nodeId(p));
+				nodes.add(nodeId(p, namespaces));
 			}
 		} catch (IllegalArgumentException e) {
 			throw ToolControlException.of(ToolControlException.INTERFACE_MISCONFIGURED, e.getMessage());
@@ -419,7 +501,16 @@ public class OpcUaDriver implements PlcDriver {
 			new ProtocolDescriptor.Setting("sessionTimeoutMs", "NUMBER", (int) DEFAULT_SESSION_TIMEOUT_MS, 10_000, 3_600_000, null, false, "세션 시간 초과(ms)"),
 			new ProtocolDescriptor.Setting("maxNodesPerRequest", "NUMBER", MAX_NODES, 1, 10_000, null, false, "Read·Write 한 번의 최대 노드 수"),
 			new ProtocolDescriptor.Setting("publishingIntervalMs", "NUMBER", 1000, 50, 3_600_000, null, false, "구독 발행 주기(ms)"),
-			new ProtocolDescriptor.Setting("samplingIntervalMs", "NUMBER", 500, 0, 3_600_000, null, false, "구독 샘플링 주기(ms)")),
+			new ProtocolDescriptor.Setting("samplingIntervalMs", "NUMBER", 500, 0, 3_600_000, null, false, "구독 샘플링 주기(ms)"),
+			new ProtocolDescriptor.Setting("securityPolicy", "ENUM", POLICY_NONE, null, null, POLICIES, false,
+				"보안 정책 — NONE 이 아니면 tc 클라이언트 인증서를 쓴다(서버가 tc 인증서를 믿어야 한다 — 인증서 내려받기)"),
+			new ProtocolDescriptor.Setting("securityMode", "ENUM", "NONE", null, null, MODES, false,
+				"메시지 보안 — 정책이 NONE 이면 NONE, 정책이 있으면 SIGN 또는 SIGN_AND_ENCRYPT"),
+			new ProtocolDescriptor.Setting("authMode", "ENUM", AUTH_ANONYMOUS, null, null, List.of(AUTH_ANONYMOUS, AUTH_USERNAME), false,
+				"로그인 — USERNAME 이면 username 과 커넥터 비밀번호로"),
+			new ProtocolDescriptor.Setting("username", "TEXT", "", null, null, null, false, "로그인 사용자 이름(authMode=USERNAME)"),
+			new ProtocolDescriptor.Setting("serverTrust", "ENUM", TRUST_ON_FIRST_USE, null, null, List.of(TRUST_ON_FIRST_USE, TRUST_ALL), false,
+				"서버 인증서 — 처음 본 것을 믿고 바뀌면 거절(TRUST_ON_FIRST_USE), 또는 모두 믿기(TRUST_ALL, 시험용)")),
 			// 인터페이스 settings — 읽기 방식(구독), 구독 주기·데드밴드, 한도(docs/opcua-design.md §4)
 			List.of(
 				new ProtocolDescriptor.Setting("accessMode", "ENUM", ACCESS_READ, null, null, List.of(ACCESS_READ, ACCESS_SUBSCRIBE), false,
@@ -429,6 +520,6 @@ public class OpcUaDriver implements PlcDriver {
 				new ProtocolDescriptor.Setting("deadband", "NUMBER", null, 0, 1_000_000_000, null, false,
 					"절대값 데드밴드 — 이보다 작게 바뀌면 알리지 않는다(숫자 점)"),
 				new ProtocolDescriptor.Setting("maxNodesPerRequest", "NUMBER", null, 1, 10_000, null, false, "Read·Write 한 번의 최대 노드 수")),
-			List.of(), List.of("ns=2;s=Line1.Temp", "ns=2;i=1001", "i=2258"));
+			List.of(), List.of("nsu=urn:example;s=Line1.Temp", "ns=2;s=Line1.Temp", "i=2258"));
 	}
 }

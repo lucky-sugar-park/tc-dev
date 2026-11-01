@@ -152,7 +152,7 @@ class OpcUaDriverTest {
 		assertThat(vars).extracting(OpcUaTools.BrowseNode::browseName).contains("Temp", "Count", "Running", "Recipe");
 		OpcUaTools.BrowseNode temp = vars.stream().filter(n -> "Temp".equals(n.browseName())).findFirst().orElseThrow();
 		assertThat(temp.type()).isEqualTo(PointType.FLOAT64);
-		assertThat(temp.nodeId()).isEqualTo(server.node("Temp"));
+		assertThat(temp.nodeId()).isEqualTo(server.expanded("Temp"));   // 찾아보기는 nsu= 로 돌려준다(O17)
 		assertThat(vars.stream().filter(n -> "Running".equals(n.browseName())).findFirst().orElseThrow().type()).isEqualTo(PointType.BOOL);
 	}
 

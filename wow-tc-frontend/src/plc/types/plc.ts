@@ -29,6 +29,10 @@ export type PlcConnectorInfo = {
   protocol: string;
   settings: Record<string, unknown>;
   description?: string;
+  /** 로그인 비밀번호(OPC UA) — 보내기만 한다. 비우면 저장된 값 그대로 */
+  password?: string;
+  /** 저장된 비밀번호가 있는가(응답) */
+  passwordSet?: boolean;
   connection?: PlcConnectionState | null;
   updatedBy?: string;
   updatedDate?: string;

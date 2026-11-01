@@ -51,6 +51,10 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 	
 	@Column(name="ADAPTER_CLASS_NAME")
 	private String adapterClassName;
+
+	/** 로그인 비밀번호 암호문(SecretCipher, v1:…) — migration 014 */
+	@Column(name="PASSWORD_ENC", length=1024)
+	private String passwordEnc;
 	
 	@Column(name="IS_PUBLISHED")
 	private Boolean published;
@@ -138,6 +142,8 @@ public class PlcConnectorEntity extends PersistentEntity<PlcConnectorInfo> {
 			log.warn("커넥터 설정 JSON 을 읽지 못했습니다: {}", this.name);
 		}
 		info.setSettings(settings);
+		info.setPasswordEnc(this.passwordEnc);
+		info.setPasswordSet(this.passwordEnc!=null);
 
 		info.setDescription(this.description);
 		info.setCreatedBy(super.getCreatedBy());

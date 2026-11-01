@@ -77,6 +77,7 @@
 | `011_remove_raw.sql` | RAW 인터페이스 정의를 없앤다 — 점으로 정의하지 않은 인터페이스와 응답 인터페이스 삭제, `header_prop`·`data_prop` 표와 `interface` 의 옛 칼럼 DROP(결정 I7). **운영 데이터가 없을 때 만든 것 — 데이터가 있으면 먼저 백업** |
 | `012_interface_cleanup.sql` | `interface` 의 `sync`·`reply`·`web_hook_list` 칼럼 DROP(읽는 곳이 없음 — 동기는 API 가, WebHook 은 전달 정의가 정한다), 없는 인터페이스를 가리키는 스케줄 Job 을 SELECT 로 보여 준다(고치지 않음) |
 | `013_point_scaling.sql` | `interface_point` 에 `scale`·`offset_value`·`unit`·`min_value`·`max_value` 추가(점 배율·단위·쓰기 범위, 결정 I3). ddl-auto 환경은 앱이 만든다 |
+| `014_connector_password.sql` | `plc_connector` 에 `password_enc` 추가(OPC UA 로그인 비밀번호 암호문, docs/opcua-design.md O13). ddl-auto 환경은 앱이 만든다 |
 
 ```bash
 mysql -u root -p tc < migration/002_api_client.sql
@@ -334,3 +335,10 @@ redis-cli DEL tc:apikey-block:<ip> tc:apikey-fail:<ip>
 
 - 단위 테스트: `./gradlew :tc:test`(인프라 불필요)
 - e2e: `wow-tc-backend/e2e/README.md` — 실제 tc·vplc·DB·Redis 를 대상으로 151개 항목
+
+## 12. OPC UA 인증서 (docs/opcua-design.md §7)
+
+- tc 클라이언트 인증서는 처음 보안 OPC UA 연결 때 `tc.opcua.pki-dir`(`TC_OPCUA_PKI_DIR`, 기본 작업 폴더의 `pki/opcua`)에 `client.pfx`·`client.der` 로 만들어진다. 키 저장소 비밀번호는 `TC_SECRET_KEY` 에서 끌어내므로 **키를 바꾸면 열 수 없다** — 그때는 `client.pfx` 를 지우고 새 인증서를 서버에 다시 믿게 한다.
+- 서버 관리자에게는 커넥터 화면의 "tc 클라이언트 인증서 내려받기"(`client.der`)를 주어 서버의 신뢰 목록에 넣게 한다.
+- **다중화**: 인스턴스마다 인증서가 따로 생기지 않게 `client.pfx` 를 모든 인스턴스의 pki 폴더에 같이 둔다(같은 `TC_SECRET_KEY`).
+- 서버 인증서는 커넥터별로 처음 본 것을 믿는다(`trusted/<커넥터>.der`). 서버 인증서를 바꾸면 연결이 거절되므로, 바꾼 것이 맞는지 확인한 뒤 커넥터 화면의 "서버 인증서 잊기".

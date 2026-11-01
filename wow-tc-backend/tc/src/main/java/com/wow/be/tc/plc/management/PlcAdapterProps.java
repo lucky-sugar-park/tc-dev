@@ -34,6 +34,9 @@ public final class PlcAdapterProps {
 		props.put("plcRequestTimeoutMs", plcConfig.getRequestTimeoutMs());
 		props.put("startEvenIfDisconnected", background);
 		props.put("connectionListener", listener);
+		if (info.getPasswordEnc() != null) {
+			props.put("passwordEnc", info.getPasswordEnc());
+		}
 		// 프로토콜 설정(프레임·번호·루프백 주기) — 저장 때 검증했고, 설정이 없는 옛 커넥터는 여기서 기본값을 채운다
 		String legacy = info.getMessageFrameFormat() != null ? info.getMessageFrameFormat().name() : null;
 		props.put("settings", PlcDrivers.of(info.getProtocol()).normalizeSettings(info.getSettings(), legacy));

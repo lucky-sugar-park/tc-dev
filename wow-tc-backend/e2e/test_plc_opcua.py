@@ -4,6 +4,8 @@
 - 노드 찾아보기(Objects → Line1 → 변수·점 형 추정), OPC UA 가 아닌 커넥터 400
 - READ·WRITE(readBack)·배율, 없는 노드 → plcStatus Bad_NodeIdUnknown, 형 범위 밖 400, 요청 미리보기(서비스 단위)
 - SUBSCRIBE 인터페이스 — 흉내 값(Line1.Counter, 1초마다)이 바뀌면 감사 RESPONSE(sender opcua-subscription)가 쌓인다. WRITE 에 SUBSCRIBE 는 400
+- D2(§7): Basic256Sha256 + 사용자 이름 커넥터, 비밀번호는 조회에 안 나옴(passwordSet), nsu= 점, 틀린 비밀번호 연결 시험 실패,
+  클라이언트 인증서 내려받기, 믿은 서버 인증서 지문·잊기
 전제: vplc-opcua 가 떠 있다(TC_E2E_VPLC_OPCUA_URL, 기본 http://localhost:8092 — OPC UA opc.tcp://127.0.0.1:4840/vplc). 없으면 건너뛴다.
 """
 import json
@@ -58,6 +60,15 @@ def node(path):
     return f"ns={NS};s={path}"
 
 
+def expanded(path):
+    return f"nsu={info['namespaceUri']};s={path}"
+
+
+SIM_PASSWORD = os.environ.get("VPLC_OPCUA_PASSWORD", "tc-e2e-pass")
+SEC = "plc-opcua-sec-e2e"
+SEC_BAD = "plc-opcua-bad-e2e"
+
+
 TOKEN = common.admin_token()
 
 
@@ -105,9 +116,9 @@ try:
     check("찾아보기 Objects → Line1(자식 있음)", line1 is not None and line1.get("hasChildren") is True, top)
     s, vars_ = call("POST", f"/api/v1/plc-connector/browse/byName/{PLC}", {"nodeId": line1["nodeId"] if line1 else None})
     by = {n["browseName"]: n for n in vars_} if isinstance(vars_, list) else {}
-    check("찾아보기 Line1 → 변수와 점 형(Temp FLOAT64, Speed UINT16, Running BOOL)", by.get("Temp", {}).get("type") == "FLOAT64"
+    check("찾아보기 Line1 → 변수와 점 형(Temp FLOAT64, Speed UINT16, Running BOOL), 주소는 nsu=", by.get("Temp", {}).get("type") == "FLOAT64"
           and by.get("Speed", {}).get("type") == "UINT16" and by.get("Running", {}).get("type") == "BOOL"
-          and by.get("Temp", {}).get("nodeId") == node("Line1.Temp"), vars_)
+          and by.get("Temp", {}).get("nodeId") == expanded("Line1.Temp"), vars_)
     s, b = call("POST", "/api/v1/plc-connector/browse/byName/plc-e2e", {})
     check("MELSEC 커넥터 찾아보기 400", s == 400, (s, b))
 
@@ -187,9 +198,47 @@ try:
             break
     values = sorted({json.dumps(x.get("dataMap") or x.get("data")) for x in rows})
     check("구독 알림 감사 2건 이상, 값이 서로 다름(바뀔 때마다)", len(rows) >= 2 and len(values) >= 2, (len(rows), values[:3]))
+    # 5. D2 — 보안 정책·로그인·인증서(docs/opcua-design.md §7)
+    for name in (SEC, SEC_BAD):
+        call("POST", f"/api/v1/plc-connector/control/release/byName/{name}")
+        call("DELETE", f"/api/v1/plc-connector/delete/byName/{name}")
+    sec = dict(conn, name=SEC, description="e2e OPC UA 보안", password=SIM_PASSWORD,
+               settings={"endpointPath": "/vplc", "securityPolicy": "BASIC256SHA256", "authMode": "USERNAME", "username": "tc-e2e"})
+    s, b = call("POST", "/api/v1/plc-connector/register", sec)
+    check("D2: 보안 커넥터 등록 200(Basic256Sha256 + 사용자 이름)", s == 200, (s, b))
+    s, c = call("GET", f"/api/v1/plc-connector/find/byName/{SEC}")
+    check("D2: 조회에 비밀번호 없음, passwordSet true, 모드 SIGN_AND_ENCRYPT", isinstance(c, dict) and "password" not in c and "passwordEnc" not in c
+          and c.get("passwordSet") is True and c.get("settings", {}).get("securityMode") == "SIGN_AND_ENCRYPT", c)
+    s, t = call("POST", f"/api/v1/plc-connector/test-connection/byName/{SEC}")
+    check("D2: 연결 시험 OK(암호화·로그인)", t.get("result") == "CONNECTION_TEST_OK", t)
+    s, fp = call("GET", f"/api/v1/plc-connector/opcua/server-certificate/byName/{SEC}")
+    check("D2: 서버 인증서를 처음 믿음(지문)", isinstance(fp, dict) and fp.get("thumbprint"), fp)
+    s, b = call("POST", f"/api/v1/plc-connector/control/publish/byName/{SEC}")
+    check("D2: 게시 200", s == 200 and b.get("success") is True, (s, b))
+    rs = f"e2e.ua.sec.{RUN}"
+    call("POST", "/api/v1/ifsvc/management/register", {"name": rs, "plcName": SEC, "interfaceType": "READ", "use": True,
+                                                       "points": [{"name": "temp", "address": expanded("Line1.Temp"), "type": "FLOAT64"}]})
+    created.append(rs)
+    http("PUT", SIM + "/api/v1/opcua/tags/Line1.Temp", {"value": 31.5})
+    s, r = plc(rs)
+    check("D2: 보안 세션으로 nsu= 점 읽기(31.5)", s == 200 and r.get("data") == {"temp": 31.5}, (s, r))
+    bad = dict(sec, name=SEC_BAD, password="wrong-password")
+    call("POST", "/api/v1/plc-connector/register", bad)
+    s, t = call("POST", f"/api/v1/plc-connector/test-connection/byName/{SEC_BAD}")
+    check("D2: 틀린 비밀번호 연결 시험 실패", t.get("result") == "CONNECTION_TEST_ERROR", t)
+    req = urllib.request.Request(common.BASE + "/api/v1/plc-connector/opcua/client-certificate")
+    req.add_header("Authorization", TOKEN)
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        der = resp.read()
+    check("D2: tc 클라이언트 인증서 내려받기(DER)", len(der) > 300 and der[0] == 0x30, len(der))
+    s, f = call("POST", f"/api/v1/plc-connector/opcua/forget-server-certificate/byName/{SEC_BAD}")
+    check("D2: 서버 인증서 잊기 200", s == 200 and "forgotten" in f, (s, f))
 finally:
     for name in created:
         call("DELETE", f"/api/v1/ifsvc/management/delete/byName/{name}")
+    for name in (SEC, SEC_BAD):
+        call("POST", f"/api/v1/plc-connector/control/release/byName/{name}")
+        call("DELETE", f"/api/v1/plc-connector/delete/byName/{name}")
     call("POST", f"/api/v1/plc-connector/control/release/byName/{PLC}")
     s, _ = call("DELETE", f"/api/v1/plc-connector/delete/byName/{PLC}")
     check("정리: 인터페이스·커넥터 삭제", s == 200, s)

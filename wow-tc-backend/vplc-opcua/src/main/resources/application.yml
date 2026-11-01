@@ -1,7 +1,8 @@
 # vplc-opcua — 가상 OPC UA 서버 (docs/virtual-devices.md)
 #
 # DB 를 쓰지 않는다 — 태그·값은 메모리. SecurityPolicy None·익명만(tc D1 과 같음).
-# 태그 경로 Line1.Temp 의 NodeId 는 ns=<네임스페이스 번호>;s=Line1.Temp — 번호는 GET /api/v1/opcua 로 본다(보통 2).
+# 태그 경로 Line1.Temp 의 NodeId 는 nsu=urn:wow:tc:vplc-opcua;s=Line1.Temp(번호가 바뀌어도 같다) 또는 ns=3;s=Line1.Temp
+# — 앞에 네임스페이스를 하나 더 두어 번호가 3 이다(GET /api/v1/opcua).
 
 server:
   port: ${VPLC_OPCUA_HTTP_PORT:8092}
@@ -16,6 +17,14 @@ vplc-opcua:
   hostname: ${VPLC_OPCUA_HOSTNAME:127.0.0.1}
   port: ${VPLC_OPCUA_PORT:4840}
   path: /vplc
+  # 보안(docs/opcua-design.md §7.2) — 엔드포인트는 None·Basic256Sha256(Sign·SignAndEncrypt), 각각 익명·사용자 이름.
+  # 서버 인증서는 기동 때 자체 서명(다시 뜨면 바뀐다). 시험 장비라 tc 클라이언트 인증서는 기본으로 모두 믿는다.
+  security:
+    require-login: ${VPLC_OPCUA_REQUIRE_LOGIN:false}
+    trust-all-clients: ${VPLC_OPCUA_TRUST_ALL_CLIENTS:true}
+  # 시험 사용자 — 127.0.0.1 에만 여는 시험 장비라 기본 비밀번호를 둔다(바꾸려면 VPLC_OPCUA_PASSWORD). tc e2e 가 같은 값을 쓴다
+  users:
+    - { username: tc-e2e, password: "${VPLC_OPCUA_PASSWORD:tc-e2e-pass}" }
   tags:
     # tc e2e·예제 — 커넥터 plc-opcua-vplc(127.0.0.1:4840, endpointPath /vplc)
     - { path: Line1.Temp, type: FLOAT64, value: 25.5, description: 온도 }

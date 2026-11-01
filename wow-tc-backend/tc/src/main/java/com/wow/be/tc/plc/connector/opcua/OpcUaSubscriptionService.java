@@ -175,7 +175,7 @@ public class OpcUaSubscriptionService {
 			Sub sub = new Sub(signature(iface, connectorSettings), subscription);
 			List<OpcUaMonitoredItem> items = new ArrayList<>();
 			for (PointInfo p : iface.getPoints()) {
-				OpcUaMonitoredItem item = OpcUaMonitoredItem.newDataItem(OpcUaDriver.nodeId(p));
+				OpcUaMonitoredItem item = OpcUaMonitoredItem.newDataItem(OpcUaDriver.nodeId(p, client.getNamespaceTable()));
 				item.setSamplingInterval(sampling);
 				if (deadband instanceof Number d && d.doubleValue() > 0 && numeric(p.getType())) {
 					item.setFilter(new DataChangeFilter(DataChangeTrigger.StatusValue, uint(DeadbandType.Absolute.getValue()), d.doubleValue()));

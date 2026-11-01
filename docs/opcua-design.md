@@ -1,6 +1,6 @@
 # OPC UA 커넥터 설계 (인터페이스 세부 정의 D단계)
 
-> 작성일: 2026-11-01 (v0.4.0). 상태: **D1·D3 구현됨**(§6). D2(인증·보안)는 남음. 가상 서버는 [virtual-devices.md](virtual-devices.md).
+> 작성일: 2026-11-01 (v0.4.0). 상태: **D1·D2·D3 구현됨**(§6, §7.5). 가상 서버는 [virtual-devices.md](virtual-devices.md).
 > 관련: [interface-detail-design.md](interface-detail-design.md)(결정 I4 — 구독 결과는 전달 정의 경로), [plc-protocol-design.md](plc-protocol-design.md)(드라이버 경계), [plc-ha-design.md](plc-ha-design.md)(소유권·원격 어댑터), [interfaces.md](interfaces.md)
 
 ## 1. 왜 다른가
@@ -84,3 +84,49 @@ OPC UA 는 **세션**이다 — 보안 채널을 열고 세션을 만든 뒤 Rea
 | 의존성 | `org.eclipse.milo:milo-sdk-client:1.1.8`(시험 `milo-sdk-server`). Netty 4.2.15 위에서 돈다(시험 통과) |
 
 **D3(2026-11-01)** — 가상 OPC UA 서버(`vplc-opcua`)를 상대로 e2e `test_plc_opcua.py` 21개 통과(커넥터·연결 시험·게시·찾아보기·읽기·쓰기·배율·없는 노드·범위 밖·미리보기·**구독 알림 감사**). 이 시험으로 스케줄 스레드에서 인터페이스 목록을 읽을 때 점을 지연 로딩하지 못하던 것(`LazyInitializationException`)을 찾아 `searchInterface()` 를 트랜잭션 안으로 고쳤다 — 단위 시험은 인터페이스 서비스를 흉내 내어 못 잡았다.
+
+## 7. D2 설계 — 로그인·보안 정책·인증서·`nsu=` 주소 (2026-11-01)
+
+실제 현장 OPC UA 서버는 대개 로그인이나 암호화(또는 둘 다)를 요구한다. D1(None·익명)으로는 붙지 못하는 경우가 많아 D2 를 한다.
+
+### 7.1 결정
+
+| # | 질문 | 결정 |
+|---|---|---|
+| O13 | 로그인 | 커넥터 설정 `authMode` = `ANONYMOUS`(기본) · `USERNAME`, `username`. **비밀번호는 설정 JSON 에 두지 않는다** — 커넥터의 쓰기 전용 칸 `password` 로 받아 `SecretCipher`(`TC_SECRET_KEY`, AES-GCM)로 암호화해 `PLC_CONNECTOR.PASSWORD_ENC` 에 둔다(migration 014). 조회 응답에는 `passwordSet` 만. 수정 때 비우면 저장된 값을 그대로 둔다(DB 연결 비밀번호와 같은 방식). `TC_SECRET_KEY` 가 없으면 비밀번호를 저장할 수 없다(400) |
+| O14 | 보안 정책 | 설정 `securityPolicy` = `NONE`(기본) · `BASIC256SHA256` · `AES128_SHA256_RSAOAEP` · `AES256_SHA256_RSAPSS`, `securityMode` = `NONE` · `SIGN` · `SIGN_AND_ENCRYPT`. 정책이 NONE 이면 모드도 NONE, 정책이 있는데 모드가 NONE 이면 `SIGN_AND_ENCRYPT`. 서버의 엔드포인트 목록에서 정책·모드가 같은 것을 고른다 — 없으면 연결 실패(서버가 주는 조합을 오류 문구에 보인다) |
+| O15 | tc 클라이언트 인증서 | tc 응용 인스턴스 인증서 하나(RSA 2048·SHA256, applicationUri `urn:wow:tc:opcua-client`, 이 PC 이름·IP). 처음 필요할 때 만들어 `tc.opcua.pki-dir`(기본 `pki/opcua` — 작업 폴더 기준, 로컬은 `run/tc/pki/opcua`)에 PKCS#12(`client.pfx`)로 둔다. 키 저장소 비밀번호는 `TC_SECRET_KEY` 에서 끌어낸다(HMAC) — 키가 없으면 보안 정책을 쓸 수 없다. 서버 관리자가 tc 를 믿게 하려고 **공개 인증서를 내려받는 API**(`GET /api/v1/plc-connector/opcua/client-certificate`, DER)를 둔다. 다중화: 인스턴스마다 다른 인증서가 생기므로 `client.pfx` 를 모든 인스턴스에 같이 둔다(같은 `TC_SECRET_KEY` 면 그대로 열린다) — operations.md |
+| O16 | 서버 인증서 믿기 | 설정 `serverTrust` = `TRUST_ON_FIRST_USE`(기본) · `TRUST_ALL`(시험용 — 화면에 경고). 처음 연결 때 받은 서버 인증서를 커넥터별로 `pki/opcua/trusted/<커넥터>.der` 에 남기고, 다음부터 다른 인증서면 거절한다(서버가 바뀌었거나 가로채기). 서버 인증서를 바꾼 게 맞으면 관리자가 **"서버 인증서 잊기"**(`POST /api/v1/plc-connector/opcua/forget-server-certificate/byName/{name}`, 수정 권한)로 지우고 다시 믿는다. 연결 시험·찾아보기도 같은 규칙. 보안 정책이 NONE 이어도 사용자 이름 토큰을 암호화하려면 서버 인증서를 쓰므로 같은 규칙을 탄다 |
+| O17 | `nsu=` 주소 | 점 주소에 `nsu=<네임스페이스 URI>;s=…`(i=·g=·b= 도)를 받는다. 실행할 때 세션의 네임스페이스 표로 번호를 찾는다(세션마다 한 번 읽어 둔다). 네임스페이스 번호는 서버가 다시 뜨거나 설정이 바뀌면 달라질 수 있어 **찾아보기는 이제 `nsu=` 형태로 돌려준다**(ns=0 표준 노드는 `i=…` 그대로). `ns=2;…` 형태도 계속 받는다 |
+
+### 7.2 가상 서버(vplc-opcua) — 시험 상대
+
+| 것 | 내용 |
+|---|---|
+| 엔드포인트 | None(익명·사용자 이름) + Basic256Sha256 Sign·SignAndEncrypt(익명·사용자 이름). 같은 주소 `opc.tcp://127.0.0.1:4840/vplc` |
+| 서버 인증서 | 기동 때 자체 서명(메모리) — 다시 뜨면 바뀐다(TOFU 거절 시험에 쓴다) |
+| 클라이언트 인증서 | 시험 장비라 기본은 모두 믿는다(`vplc-opcua.security.trust-all-clients`) |
+| 사용자 | `vplc-opcua.users`(기본 `tc-e2e` 하나, 비밀번호는 `VPLC_OPCUA_PASSWORD` — 기본값은 시험용, docs/virtual-devices.md). `require-login: true` 면 익명 거절 |
+| 두 번째 네임스페이스 | 기본 네임스페이스보다 먼저 `urn:wow:tc:vplc-opcua:extra` 를 등록해 기본 네임스페이스 번호가 **3** 이 되게 한다 — `ns=2` 를 가정한 코드를 잡는다 |
+
+### 7.3 화면
+
+- 커넥터 폼(OPC UA): 보안 정책·모드·로그인 방식·사용자 이름·서버 인증서 믿기는 설정 스키마로 그대로, **비밀번호 칸**(쓰기 전용 — "저장됨" 표시, 비우면 그대로), "tc 클라이언트 인증서 내려받기", "서버 인증서 잊기".
+- `TRUST_ALL` 이면 경고 문구.
+
+### 7.4 시험
+
+- tc 단위: 내장 Milo 서버에 Basic256Sha256·사용자 이름 — 맞는·틀린 비밀번호, TOFU(처음 믿고, 서버 인증서가 바뀌면 거절, 잊으면 다시), `nsu=` 주소 읽기·찾아보기.
+- e2e `test_plc_opcua.py`: vplc-opcua 에 보안 커넥터(Basic256Sha256 + 사용자 이름), 비밀번호가 조회에 안 나옴, `nsu=` 점, 틀린 비밀번호 연결 시험 실패, 클라이언트 인증서 내려받기.
+
+### 7.5 D2 결과 (2026-11-01)
+
+| 것 | 내용 |
+|---|---|
+| 세션 | `OpcUaSessions.create(url, settings, 커넥터, 비밀번호)` — 정책·모드가 같은 엔드포인트(호스트·포트는 커넥터 값으로), 없으면 서버가 주는 조합을 오류에. 보안 정책이면 클라이언트 인증서, 보안이나 로그인이면 서버 인증서 검사기, 로그인이면 `UsernameProvider` |
+| 인증서 | `OpcUaPki` — `client.pfx`(키 저장소 비밀번호는 `TC_SECRET_KEY` HMAC)·`client.der`, 커넥터별 `trusted/<커넥터>.der`(TOFU). API: `GET /plc-connector/opcua/client-certificate`(DER), `GET …/opcua/server-certificate/byName/{name}`(지문), `POST …/opcua/forget-server-certificate/byName/{name}` |
+| 비밀번호 | `PlcConnectorInfo.password`(쓰기 전용)·`passwordSet`, `PLC_CONNECTOR.PASSWORD_ENC`(migration 014). 어댑터는 속성 `passwordEnc` 를 받아 연결할 때만 푼다 |
+| `nsu=` | 점 검증은 문법만, 실행·구독·찾아보기 시작 노드는 세션의 네임스페이스 표로. 찾아보기는 `nsu=` 로 돌려준다(ns=0 은 `i=`) |
+| 가상 서버 | vplc-opcua — None·Basic256Sha256(Sign·SignAndEncrypt)·익명·사용자 이름(`tc-e2e`), 자체 서명 서버 인증서, 앞 네임스페이스 하나 더(기본 번호 3) |
+| 화면 | 커넥터 폼(OPC UA) — 보안 설정은 스키마, 비밀번호 칸(저장됨 표시), TRUST_ALL 경고, 클라이언트 인증서 내려받기, 믿은 서버 인증서 지문·잊기 |
+| 시험 | tc 단위 `OpcUaSecurityTest` 4개(암호화·로그인·nsu=·틀린 비밀번호·없는 엔드포인트·TOFU 고정·거절·잊기·TRUST_ALL), vplc-opcua `VirtualOpcUaSecurityTest` 2개, e2e `test_plc_opcua.py` 30개(D2 9개) |

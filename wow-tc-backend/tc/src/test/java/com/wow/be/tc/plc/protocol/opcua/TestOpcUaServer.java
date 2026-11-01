@@ -30,12 +30,17 @@ import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransport;
 import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportConfig;
 
 /**
- * 시험용 OPC UA 서버(Milo) — SecurityPolicy None·익명. 네임스페이스 {@value #URI} 에 폴더 {@code Line1} 과 변수들.
- * NodeId 는 {@code ns=<index>;s=Line1.<이름>}.
+ * 시험용 OPC UA 서버(Milo) — None·Basic256Sha256(Sign·SignAndEncrypt), 익명·사용자 이름({@value #USER}/{@value #PASSWORD}).
+ * 서버 인증서는 자체 서명(서버마다 다르다 — TOFU 시험). 네임스페이스 {@value #URI} 에 폴더 {@code Line1} 과 변수들.
+ * NodeId 는 {@code ns=<index>;s=Line1.<이름>} 또는 {@code nsu=}{@value #URI}{@code ;s=Line1.<이름>}.
  */
 final class TestOpcUaServer implements AutoCloseable {
 
 	static final String URI = "urn:wow:tc:test";
+
+	static final String USER = "tester";
+
+	static final String PASSWORD = "pw-123";
 
 	final int port;
 
@@ -47,19 +52,36 @@ final class TestOpcUaServer implements AutoCloseable {
 		try (ServerSocket s = new ServerSocket(0)) {
 			port = s.getLocalPort();
 		}
-		EndpointConfig endpoint = EndpointConfig.newBuilder()
+		org.eclipse.milo.opcua.stack.core.security.MemoryTrustListManager trust = new org.eclipse.milo.opcua.stack.core.security.MemoryTrustListManager();
+		org.eclipse.milo.opcua.stack.core.security.DefaultApplicationGroup group =
+			org.eclipse.milo.opcua.stack.core.security.DefaultApplicationGroup.createAndInitialize(trust,
+				new org.eclipse.milo.opcua.stack.core.security.MemoryCertificateStore(),
+				new org.eclipse.milo.opcua.stack.core.security.RsaSha256CertificateFactory() {
+					@Override
+					protected java.security.cert.X509Certificate[] createRsaSha256CertificateChain(java.security.KeyPair kp) throws Exception {
+						return new java.security.cert.X509Certificate[] { new org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateBuilder(kp)
+							.setCommonName("tc test server").setApplicationUri("urn:wow:tc:test-server").addDnsName("localhost")
+							.addIpAddress("127.0.0.1").build() };
+					}
+				}, new org.eclipse.milo.opcua.stack.core.security.CertificateValidator.InsecureCertificateValidator());
+		java.security.cert.X509Certificate cert = group.getCertificateChain(group.getSupportedCertificateTypeIds().get(0)).orElseThrow()[0];
+		EndpointConfig.Builder base = EndpointConfig.newBuilder()
 			.setBindAddress("127.0.0.1").setBindPort(port).setHostname("127.0.0.1").setPath("/test")
-			.setSecurityPolicy(SecurityPolicy.None).setSecurityMode(MessageSecurityMode.None)
-			.setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
+			.setTransportProfile(TransportProfile.TCP_UASC_UABINARY).setCertificate(cert)
 			.addTokenPolicy(OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS)
-			.build();
+			.addTokenPolicy(OpcUaServerConfig.USER_TOKEN_POLICY_USERNAME);
+		Set<EndpointConfig> endpoints = Set.of(
+			base.copy().setSecurityPolicy(SecurityPolicy.None).setSecurityMode(MessageSecurityMode.None).build(),
+			base.copy().setSecurityPolicy(SecurityPolicy.Basic256Sha256).setSecurityMode(MessageSecurityMode.SignAndEncrypt).build());
 		OpcUaServerConfig config = OpcUaServerConfig.builder()
 			.setApplicationName(LocalizedText.english("tc test server"))
 			.setApplicationUri("urn:wow:tc:test-server")
 			.setProductUri("urn:wow:tc:test-server")
-			.setEndpoints(Set.of(endpoint))
-			.setIdentityValidator(AnonymousIdentityValidator.INSTANCE)
-			.setCertificateManager(new DefaultCertificateManager(new MemoryCertificateQuarantine(), List.of()))
+			.setEndpoints(endpoints)
+			.setIdentityValidator(new org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator(AnonymousIdentityValidator.INSTANCE,
+				new org.eclipse.milo.opcua.sdk.server.identity.UsernameIdentityValidator(
+					c -> USER.equals(c.getUsername()) && PASSWORD.equals(c.getPassword()))))
+			.setCertificateManager(new DefaultCertificateManager(new MemoryCertificateQuarantine(), group))
 			.build();
 		server = new OpcUaServer(config, profile -> new OpcTcpServerTransport(OpcTcpServerTransportConfig.newBuilder().build()));
 		namespace = new Namespace(server);
@@ -73,6 +95,10 @@ final class TestOpcUaServer implements AutoCloseable {
 
 	String node(String name) {
 		return "ns=" + ns() + ";s=Line1." + name;
+	}
+
+	String expanded(String name) {
+		return "nsu=" + URI + ";s=Line1." + name;
 	}
 
 	/** 변수 값을 바꾼다(구독 시험) */

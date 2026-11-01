@@ -23,6 +23,7 @@ import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.protocol.PlcOperation;
 import com.wow.be.tc.plc.protocol.PlcResult;
 import com.wow.be.tc.plc.protocol.opcua.OpcUaDriver;
+import com.wow.be.tc.plc.protocol.opcua.OpcUaPki;
 import com.wow.be.tc.plc.protocol.opcua.OpcUaSessions;
 
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,9 @@ public class OpcUaAdapter implements ProgrammableControllerAdapter {
 	private PlcConnectionEventListener listener;
 
 	private boolean startEvenIfDisconnected;
+
+	/** 로그인 비밀번호 암호문 — 연결할 때만 푼다 */
+	private String passwordEnc;
 
 	private volatile OpcUaClient client;
 
@@ -114,6 +118,7 @@ public class OpcUaAdapter implements ProgrammableControllerAdapter {
 		this.endpointUrl = OpcUaSessions.endpointUrl(hostIp, port, settings);
 		this.listener = (PlcConnectionEventListener) props.get("connectionListener");
 		this.startEvenIfDisconnected = Boolean.TRUE.equals(props.get("startEvenIfDisconnected"));
+		this.passwordEnc = props.getProperty("passwordEnc");
 		start();
 	}
 
@@ -145,7 +150,8 @@ public class OpcUaAdapter implements ProgrammableControllerAdapter {
 			return false;
 		}
 		try {
-			OpcUaClient c = OpcUaSessions.create(endpointUrl, settings);
+			String password = passwordEnc != null && OpcUaPki.current() != null ? OpcUaPki.current().decrypt(passwordEnc) : null;
+			OpcUaClient c = OpcUaSessions.create(endpointUrl, settings, name, password);
 			c.addSessionActivityListener(new SessionActivityListener() {
 				@Override
 				public void onSessionActive(UaSession session) {

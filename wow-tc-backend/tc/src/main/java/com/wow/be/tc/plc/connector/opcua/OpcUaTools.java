@@ -30,6 +30,7 @@ import com.wow.be.tc.plc.management.PlcConnectorInfo;
 import com.wow.be.tc.Types.PlcConnectorOperStatus;
 import com.wow.be.tc.plc.protocol.PointType;
 import com.wow.be.tc.plc.protocol.opcua.OpcUaDriver;
+import com.wow.be.tc.plc.protocol.opcua.OpcUaPki;
 import com.wow.be.tc.plc.protocol.opcua.OpcUaSessions;
 
 /**
@@ -68,7 +69,7 @@ public final class OpcUaTools {
 		result.put("endpoint", url);
 		OpcUaClient client = null;
 		try {
-			client = OpcUaSessions.create(url, settings);
+			client = session(info, url, settings);
 			client.connect();
 			DataValue state = client.readValue(0.0, TimestampsToReturn.Neither, new NodeId(0, 2259));
 			result.put("result", PlcConnectorOperStatus.CONNECTION_TEST_OK.name());
@@ -89,13 +90,19 @@ public final class OpcUaTools {
 	 * @throws ToolControlException 연결·서비스 실패(503·504)
 	 */
 	public static List<BrowseNode> browse(PlcConnectorInfo info, Map<String, Object> settings, String nodeId) throws ToolControlException {
-		NodeId start = nodeId == null || nodeId.isBlank() ? OBJECTS_FOLDER
-			: NodeId.parseSafe(nodeId.trim()).orElseThrow(() -> new IllegalArgumentException("NodeId 가 아닙니다: " + nodeId));
+		// 문법은 연결 전에 본다 — ns= 와 nsu=(O17)
+		com.wow.be.tc.interfs.PointInfo start = new com.wow.be.tc.interfs.PointInfo();
+		start.setName("nodeId");
+		start.setAddress(nodeId);
+		if (nodeId != null && !nodeId.isBlank()) {
+			OpcUaDriver.checkAddress(start);
+		}
 		OpcUaClient client = null;
 		try {
-			client = OpcUaSessions.create(endpoint(info, settings), settings);
+			client = session(info, endpoint(info, settings), settings);
 			client.connect();
-			List<ReferenceDescription> refs = references(client, start);
+			NodeId from = nodeId == null || nodeId.isBlank() ? OBJECTS_FOLDER : OpcUaDriver.nodeId(start, client.getNamespaceTable());
+			List<ReferenceDescription> refs = references(client, from);
 			List<NodeId> ids = new ArrayList<>();
 			for (ReferenceDescription r : refs) {
 				ids.add(r.getNodeId().toNodeId(client.getNamespaceTable()).orElse(null));
@@ -124,7 +131,10 @@ public final class OpcUaTools {
 					Object rank = vi[1].getValue() != null ? vi[1].getValue().getValue() : null;
 					array = rank instanceof Number n && n.intValue() >= 1;
 				}
-				out.add(new BrowseNode(id.toParseableString(), r.getBrowseName() != null ? r.getBrowseName().getName() : null,
+				// 네임스페이스 번호는 바뀔 수 있어 URI 로 돌려준다(ns=0 표준 노드는 i=… 그대로, O17)
+				String address = id.getNamespaceIndex().intValue() == 0 ? id.toParseableString()
+					: id.expanded(client.getNamespaceTable()).toParseableString();
+				out.add(new BrowseNode(address, r.getBrowseName() != null ? r.getBrowseName().getName() : null,
 					r.getDisplayName() != null ? r.getDisplayName().getText() : null, String.valueOf(r.getNodeClass()), dataType, type, array,
 					!variable));
 			}
@@ -183,6 +193,13 @@ public final class OpcUaTools {
 			out.put(vars.get(i), new DataValue[] { r[i * 2], r[i * 2 + 1] });
 		}
 		return out;
+	}
+
+	/** 커넥터의 로그인·보안으로 — 비밀번호는 여기서만 푼다 */
+	private static OpcUaClient session(PlcConnectorInfo info, String url, Map<String, Object> settings) throws UaException, ToolControlException {
+		OpcUaPki pki = OpcUaPki.current();
+		String password = info.getPasswordEnc() != null && pki != null ? pki.decrypt(info.getPasswordEnc()) : null;
+		return OpcUaSessions.create(url, settings, info.getName(), password);
 	}
 
 	private static String endpoint(PlcConnectorInfo info, Map<String, Object> settings) {

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wow.be.framework.AbstractInfo;
 import com.wow.be.tc.Types.FrameFormat;
 import com.wow.be.tc.Types.PlcConnectorInfoStatus;
@@ -13,10 +15,21 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
-@ToString
+@ToString(exclude={ "password", "passwordEnc" })
 @Data
 @EqualsAndHashCode(callSuper=false)
 public class PlcConnectorInfo extends AbstractInfo {
+
+	/** 로그인 비밀번호(OPC UA authMode=USERNAME, docs/opcua-design.md O13) — 받기만 하고 돌려주지 않는다. 수정 때 비우면 저장된 값 그대로 */
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	private String password;
+
+	/** 저장된 비밀번호가 있는가 */
+	private boolean passwordSet;
+
+	/** 저장된 비밀번호(TC_SECRET_KEY 로 암호화) — 어댑터 속성으로만 넘긴다 */
+	@JsonIgnore
+	private String passwordEnc;
 	
 	private long id;
 

@@ -15,7 +15,8 @@ public class VplcOpcUaApplication {
 
 	/** 설정 — 엔드포인트와 처음 태그 */
 	@ConfigurationProperties(prefix = "vplc-opcua")
-	public record Settings(String bindAddress, String hostname, Integer port, String path, List<VirtualOpcUaServer.TagSpec> tags) {
+	public record Settings(String bindAddress, String hostname, Integer port, String path, List<VirtualOpcUaServer.TagSpec> tags,
+			List<User> users, SecuritySettings security) {
 
 		public Settings {
 			bindAddress = bindAddress != null ? bindAddress : "127.0.0.1";
@@ -23,12 +24,25 @@ public class VplcOpcUaApplication {
 			port = port != null ? port : 4840;
 			path = path != null ? path : "/vplc";
 			tags = tags != null ? tags : List.of();
+			users = users != null ? users : List.of();
+			security = security != null ? security : new SecuritySettings(false, true);
 		}
+	}
+
+	/** 로그인 사용자(시험용) */
+	public record User(String username, String password) {
+	}
+
+	/** require-login: 익명 거절, trust-all-clients: 클라이언트 인증서를 모두 믿음(시험 장비 기본) */
+	public record SecuritySettings(boolean requireLogin, boolean trustAllClients) {
 	}
 
 	@Bean(destroyMethod = "close")
 	VirtualOpcUaServer virtualOpcUaServer(Settings s) throws Exception {
-		return new VirtualOpcUaServer(s.bindAddress(), s.hostname(), s.port(), s.path(), s.tags());
+		java.util.Map<String, String> users = new java.util.LinkedHashMap<>();
+		s.users().forEach(u -> users.put(u.username(), u.password()));
+		return new VirtualOpcUaServer(s.bindAddress(), s.hostname(), s.port(), s.path(), s.tags(),
+			new VirtualOpcUaServer.Security(users, s.security().requireLogin(), s.security().trustAllClients()));
 	}
 
 	public static void main(String[] args) {

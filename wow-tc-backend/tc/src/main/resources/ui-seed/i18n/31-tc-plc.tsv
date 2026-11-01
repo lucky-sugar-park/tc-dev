@@ -125,3 +125,14 @@ i18n.tc.monitor.channels	채널	Channels	チャネル	通道
 i18n.tc.opcua.browse	노드 찾아보기	Browse nodes	ノード参照	浏览节点
 i18n.tc.opcua.noChildren	아래 노드가 없습니다	No child nodes	子ノードがありません	没有子节点
 i18n.tc.opcua.addPoints	점으로 더하기	Add as points	ポイントとして追加	添加为点
+i18n.tc.opcua.security	OPC UA 로그인·인증서	OPC UA login & certificates	OPC UA ログイン・証明書	OPC UA 登录与证书
+i18n.tc.opcua.trustAllWarning	TRUST_ALL 은 서버 인증서를 검사하지 않습니다 — 시험용으로만 쓰세요.	TRUST_ALL skips server certificate checks — use for testing only.	TRUST_ALL はサーバー証明書を検査しません — 試験用のみ。	TRUST_ALL 不校验服务器证书 — 仅用于测试。
+i18n.tc.opcua.password	로그인 비밀번호	Login password	ログインパスワード	登录密码
+i18n.tc.opcua.passwordSet	저장됨 — 비우면 그대로 둡니다	Saved — leave blank to keep	保存済み — 空なら変更しません	已保存 — 留空则保持不变
+i18n.tc.opcua.passwordHelp	authMode=USERNAME 일 때 — TC_SECRET_KEY 로 암호화해 저장	For authMode=USERNAME — stored encrypted with TC_SECRET_KEY	authMode=USERNAME 時 — TC_SECRET_KEY で暗号化して保存	authMode=USERNAME 时 — 用 TC_SECRET_KEY 加密保存
+i18n.tc.opcua.serverCert	믿은 서버 인증서	Trusted server certificate	信頼したサーバー証明書	已信任的服务器证书
+i18n.tc.opcua.noServerCert	없음(처음 연결 때 믿음)	None (trusted on first connection)	なし(初回接続で信頼)	无(首次连接时信任)
+i18n.tc.opcua.clientCert	tc 클라이언트 인증서 내려받기	Download tc client certificate	tc クライアント証明書をダウンロード	下载 tc 客户端证书
+i18n.tc.opcua.forget	서버 인증서 잊기	Forget server certificate	サーバー証明書を忘れる	忘记服务器证书
+i18n.tc.opcua.confirmForget	믿은 서버 인증서를 잊을까요? 다음 연결 때 그때의 서버 인증서를 다시 처음 믿습니다(서버 인증서를 바꾼 것이 맞을 때만).	Forget the trusted server certificate? The next connection will trust the server certificate it sees (only if the certificate was really changed).	信頼したサーバー証明書を忘れますか？次回接続時の証明書を改めて信頼します(証明書を変えた場合のみ)。	忘记已信任的服务器证书？下次连接时将重新信任当时的证书(仅在确实更换证书时)。
+i18n.tc.opcua.forgotten	서버 인증서를 잊었습니다	Server certificate forgotten	サーバー証明書を忘れました	已忘记服务器证书

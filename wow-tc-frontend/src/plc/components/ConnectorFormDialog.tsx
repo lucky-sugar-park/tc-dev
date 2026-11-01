@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactElement } from 'react';
 import { Alert, Box, Button, Dialog, DialogContent, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material';
-import { DialogFooter, DialogTitleClose, DraggablePaper, useI18n } from 'wow-mes-frontend-shared';
+import { DialogFooter, DialogTitleClose, DraggablePaper, extractApiError, showConfirm, showToast, useI18n } from 'wow-mes-frontend-shared';
+import { connectorApi } from '../services/plcApi';
 import { SettingsFields, settingText, settingsFromText } from './SettingsFields';
 import type { PlcConnectorInfo, ProtocolDescriptor } from '../types/plc';
 
@@ -14,6 +15,8 @@ type Form = {
   manufacturer: string;
   description: string;
   settings: Record<string, string>;
+  /** 새 비밀번호(OPC UA 로그인) — 비우면 저장된 값 그대로 */
+  password: string;
 };
 
 const list = (s: string): string[] => s.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
@@ -49,9 +52,18 @@ export function ConnectorFormDialog({ open, initial, protocols, onClose, onSubmi
       manufacturer: initial?.manufacturer ?? '',
       description: initial?.description ?? '',
       settings: Object.fromEntries((desc?.settings ?? []).map((s) => [s.key, settingText(initial?.settings?.[s.key], s)])),
+      password: '',
     });
     setErrors({});
   }, [open, initial, protocols]);
+
+  // OPC UA — 이 커넥터가 믿은 서버 인증서 지문(docs/opcua-design.md O16)
+  const [thumbprint, setThumbprint] = useState<string | null>(null);
+  useEffect(() => {
+    setThumbprint(null);
+    if (!open || !initial?.name || initial.protocol !== 'OPC_UA') return;
+    connectorApi.opcUaServerCertificate(initial.name).then(setThumbprint).catch(() => setThumbprint(null));
+  }, [open, initial]);
 
   const desc = useMemo(() => protocols.find((d) => d.protocol === f?.protocol), [protocols, f?.protocol]);
   if (!f) return <Dialog open={false} />;
@@ -80,8 +92,39 @@ export function ConnectorFormDialog({ open, initial, protocols, onClose, onSubmi
       manufacturer: f.manufacturer || undefined,
       description: f.description || undefined,
       settings,
+      password: f.password || undefined,
     });
   };
+
+  const downloadClientCertificate = async () => {
+    try {
+      const blob = await connectorApi.opcUaClientCertificate();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'wow-tc-opcua-client.der';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showToast(extractApiError(e), 'error');
+    }
+  };
+
+  const forgetServerCertificate = async () => {
+    if (!initial?.name) return;
+    const ok = await showConfirm({
+      message: t('i18n.tc.opcua.confirmForget', '믿은 서버 인증서를 잊을까요? 다음 연결 때 그때의 서버 인증서를 다시 처음 믿습니다(서버 인증서를 바꾼 것이 맞을 때만).'),
+    });
+    if (!ok) return;
+    try {
+      await connectorApi.opcUaForgetServerCertificate(initial.name);
+      setThumbprint(null);
+      showToast(t('i18n.tc.opcua.forgotten', '서버 인증서를 잊었습니다'), 'success');
+    } catch (e) {
+      showToast(extractApiError(e), 'error');
+    }
+  };
+  const opcUa = f.protocol === 'OPC_UA';
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperComponent={DraggablePaper}
@@ -120,6 +163,38 @@ export function ConnectorFormDialog({ open, initial, protocols, onClose, onSubmi
           <Typography variant="subtitle2">{t('i18n.tc.connector.settings', '프로토콜 설정')} — {desc?.label}</Typography>
           <SettingsFields schema={desc?.settings ?? []} values={f.settings} onChange={(settings) => set({ settings })}
             fallbackLabel={(s) => `${t('i18n.tc.connector.default', '기본')} ${settingText(s.defaultValue, s)}`} />
+          {opcUa && (
+            <>
+              <Divider />
+              <Typography variant="subtitle2">{t('i18n.tc.opcua.security', 'OPC UA 로그인·인증서')}</Typography>
+              {f.settings.serverTrust === 'TRUST_ALL' && (
+                <Alert severity="warning">{t('i18n.tc.opcua.trustAllWarning', 'TRUST_ALL 은 서버 인증서를 검사하지 않습니다 — 시험용으로만 쓰세요.')}</Alert>
+              )}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                <TextField label={t('i18n.tc.opcua.password', '로그인 비밀번호')} type="password" value={f.password}
+                  onChange={(e) => set({ password: e.target.value })} autoComplete="new-password"
+                  helperText={initial?.passwordSet
+                    ? t('i18n.tc.opcua.passwordSet', '저장됨 — 비우면 그대로 둡니다')
+                    : t('i18n.tc.opcua.passwordHelp', 'authMode=USERNAME 일 때 — TC_SECRET_KEY 로 암호화해 저장')}
+                  slotProps={{ htmlInput: { 'aria-label': 'opcua-password' } }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" component="div">
+                    {t('i18n.tc.opcua.serverCert', '믿은 서버 인증서')}: {thumbprint ?? t('i18n.tc.opcua.noServerCert', '없음(처음 연결 때 믿음)')}
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
+                    <Button size="small" variant="outlined" onClick={() => { void downloadClientCertificate(); }}>
+                      {t('i18n.tc.opcua.clientCert', 'tc 클라이언트 인증서 내려받기')}
+                    </Button>
+                    {edit && thumbprint && (
+                      <Button size="small" color="warning" variant="outlined" onClick={() => { void forgetServerCertificate(); }}>
+                        {t('i18n.tc.opcua.forget', '서버 인증서 잊기')}
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
+              </Box>
+            </>
+          )}
         </Stack>
       </DialogContent>
       <DialogFooter onClose={onClose}><Button type="submit" variant="contained">{t('i18n.common.save', '저장')}</Button></DialogFooter>

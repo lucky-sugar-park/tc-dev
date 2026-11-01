@@ -33,6 +33,18 @@ export const connectorApi = {
   async testConnection(name: string): Promise<Record<string, string>> {
     return (await apiClient.post<Record<string, string>>(`${C}/test-connection/byName/${enc(name)}`)).data;
   },
+  /** tc OPC UA 클라이언트 인증서(DER) — 서버 관리자에게 준다 */
+  async opcUaClientCertificate(): Promise<Blob> {
+    return (await apiClient.get<Blob>(`${C}/opcua/client-certificate`, { responseType: 'blob' })).data;
+  },
+  /** 커넥터가 믿은 OPC UA 서버 인증서 지문(없으면 null) */
+  async opcUaServerCertificate(name: string): Promise<string | null> {
+    return (await apiClient.get<{ thumbprint: string | null }>(`${C}/opcua/server-certificate/byName/${enc(name)}`)).data.thumbprint;
+  },
+  /** 믿은 서버 인증서 잊기 — 다음 연결 때 다시 처음 믿는다 */
+  async opcUaForgetServerCertificate(name: string): Promise<boolean> {
+    return (await apiClient.post<{ forgotten: boolean }>(`${C}/opcua/forget-server-certificate/byName/${enc(name)}`)).data.forgotten;
+  },
   /** OPC UA 노드 찾아보기 — nodeId 를 비우면 Objects 폴더 */
   async browse(name: string, nodeId: string | null): Promise<BrowseNode[]> {
     return (await apiClient.post<BrowseNode[]>(`${C}/browse/byName/${enc(name)}`, { nodeId })).data;

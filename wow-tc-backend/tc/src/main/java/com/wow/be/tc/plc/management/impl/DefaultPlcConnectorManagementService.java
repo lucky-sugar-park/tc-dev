@@ -72,6 +72,9 @@ import lombok.extern.slf4j.Slf4j;
 public class DefaultPlcConnectorManagementService implements PlcConnectorManagementService, PersistentService<PlcConnectorInfo, PlcConnectorEntity> {
 	
 	@Autowired
+	private com.wow.be.tc.security.SecretCipher secretCipher;
+
+	@Autowired
 	private PlcConnectorRepository plcConnectorRepository;
 	
 	@Autowired
@@ -96,6 +99,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		normalizeProtocol(plcInfo);
 		PlcConnectorEntity entity=new PlcConnectorEntity();
 		entity.from(plcInfo);
+		storePassword(entity, plcInfo);
 		entity.setStatus1(PlcConnectorInfoStatus.REGISTERED.name());
 		entity.setStatus2(PlcConnectorOperStatus.CONNECTION_TEST_NONE.name());
 		PlcConnectorEntity saved=plcConnectorRepository.save(entity);
@@ -120,6 +124,7 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		}
 		normalizeProtocol(plcConnectorInfo);
 		entity.from(plcConnectorInfo);
+		storePassword(entity, plcConnectorInfo);
 		// perform more sets and save it
 		PlcConnectorEntity saved=plcConnectorRepository.save(entity);
 		// 게시·해제 때의 상태 갱신은 CONTROL 로 따로 남으므로, 상태 칼럼만 바뀐 갱신은 이력에서 빠진다(기록기가 상태 필드를 비교에서 뺀다)
@@ -393,6 +398,21 @@ public class DefaultPlcConnectorManagementService implements PlcConnectorManagem
 		Map<String, Object> settings=driver.normalizeSettings(info.getSettings(), legacy);
 		return adapter.execute(new PlcOperation(driver.protocol(), settings, PlcOperation.Kind.READ, points, Map.of(),
 			"test-read-" + java.util.UUID.randomUUID()));
+	}
+
+	/** 받은 비밀번호가 있으면 암호화해 둔다 — 비었으면 저장된 값 그대로(docs/opcua-design.md O13). TC_SECRET_KEY 가 없으면 400 */
+	private void storePassword(PlcConnectorEntity entity, PlcConnectorInfo info) {
+		if(info.getPassword()==null || info.getPassword().isEmpty()) {
+			return;
+		}
+		if(!secretCipher.isConfigured()) {
+			throw new IllegalArgumentException("비밀번호를 저장하려면 TC_SECRET_KEY 가 필요합니다");
+		}
+		try {
+			entity.setPasswordEnc(secretCipher.encrypt(info.getPassword()));
+		} catch(ToolControlException e) {
+			throw new IllegalArgumentException(e.getMessage());
+		}
 	}
 
 	@Override

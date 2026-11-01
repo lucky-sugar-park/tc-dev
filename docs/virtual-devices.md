@@ -7,7 +7,7 @@ tc 의 Modbus·OPC UA 드라이버를 개발·시험할 상대 장비다. MELSEC
 
 | | vplc(MELSEC) | vplc-modbus | vplc-opcua |
 |---|---|---|---|
-| 프로토콜 | MC 3E·4E | Modbus TCP | OPC UA(None·익명) |
+| 프로토콜 | MC 3E·4E | Modbus TCP | OPC UA(None·Basic256Sha256, 익명·사용자 이름) |
 | 장비 포트 | 15000 … | 15020 | 4840 (`/vplc`) |
 | REST | 8088 | **8091** | **8092** |
 | DB | MariaDB(장비·이력) | 없음(메모리) | 없음(메모리) |
@@ -53,7 +53,9 @@ cd wow-tc-backend
 
 ## 3. vplc-opcua
 
-Eclipse Milo 1.1.8 서버. 네임스페이스 `urn:wow:tc:vplc-opcua`(보통 번호 2). 태그 경로 `Line1.Temp` → 폴더 `Line1`(Objects 아래) + 변수 `Temp`, NodeId `ns=2;s=Line1.Temp`.
+Eclipse Milo 1.1.8 서버. 네임스페이스 `urn:wow:tc:vplc-opcua` — 앞에 빈 네임스페이스(`…:extra`)를 하나 더 두어 **번호가 3** 이다(`ns=2` 를 가정한 코드를 잡으려고). 태그 경로 `Line1.Temp` → 폴더 `Line1`(Objects 아래) + 변수 `Temp`, NodeId `nsu=urn:wow:tc:vplc-opcua;s=Line1.Temp`(= `ns=3;s=Line1.Temp`).
+
+**보안**(docs/opcua-design.md §7.2) — 엔드포인트 None·Basic256Sha256(Sign·SignAndEncrypt), 각각 익명·사용자 이름. 서버 인증서는 기동 때 자체 서명(메모리 — 다시 뜨면 바뀐다: tc 의 TOFU 커넥터는 거절하므로 "서버 인증서 잊기"). tc 클라이언트 인증서는 기본으로 모두 믿는다(`VPLC_OPCUA_TRUST_ALL_CLIENTS`). 시험 사용자 `tc-e2e` / 비밀번호 `VPLC_OPCUA_PASSWORD`(기본 `tc-e2e-pass` — 127.0.0.1 시험 장비라 기본값을 둔다). `VPLC_OPCUA_REQUIRE_LOGIN=true` 면 익명을 거절한다.
 
 **태그 형** — tc 점 형과 같은 이름: BOOL·INT16·UINT16·INT32·UINT32·INT64·FLOAT32·FLOAT64·STRING.
 
@@ -88,9 +90,9 @@ Eclipse Milo 1.1.8 서버. 네임스페이스 `urn:wow:tc:vplc-opcua`(보통 번
 | 커넥터 | 프로토콜 | 주소·포트 | 설정 |
 |---|---|---|---|
 | Modbus | `MODBUS_TCP` | 127.0.0.1 : 15020 | `unitId` 1(인터페이스 settings `unitId` 2 로 두 번째 장치) |
-| OPC UA | `OPC_UA` | 127.0.0.1 : 4840 | `endpointPath` `/vplc` — 점은 인터페이스 폼의 **노드 찾아보기**로 고른다 |
+| OPC UA | `OPC_UA` | 127.0.0.1 : 4840 | `endpointPath` `/vplc` — 점은 인터페이스 폼의 **노드 찾아보기**로 고른다. 보안 시험은 `securityPolicy` BASIC256SHA256 + `authMode` USERNAME(`tc-e2e`, 비밀번호는 커넥터 비밀번호 칸) |
 
 ## 5. 시험
 
 - 단위: `./gradlew :vplc-modbus:test :vplc-opcua:test` — Modbus PDU·TCP 왕복(단위 ID·게이트웨이 예외·무응답), OPC UA 클라이언트로 읽기·쓰기·찾아보기·흉내.
-- e2e(tc 상대): `test_plc_vmodbus.py`(8), `test_plc_opcua.py`(21) — 장비가 떠 있지 않으면 건너뛴다.
+- e2e(tc 상대): `test_plc_vmodbus.py`(8), `test_plc_opcua.py`(30, 보안 포함) — 장비가 떠 있지 않으면 건너뛴다.

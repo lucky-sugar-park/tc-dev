@@ -53,7 +53,7 @@
 | # | 일 | 상태 |
 |---|---|---|
 | 12 | PLC 보강: 주기적 연결 상태 확인, 4E 프레임, 응답 길이 검증, 포트 여러 개 병렬 시험 | ✅ 2026-10-31 — [plc-protocol-design.md](plc-protocol-design.md) §13. 실제 PLC 로 4E·루프백 확인은 남음 |
-| 13 | Modbus·OPC UA 어댑터(tc, vplc) | ✅ 2026-11-01 — Modbus TCP 드라이버(PLC 일반화 3단계), OPC UA 드라이버·세션 어댑터·구독(D1, [opcua-design.md](opcua-design.md)), 가상 장비 `vplc-modbus`·`vplc-opcua`([virtual-devices.md](virtual-devices.md)). 남은 것: OPC UA 인증·보안 정책(D2), 가상 장비 화면 |
+| 13 | Modbus·OPC UA 어댑터(tc, vplc) | ✅ 2026-11-01 — Modbus TCP 드라이버(PLC 일반화 3단계), OPC UA 드라이버·세션 어댑터·구독(D1, [opcua-design.md](opcua-design.md)), 가상 장비 `vplc-modbus`·`vplc-opcua`([virtual-devices.md](virtual-devices.md)). D2(로그인·보안 정책·인증서·nsu=) 2026-11-01 완료. 남은 것: 가상 장비 화면, Modbus 문자열 바이트 교환·RTU over TCP |
 | 14 | 로컬 시험 데이터 정리(`plc-fake`, `e2e-*`·`hist-*`·`redis-down` 클라이언트, 시험 이력, 시험 DB `tc_boot`) | ⬜ |
 | 15 | 비동기 어댑터 큐(죽은 코드) 제거 | ✅ | 어댑터의 타이머·큐·`request(holder, callback)`, `PlcReqAndResHolder`·`PlcRequestCallback`, 커넥터 설정 `asyncRequestUse`·`asyncTimer*`(API 필드 포함) 제거(2026-10-31). DB 칼럼은 남긴다 — `migration/007` 이 NULL 허용으로, DROP 은 주석 |
 | 16 | 운영 환경의 실제 호출 시스템 API 키 전환(감사 `PRINCIPAL` 로 대상 확인 → 키 발급·교체 → 옛 계정 중지) | ⬜ 운영 작업 — 이 버전 배포 전 전환이 안 끝났으면 배포 직후 전환 스위치를 켠다 |
@@ -102,3 +102,4 @@
 - 2026-11-01: 인터페이스 C단계 — 워드 안 비트(`D100.3`·`HR1.15`, 읽기 전용, 결정 I2), 점 배율·오프셋·단위·쓰기 범위(결정 I3, migration 013). 단위 101개, e2e `test_plc_points` 44개 통과.
 - 2026-11-01: 인터페이스 D1단계 — OPC UA(Eclipse Milo 1.1.8): 드라이버·세션 어댑터·연결 시험·노드 찾아보기 API·SUBSCRIBE 구독 → 전달 정의·감사, 화면 노드 찾아보기. 단위 106개(내장 Milo 서버 시험 5개). 회귀 e2e 462개·Playwright 20개(C단계 뒤) 통과.
 - 2026-11-01: #18 vplc 단위 테스트(9개). 가상 장비 새 프로젝트 `vplc-modbus`(:8091, Modbus :15020, 단위 ID 여럿·지연·무응답·연결 끊기)·`vplc-opcua`(:8092, OPC UA :4840/vplc, 태그·흉내) — [virtual-devices.md](virtual-devices.md). e2e `test_plc_vmodbus.py` 8개·`test_plc_opcua.py` 21개 통과(D3). 구독 맞추기에서 지연 로딩 오류를 찾아 고침.
+- 2026-11-01: OPC UA D2 — 사용자 이름 로그인(비밀번호는 TC_SECRET_KEY 암호화, migration 014), 보안 정책(Basic256Sha256·Aes128·Aes256)·모드, tc 클라이언트 인증서(client.pfx)·서버 인증서 TOFU·잊기, `nsu=` 주소(찾아보기도 nsu=). vplc-opcua 에 보안 엔드포인트·시험 사용자·네임스페이스 번호 3. 단위(tc OpcUaSecurityTest 4, vplc-opcua 2), e2e test_plc_opcua 30개 통과.
