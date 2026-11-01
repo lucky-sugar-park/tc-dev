@@ -6,6 +6,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useIsActiveScreen } from 'wow-mes-frontend-framework';
 import { LoadErrorState, PageContainer, extractApiError, showConfirm, showToast, useI18n, useLoadFailure } from 'wow-mes-frontend-shared';
 import { ListToolbar } from '../../shared/components/ListToolbar';
+import { ListTitle } from '../../shared/components/ListTitle';
 import { StandardGrid } from '../../shared/components/StandardGrid';
 import { fmtTime, matches } from '../../shared/format';
 import { usePerm } from '../../shared/usePerm';
@@ -92,8 +93,9 @@ export default function WebHookPage(): ReactElement {
     <PageContainer>
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.webhook.search', '이름·URL')} />
+      <ListTitle title={t('i18n.tc.webhook.listTitle', 'WebHook 목록')} count={filtered.length} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} />
+        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} pagination />
       </Box>
       <WebHookFormDialog open={form.open} initial={form.initial} canTest={perm('X')} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(h) => { void save(h); }} />

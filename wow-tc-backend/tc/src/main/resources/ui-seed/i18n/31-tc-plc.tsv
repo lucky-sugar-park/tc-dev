@@ -79,6 +79,7 @@ i18n.tc.point.wordBitReadOnly	워드 안 비트는 읽기만	Bit in word is read
 # 인터페이스
 i18n.tc.interface.auditHistory	송수신 이력 보기	View message history	送受信履歴を見る	查看收发记录
 i18n.tc.interface.auditTitle	송수신 이력	Message history	送受信履歴	收发记录
+i18n.tc.interface.listTitle	인터페이스 목록	Interfaces	インターフェース一覧	接口列表
 i18n.tc.interface.add	인터페이스 등록	Add interface	インターフェース登録	添加接口
 i18n.tc.interface.edit	인터페이스 수정	Edit interface	インターフェース編集	编辑接口
 i18n.tc.interface.confirmDelete	{name} 을(를) 지울까요? 이 opcode 로 오는 요청이 실패합니다.	Delete {name}? Requests with this opcode will fail.	{name} を削除しますか？このopcodeの要求は失敗します。	删除 {name}？使用此 opcode 的请求将失败。

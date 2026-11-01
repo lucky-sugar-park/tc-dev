@@ -16,6 +16,7 @@ import {
   LoadErrorState, PageContainer, downloadExcel, excelErrorMessage, extractApiError, fileStamp, showAlert, showConfirm, showToast, useI18n,
   useLoadFailure,
 } from 'wow-mes-frontend-shared';
+import { ListTitle } from '../../shared/components/ListTitle';
 import { ListToolbar } from '../../shared/components/ListToolbar';
 import { PAGE_SIZE_OPTIONS, StandardGrid } from '../../shared/components/StandardGrid';
 import { fmtTime, matches } from '../../shared/format';
@@ -315,13 +316,7 @@ export default function ConnectorPage(): ReactElement {
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} onExport={exportExcel}
         placeholder={t('i18n.tc.connector.search', '이름·주소·프로토콜')} />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Box sx={{ width: 4, height: 16, borderRadius: 0.5, bgcolor: 'primary.main' }} />
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          {t('i18n.tc.connector.listTitle', 'PLC 커넥터 목록')}
-          <Typography component="span" variant="subtitle1" color="text.secondary" sx={{ ml: 0.75 }}>({filtered.length})</Typography>
-        </Typography>
-        <Box sx={{ flex: 1 }} />
+      <ListTitle title={t('i18n.tc.connector.listTitle', 'PLC 커넥터 목록')} count={filtered.length}>
         <ToggleButtonGroup size="small" exclusive value={view} onChange={(_e, v: View | null) => changeView(v)}>
           <ToggleButton value="card" aria-label={t('i18n.tc.connector.viewCard', '카드로 보기')}>
             <Tooltip title={t('i18n.tc.connector.viewCard', '카드로 보기')}><ViewModuleIcon fontSize="small" /></Tooltip>
@@ -330,7 +325,7 @@ export default function ConnectorPage(): ReactElement {
             <Tooltip title={t('i18n.tc.connector.viewTable', '표로 보기')}><ViewListIcon fontSize="small" /></Tooltip>
           </ToggleButton>
         </ToggleButtonGroup>
-      </Box>
+      </ListTitle>
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {view === 'table' ? (
           <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']}

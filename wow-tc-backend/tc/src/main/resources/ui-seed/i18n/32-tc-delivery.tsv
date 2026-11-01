@@ -19,6 +19,7 @@ i18n.tc.delivery.requestCallback	(요청의 callback)	(request callback)	(要求
 i18n.tc.delivery.id	정의 ID	Rule ID	定義ID	规则ID
 i18n.tc.delivery.idHelp	비우면 인터페이스.유형.대상 으로 만든다	Leave empty to use interface.type.target	空欄なら インターフェース.種類.対象 で作成	留空则按 接口.类型.目标 生成
 i18n.tc.delivery.search	인터페이스·대상·ID	Interface, target, ID	インターフェース・対象・ID	接口、目标、ID
+i18n.tc.webhook.listTitle	WebHook 목록	WebHooks	WebHook一覧	WebHook 列表
 i18n.tc.webhook.add	WebHook 등록	Add WebHook	WebHook登録	添加 WebHook
 i18n.tc.webhook.edit	WebHook 수정	Edit WebHook	WebHook編集	编辑 WebHook
 i18n.tc.webhook.confirmDelete	{name} 을(를) 지울까요? 이 WebHook 을 쓰는 전달 정의는 보내지 못합니다.	Delete {name}? Delivery rules using this WebHook will fail.	{name} を削除しますか？このWebHookを使う配信定義は送信できません。	删除 {name}？使用此 WebHook 的投递规则将无法发送。
@@ -27,6 +28,7 @@ i18n.tc.webhook.sample	시험 데이터(JSON)	Sample data (JSON)	テストデー
 i18n.tc.webhook.check	보내 보기	Send test	送信テスト	测试发送
 i18n.tc.webhook.checkOk	보냈습니다(2xx 응답)	Sent (2xx response)	送信しました(2xx応答)	已发送(2xx 响应)
 i18n.tc.webhook.search	이름·URL	Name, URL	名前・URL	名称、URL
+i18n.tc.dbconn.listTitle	외부 연결 DB 목록	External DB connections	外部接続DB一覧	外部连接数据库列表
 i18n.tc.dbconn.add	DB 연결 등록	Add DB connection	DB接続登録	添加数据库连接
 i18n.tc.dbconn.edit	DB 연결 수정	Edit DB connection	DB接続編集	编辑数据库连接
 i18n.tc.dbconn.confirmDelete	{name} 을(를) 지울까요? 이 연결을 쓰는 전달 정의가 있으면 지울 수 없습니다.	Delete {name}? It cannot be deleted while delivery rules use it.	{name} を削除しますか？この接続を使う配信定義があると削除できません。	删除 {name}？有投递规则使用时无法删除。
