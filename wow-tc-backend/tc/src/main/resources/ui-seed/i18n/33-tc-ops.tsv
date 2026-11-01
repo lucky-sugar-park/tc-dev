@@ -111,3 +111,4 @@ i18n.tc.schedule.histExcelFile	스케줄Job실행이력	ScheduleJobRuns	スケ�
 i18n.tc.confighist.listTitle	설정 변경 이력	Configuration changes	設定変更履歴	配置变更历史
 i18n.tc.confighist.excelFile	설정변경이력	ConfigChanges	設定変更履歴	配置变更历史
 i18n.tc.confighist.actorType	행위자 종류	Actor type	行為者種類	操作者类型
+i18n.tc.schedule.listTitle	스케줄 Job 목록	Schedule jobs	スケジュールJob一覧	计划任务列表

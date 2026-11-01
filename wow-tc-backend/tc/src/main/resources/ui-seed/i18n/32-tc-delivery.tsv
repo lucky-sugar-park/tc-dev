@@ -42,3 +42,4 @@ i18n.tc.dbconn.passwordNone	없음	None	なし	无
 i18n.tc.dbconn.pool	최대 연결 수	Max connections	最大接続数	最大连接数
 i18n.tc.dbconn.test	연결 시험	Connection test	接続テスト	连接测试
 i18n.tc.dbconn.search	이름·URL	Name, URL	名前・URL	名称、URL
+i18n.tc.delivery.listTitle	전달 정의 목록	Delivery rules	配信定義一覧	投递规则列表

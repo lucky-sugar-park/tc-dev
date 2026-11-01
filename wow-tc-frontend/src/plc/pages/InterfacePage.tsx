@@ -11,7 +11,6 @@ import {
   useLoadFailure,
 } from 'wow-mes-frontend-shared';
 import { ListToolbar } from '../../shared/components/ListToolbar';
-import { ListTitle } from '../../shared/components/ListTitle';
 import { StandardGrid } from '../../shared/components/StandardGrid';
 import { fmtTime, matches } from '../../shared/format';
 import { useCan, usePerm } from '../../shared/usePerm';
@@ -193,9 +192,8 @@ export default function InterfacePage(): ReactElement {
             </FilterField>
           </>
         )} />
-      <ListTitle title={t('i18n.tc.interface.listTitle', '인터페이스 목록')} count={filtered.length} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} isInactive={(r) => !r.use} pagination />
+        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']} isInactive={(r) => !r.use} title={t('i18n.tc.interface.listTitle', '인터페이스 목록')} />
       </Box>
       <InterfaceFormDialog open={form.open} initial={form.initial} connectors={connectors} protocols={protocols}
         error={form.error} onClose={() => setForm({ open: false })} onSubmit={(info) => { void save(info); }} />

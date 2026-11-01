@@ -172,7 +172,7 @@ export default function I18nPage(): ReactElement {
           </>
         )} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', '& .cell-missing': { bgcolor: 'warning.light', opacity: 0.6 } }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.code} pinLeft={['code']} />
+        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.code} pinLeft={['code']} title={t('i18n.tc.i18nmgmt.listTitle', '다국어 목록')} />
       </Box>
       <I18nFormDialog open={form.open} initial={form.initial} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(e) => { void save(e); }} />

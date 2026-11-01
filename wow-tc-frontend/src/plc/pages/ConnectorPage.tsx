@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Box, Chip, TablePagination, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material';
+import { Box, Chip, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material';
 import { GridActionsCellItem, type GridColDef, type GridPaginationModel } from '@mui/x-data-grid-pro';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
@@ -18,7 +18,7 @@ import {
 } from 'wow-mes-frontend-shared';
 import { ListTitle } from '../../shared/components/ListTitle';
 import { ListToolbar } from '../../shared/components/ListToolbar';
-import { PAGE_SIZE_OPTIONS, StandardGrid } from '../../shared/components/StandardGrid';
+import { PAGE_SIZE_OPTIONS, StandardGrid, TopPagination } from '../../shared/components/StandardGrid';
 import { fmtTime, matches } from '../../shared/format';
 import { usePerm } from '../../shared/usePerm';
 import { ConnectorCards, type ConnectorAction } from '../components/ConnectorCards';
@@ -325,13 +325,15 @@ export default function ConnectorPage(): ReactElement {
             <Tooltip title={t('i18n.tc.connector.viewTable', '표로 보기')}><ViewListIcon fontSize="small" /></Tooltip>
           </ToggleButton>
         </ToggleButtonGroup>
+        {/* 쪽 넘김 — 카드·표가 같은 쪽을 쓴다 */}
+        <TopPagination count={filtered.length} model={page} onChange={setPage} />
       </ListTitle>
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {view === 'table' ? (
           <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.name} pinLeft={['name']}
             isInactive={(r) => !r.published} pagination
             gridProps={{
-              paginationModel: page, onPaginationModelChange: setPage,
+              paginationModel: page, onPaginationModelChange: setPage, hideFooter: true,
               processRowUpdate: saveRow,
               onProcessRowUpdateError: (e: unknown) => showToast(e instanceof Error && !('response' in e) ? e.message : extractApiError(e), 'error'),
             }} />
@@ -340,10 +342,6 @@ export default function ConnectorPage(): ReactElement {
             <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
               <ConnectorCards rows={cardRows} actionsFor={actionsFor} selected={selectedCard} onSelect={setSelectedCard} />
             </Box>
-            <TablePagination component="div" count={filtered.length} page={page.page} rowsPerPage={page.pageSize}
-              rowsPerPageOptions={PAGE_SIZE_OPTIONS} showFirstButton showLastButton
-              onPageChange={(_e, p) => setPage((m) => ({ ...m, page: p }))}
-              onRowsPerPageChange={(e) => setPage({ page: 0, pageSize: Number(e.target.value) })} />
           </>
         )}
       </Box>

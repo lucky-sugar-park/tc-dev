@@ -43,8 +43,9 @@ test('가상 PLC 목록 — 등록·게시·시작·연결·정지·해제·삭�
   await expect(row.getByText('PUBLISHED')).toBeVisible();
   await row.getByRole('button', { name: '시작' }).click();
   await expect(row.getByText('RUNNING')).toBeVisible();
-  await rowMenu(page, name, '연결');
-  await expect(page.getByRole('dialog').getByRole('row').filter({ hasText: String(port) })).toHaveCount(1);
+  // 연결 클라이언트 보기 — 포트 번호·연결 수·클라이언트 IP 가로 표
+  await rowMenu(page, name, '연결 클라이언트 보기');
+  await expect(page.getByRole('dialog').getByRole('table', { name: 'connected-clients' }).getByRole('cell', { name: String(port), exact: true })).toHaveCount(1);
   await page.keyboard.press('Escape');
   await rowMenu(page, name, '정지');
   await expect(row.getByText('STOPPED')).toBeVisible();

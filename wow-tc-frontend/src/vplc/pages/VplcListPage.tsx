@@ -194,7 +194,7 @@ export default function VplcListPage(): ReactElement {
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.vplc.search', '이름·IP·설명')} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.id} pinLeft={['name']} isInactive={(r) => !isPublished(r.status)} />
+        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.id} pinLeft={['name']} title={t('i18n.tc.vplc.listTitle', '가상 PLC 목록')} isInactive={(r) => !isPublished(r.status)} />
       </Box>
       <VplcFormDialog open={form.open} initial={form.initial} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(v) => { void save(v); }} />

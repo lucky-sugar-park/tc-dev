@@ -152,7 +152,7 @@ export default function UserPage(): ReactElement {
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('C') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.user.search', '아이디·이름·이메일')} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.id} pinLeft={['id']} isInactive={(r) => !r.enabled} />
+        <StandardGrid rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.id} pinLeft={['id']} title={t('i18n.tc.user.listTitle', '사용자 목록')} isInactive={(r) => !r.enabled} />
       </Box>
       <UserFormDialog open={form.open} initial={form.initial} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(u) => { void save(u); }} />

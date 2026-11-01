@@ -99,3 +99,6 @@ i18n.tc.code.nameHelp	언어별 이름은 다국어 화면에서 — 다국어 �
 i18n.tc.code.pickGroup	왼쪽에서 그룹을 고르세요	Select a group on the left	左でグループを選んでください	请在左侧选择分组
 i18n.tc.code.search	그룹 코드·이름	Group code · name	グループコード・名前	分组代码・名称
 i18n.tc.code.confirmDelete	{code} 을(를) 지울까요?	Delete {code}?	{code} を削除しますか?	删除 {code}?
+i18n.tc.user.listTitle	사용자 목록	Users	ユーザー一覧	用户列表
+i18n.tc.apiclient.listTitle	API 클라이언트 목록	API clients	APIクライアント一覧	API 客户端列表
+i18n.tc.i18nmgmt.listTitle	다국어 목록	Translations	多言語一覧	多语言列表
