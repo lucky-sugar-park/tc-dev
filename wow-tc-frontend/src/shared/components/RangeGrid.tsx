@@ -1,16 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
-import {
-  Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, FormControlLabel, IconButton, LinearProgress, Radio,
-  RadioGroup, Stack, TextField, Tooltip, Typography,
-} from '@mui/material';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { Autocomplete, Box, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import {
   DataGridPro, GridGetRowsError, useGridApiRef, type DataGridProProps, type GridColDef, type GridDataSource, type GridValidRowModel,
 } from '@mui/x-data-grid-pro';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import {
-  DialogTitleClose, DraggablePaper, downloadExcel, excelErrorMessage, fileStamp, showToast, useI18n, type ExcelRow,
-} from 'wow-mes-frontend-shared';
+import { showToast, useI18n, type ExcelRow } from 'wow-mes-frontend-shared';
+import { ExportDialog, type ExportOption, type ExportScope } from './ExportDialog';
 import { ListTitle } from './ListTitle';
 import { MoreActionsIcon, withActionTooltips } from './actionTooltips';
 
@@ -26,11 +22,10 @@ import { MoreActionsIcon, withActionTooltips } from './actionTooltips';
  * </ul>
  */
 
+export { EXPORT_MAX, type ExportOption } from './ExportDialog';
+
 /** 그리드가 한 번에 다루는 행 수(구간) — 스켈레톤·받은 행의 상한 */
 export const SEGMENT_SIZE = 100_000;
-
-/** 브라우저에서 .xlsx 로 만드는 최대 건수 */
-export const EXPORT_MAX = 200_000;
 
 /** 한 번에 받는 행 수 — 고를 값과 직접 입력 범위(서버 상한 1000) */
 const CHUNK_OPTIONS = ['50', '100', '200'];
@@ -241,12 +236,9 @@ export function RangeGrid<T extends GridValidRowModel>({ grid, title, columns, g
   );
 }
 
-/** 엑셀의 추가 선택 — 예: 송수신 기록의 본문 포함 */
-export type ExportOption = { key: string; label: string; help?: string };
-
 /**
- * 엑셀 내려받기 — 지금 구간 또는 검색 결과 전체를, 화면과 같은 조건·스냅샷으로 서버에서 나눠 받아 .xlsx 로 만든다.
- * {@link EXPORT_MAX} 건을 넘으면 만들지 않고 조건을 좁히라고 알린다.
+ * 엑셀 내려받기 — 지금 구간 또는 검색 결과 전체를, 화면과 같은 조건·스냅샷으로 서버에서 나눠 받아 .xlsx 로 만든다(공통 창 {@link ExportDialog}).
+ * 지금 구간은 결과가 한 구간보다 클 때만 고를 수 있다.
  */
 export function RangeExportDialog<T extends GridValidRowModel>({ open, onClose, grid, fileName, sheetName, toRow, options }: {
   open: boolean;
@@ -258,77 +250,21 @@ export function RangeExportDialog<T extends GridValidRowModel>({ open, onClose, 
   options?: ExportOption[];
 }): ReactElement {
   const { t } = useI18n();
-  const [scope, setScope] = useState<'segment' | 'all'>('all');
-  const [extra, setExtra] = useState<Record<string, boolean>>({});
-  const [done, setDone] = useState<number | null>(null);
-  const cancelRef = useRef(false);
   const total = grid.total ?? 0;
   const segFrom = grid.segment * SEGMENT_SIZE;
   const segTo = Math.min(total, segFrom + SEGMENT_SIZE);
-  const [from, to] = scope === 'segment' ? [segFrom, segTo] : [0, total];
-  const count = Math.max(0, to - from);
-  const tooMany = count > EXPORT_MAX;
-  const running = done !== null;
-
-  useEffect(() => { if (open) { setDone(null); cancelRef.current = false; setScope(total > SEGMENT_SIZE ? 'segment' : 'all'); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const close = () => { cancelRef.current = true; setDone(null); onClose(); };
-
-  const start = async () => {
-    cancelRef.current = false;
-    setDone(0);
-    try {
-      const rows = await grid.fetchAll(from, to, extra, setDone, () => cancelRef.current);
-      if (!rows) return;
-      await downloadExcel({ fileName: `${fileName}_${fileStamp()}`, sheets: [{ name: sheetName, rows: rows.map((r, i) => toRow(r, from + i + 1)) }] });
-      onClose();
-    } catch (e) {
-      showToast(excelErrorMessage(e), 'error');
-    } finally {
-      setDone(null);
-    }
-  };
-
-  const info: ReactNode = tooMany
-    ? <Alert severity="warning">{t('i18n.tc.range.exportTooMany', '{n}건은 엑셀로 만들기에 많습니다(최대 {max}건) — 기간 등 조건을 좁히세요.')
-      .replace('{n}', count.toLocaleString()).replace('{max}', EXPORT_MAX.toLocaleString())}</Alert>
-    : <Typography variant="body2">{t('i18n.tc.range.exportCount', '{n}건을 내려받습니다.').replace('{n}', count.toLocaleString())}</Typography>;
-
+  const range = (key: string, label: string, from: number, to: number): ExportScope<T> => ({
+    key, label, from, count: Math.max(0, to - from),
+    load: (extra, onProgress, cancelled) => grid.fetchAll(from, to, extra, onProgress, cancelled),
+  });
+  const scopes = [
+    ...(total > SEGMENT_SIZE
+      ? [range('segment', `${t('i18n.tc.range.exportSegment', '지금 구간')} (${(segFrom + 1).toLocaleString()}~${segTo.toLocaleString()})`, segFrom, segTo)]
+      : []),
+    range('all', `${t('i18n.tc.range.exportAll', '검색 결과 전체')} (${total.toLocaleString()})`, 0, total),
+  ];
   return (
-    <Dialog open={open} onClose={running ? undefined : close} maxWidth="xs" fullWidth PaperComponent={DraggablePaper}>
-      <DialogTitleClose onClose={close}>{t('i18n.common.excelDownload', '엑셀 다운로드')}</DialogTitleClose>
-      <DialogContent dividers>
-        <Stack spacing={1.5}>
-          <RadioGroup value={scope} onChange={(_e, v) => setScope(v as 'segment' | 'all')}>
-            {total > SEGMENT_SIZE && (
-              <FormControlLabel value="segment" disabled={running} control={<Radio size="small" />}
-                label={`${t('i18n.tc.range.exportSegment', '지금 구간')} (${(segFrom + 1).toLocaleString()}~${segTo.toLocaleString()})`} />
-            )}
-            <FormControlLabel value="all" disabled={running} control={<Radio size="small" />}
-              label={`${t('i18n.tc.range.exportAll', '검색 결과 전체')} (${total.toLocaleString()})`} />
-          </RadioGroup>
-          {options?.map((o) => (
-            <Box key={o.key}>
-              <FormControlLabel disabled={running} control={<Checkbox size="small" checked={!!extra[o.key]}
-                onChange={(e) => setExtra({ ...extra, [o.key]: e.target.checked })} />} label={o.label} />
-              {o.help && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', pl: 4, mt: -0.5 }}>{o.help}</Typography>}
-            </Box>
-          ))}
-          {info}
-          {running && (
-            <Box>
-              <LinearProgress variant="determinate" value={count ? Math.min(100, (done / count) * 100) : 0} />
-              <Typography variant="caption" color="text.secondary">{done.toLocaleString()} / {count.toLocaleString()}</Typography>
-            </Box>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={close}>{running ? t('i18n.common.cancel', '취소') : t('i18n.common.close', '닫기')}</Button>
-        <Button variant="contained" disabled={running || tooMany || count === 0} onClick={() => { void start(); }}>
-          {t('i18n.tc.range.exportStart', '내려받기')}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <ExportDialog open={open} onClose={onClose} scopes={scopes} defaultScope={total > SEGMENT_SIZE ? 'segment' : 'all'}
+      fileName={fileName} sheetName={sheetName} toRow={toRow} options={options} />
   );
 }

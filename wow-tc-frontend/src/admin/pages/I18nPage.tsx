@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactElement } from 'react';
 import { Alert, Box, Button, Dialog, DialogContent, MenuItem, Stack, TextField } from '@mui/material';
-import { GridActionsCellItem, type GridColDef } from '@mui/x-data-grid-pro';
+import {
+  GridActionsCellItem, gridFilteredSortedRowEntriesSelector, gridPaginatedVisibleSortedGridRowEntriesSelector, useGridApiRef, type GridColDef,
+} from '@mui/x-data-grid-pro';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useIsActiveScreen } from 'wow-mes-frontend-framework';
 import {
-  DialogFooter, DialogTitleClose, DraggablePaper, LoadErrorState, PageContainer, extractApiError, showConfirm, showToast, useI18n, useLoadFailure,
+  DialogFooter, DialogTitleClose, DraggablePaper, LoadErrorState, PageContainer, ScreenAction, excelErrorMessage, extractApiError,
+  readExcelRows, showConfirm, showToast, useI18n, useLoadFailure,
 } from 'wow-mes-frontend-shared';
+import { I18nUploadDialog, planUpload, toExcelRows } from '../components/I18nExcel';
+import { ExportDialog, type ExportScope } from '../../shared/components/ExportDialog';
 import { ListToolbar } from '../../shared/components/ListToolbar';
 import { StandardGrid } from '../../shared/components/StandardGrid';
 import { usePerm } from '../../shared/usePerm';
@@ -151,12 +156,52 @@ export default function I18nPage(): ReactElement {
     },
   ], [t, perm, remove]);
 
+  const kindLabel = useCallback((k: (typeof KINDS)[number]) => t(k.i18n, k.label), [t]);
+
+  /**
+   * 엑셀 다운로드 — 송수신 기록과 같은 창(공통 ExportDialog). 범위는 지금 쪽·검색 결과 전체(검색·종류·빠진 언어 반영),
+   * 둘 다 표에 보이는 순서(칸 머리 정렬 반영).
+   */
+  const gridApi = useGridApiRef();
+  const [exporting, setExporting] = useState(false);
+  const exportScopes = useMemo<ExportScope<I18nEntry>[]>(() => {
+    if (!exporting || !gridApi.current) return [];
+    const all = gridFilteredSortedRowEntriesSelector(gridApi).map((e) => e.model as I18nEntry);
+    const pageRows = gridPaginatedVisibleSortedGridRowEntriesSelector(gridApi).map((e) => e.model as I18nEntry);
+    const m = gridApi.current.state.pagination.paginationModel;
+    const from = m.page * m.pageSize;
+    return [
+      { key: 'page', label: `${t('i18n.tc.range.exportPage', '지금 쪽')} (${pageRows.length ? `${(from + 1).toLocaleString()}~${(from + pageRows.length).toLocaleString()}` : 0})`,
+        from, count: pageRows.length, load: async () => pageRows },
+      { key: 'all', label: `${t('i18n.tc.range.exportAll', '검색 결과 전체')} (${all.length.toLocaleString()})`, from: 0, count: all.length, load: async () => all },
+    ];
+  }, [exporting, gridApi, t]);
+
+  /** 엑셀 업로드 — 파일을 읽어 미리보기(새로·바뀜·같음·오류) */
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [plan, setPlan] = useState<ReturnType<typeof planUpload> | null>(null);
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      // 비교 기준은 종류 거르기와 상관없이 전체
+      const all = kind ? await i18nAdminApi.list() : rows;
+      setPlan(planUpload(await readExcelRows(file), all, KINDS, kindLabel));
+    } catch (e) {
+      showToast(excelErrorMessage(e), 'error');
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   if (error && rows.length === 0) return <LoadErrorState message={error} onRetry={retry} retrying={loading} />;
 
   return (
     <PageContainer>
+      <input ref={fileRef} type="file" hidden accept=".xlsx,.xls" aria-label="i18n-excel-file" onChange={(e) => { void onFile(e.target.files?.[0]); }} />
       <ListToolbar search={search} onSearch={setSearch} onRefresh={() => { void load(); }}
         onAdd={perm('U') ? () => setForm({ open: true }) : undefined} placeholder={t('i18n.tc.i18n.search', '코드·값')}
+        onExport={() => setExporting(true)}
+        actions={perm('U') ? <ScreenAction kind="excelUp" onClick={() => fileRef.current?.click()} /> : undefined}
         filters={(
           <>
             <TextField select size="small" label={t('i18n.tc.audit.type', '종류')} value={kind} onChange={(e) => setKind(e.target.value)} sx={{ width: 150 }}
@@ -172,10 +217,16 @@ export default function I18nPage(): ReactElement {
           </>
         )} />
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', '& .cell-missing': { bgcolor: 'warning.light', opacity: 0.6 } }}>
-        <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.code} pinLeft={['code']} title={t('i18n.tc.i18nmgmt.listTitle', '다국어 목록')} />
+        <StandardGrid numbered rows={filtered} columns={columns} loading={loading} getRowId={(r) => r.code} pinLeft={['code']} title={t('i18n.tc.i18nmgmt.listTitle', '다국어 목록')}
+          gridProps={{ apiRef: gridApi }} />
       </Box>
       <I18nFormDialog open={form.open} initial={form.initial} error={form.error}
         onClose={() => setForm({ open: false })} onSubmit={(e) => { void save(e); }} />
+      <ExportDialog open={exporting} onClose={() => setExporting(false)} scopes={exportScopes} defaultScope="all"
+        fileName={t('i18n.tc.i18n.excelFile', '다국어')} sheetName={t('i18n.tc.i18n.excelFile', '다국어')}
+        toRow={(r) => toExcelRows([r], KINDS, kindLabel)[0]} />
+      <I18nUploadDialog plan={plan} onClose={() => setPlan(null)}
+        onDone={(n) => { showToast(t('i18n.tc.i18n.upDone', '{n}건을 저장했습니다').replace('{n}', String(n)), 'success'); void loadRef.current(); }} />
     </PageContainer>
   );
 }

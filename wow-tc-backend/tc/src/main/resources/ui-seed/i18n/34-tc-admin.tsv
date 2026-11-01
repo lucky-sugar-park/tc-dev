@@ -103,3 +103,11 @@ i18n.tc.user.listTitle	사용자 목록	Users	ユーザー一覧	用户列表
 i18n.tc.apiclient.listTitle	API 클라이언트 목록	API clients	APIクライアント一覧	API 客户端列表
 i18n.tc.i18nmgmt.listTitle	다국어 목록	Translations	多言語一覧	多语言列表
 i18n.tc.code.listTitle	공통 코드 목록	Common codes	共通コード一覧	通用代码列表
+i18n.tc.i18n.excelFile	다국어	Translations	多言語	多语言
+i18n.tc.i18n.upNew	새로	New	新規	新增
+i18n.tc.i18n.upChanged	바뀜	Changed	変更	变更
+i18n.tc.i18n.upSame	같음	Unchanged	同じ	相同
+i18n.tc.i18n.upErrors	오류	Errors	エラー	错误
+i18n.tc.i18n.upHelp	새 코드와 바뀐 코드만 저장합니다. 빈 언어 칸은 지우지 않고 그대로 둡니다. 오류 줄은 건너뜁니다.	Only new and changed codes are saved. Empty language cells keep the current value. Rows with errors are skipped.	新規と変更のコードだけ保存します。空の言語セルは削除せずそのままです。エラー行はスキップします。	只保存新增和变更的代码。空的语言单元格保持原值。错误行将跳过。
+i18n.tc.i18n.upApply	반영	Apply	反映	应用
+i18n.tc.i18n.upDone	{n}건을 저장했습니다	Saved {n} items	{n}件を保存しました	已保存 {n} 条
