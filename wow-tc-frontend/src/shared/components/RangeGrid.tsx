@@ -177,13 +177,15 @@ function RangeControls<T extends GridValidRowModel>({ grid }: { grid: RangeGridS
           </Tooltip>
         </Stack>
       )}
+      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{t('i18n.tc.range.chunk', '한 번에 받는 행 수')}</Typography>
       <Autocomplete
-        freeSolo disableClearable size="small" options={CHUNK_OPTIONS} value={String(grid.chunk)} inputValue={text}
+        freeSolo forcePopupIcon disableClearable size="small" options={CHUNK_OPTIONS} value={String(grid.chunk)} inputValue={text}
         onInputChange={(_e, v) => setText(v)} onChange={(_e, v) => commit(String(v))}
-        sx={{ width: 150 }}
+        sx={{ width: 100 }}
         renderInput={(p) => (
-          <TextField {...p} label={t('i18n.tc.range.chunk', '한 번에 받는 행 수')}
-            onBlur={() => commit(text)}
+          <TextField {...p} onBlur={() => commit(text)}
+            // 라벨·테두리 없이 — 왼쪽 글이 라벨이다
+            sx={{ '& .MuiOutlinedInput-notchedOutline': { border: 'none' }, '& .MuiInputBase-input': { textAlign: 'right' } }}
             slotProps={{ ...p.slotProps, htmlInput: { ...p.slotProps.htmlInput, 'aria-label': t('i18n.tc.range.chunk', '한 번에 받는 행 수'), inputMode: 'numeric' } }} />
         )}
       />
