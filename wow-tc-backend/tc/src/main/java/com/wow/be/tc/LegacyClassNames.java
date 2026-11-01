@@ -4,7 +4,6 @@ import java.util.Map;
 
 import com.wow.be.tc.plc.connector.melsec.MelsecProgrammableControllerAdapter;
 import com.wow.be.tc.schedule.jobs.DataTableFlashJob;
-import com.wow.be.tc.schedule.jobs.PlcConnectorSpyScheduleJob;
 import com.wow.be.tc.schedule.jobs.PlcGeneralScheduleJob;
 
 import lombok.extern.slf4j.Slf4j;
@@ -22,8 +21,7 @@ public final class LegacyClassNames {
 	private static final Map<String, Class<?>> KNOWN = Map.of(
 		MelsecProgrammableControllerAdapter.class.getSimpleName(), MelsecProgrammableControllerAdapter.class,
 		DataTableFlashJob.class.getSimpleName(), DataTableFlashJob.class,
-		PlcGeneralScheduleJob.class.getSimpleName(), PlcGeneralScheduleJob.class,
-		PlcConnectorSpyScheduleJob.class.getSimpleName(), PlcConnectorSpyScheduleJob.class
+		PlcGeneralScheduleJob.class.getSimpleName(), PlcGeneralScheduleJob.class
 	);
 
 	private LegacyClassNames() {

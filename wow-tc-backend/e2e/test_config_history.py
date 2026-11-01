@@ -88,12 +88,12 @@ check("전달 정의 CREATE→UPDATE→DELETE", [x["action"] for x in reversed(h
 jn = f"hist-job-{RUN}"
 s, j = call("POST", "/api/v1/schedule-job/management/register", {"name": jn, "schedulerName": "TestScheduler", "use": False, "groupName": "E2E",
      "jobClassName": "com.wow.be.tc.schedule.jobs.PlcGeneralScheduleJob", "triggerType": "cron", "cronExpression": "0 0 0 1 1 ?",
-     "startDelay": 0, "repeatInterval": 0, "jobDetails": [{"entryKey": "interfaceName", "entryValue": "plc.fake.read", "entryValueType": "string", "oper": "C"}]})
+     "startDelay": 0, "repeatInterval": 0, "jobDetails": [{"entryKey": "interfaceName", "entryValue": "plc.e2e.d100.read", "entryValueType": "string", "oper": "C"}]})
 jid = j.get("id") if isinstance(j, dict) else None
 call("DELETE", f"/api/v1/schedule-job/management/delete/byName/{jn}")
 jh = hist("SCHEDULE_JOB", jid)
 check("스케줄 Job CREATE→DELETE, 삭제 전 값에 상세(interfaceName) 포함", [x["action"] for x in reversed(jh)] == ["CREATE", "DELETE"]
-      and "plc.fake.read" in (jh[0]["beforeJson"] or ""), jh)
+      and "plc.e2e.d100.read" in (jh[0]["beforeJson"] or ""), jh)
 
 # ── 검색 API ──
 s, page = call("POST", "/api/v1/config-history/search", {"actorId": "tc-tester", "targetType": "API_CLIENT", "page": 0, "size": 5})

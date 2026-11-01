@@ -119,7 +119,7 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 | 전달 › 외부 DB 연결 | `tc.delivery.dbconn` `/delivery/db-connections` | `tc.dbconn` | 연결 등록(비밀번호 가림)·시험·테이블 검증 | 없음 |
 | **운영** › 송수신 기록 | `tc.ops.audit` `/ops/audit` | `tc.audit` | 범위 조회(기간·opcode·성공 여부·트랜잭션 ID), 요청·응답·전달 묶어 보기, **결과 재전송**(관리자) | 무한 스크롤 표 유지 |
 | 운영 › 메시지 모니터 | `tc.ops.monitor` `/ops/monitor` | `tc.audit` | 들어오는 요청·응답을 SSE 로(멈춤·필터·최대 행) | SSE 버그로 동작 안 함 |
-| 운영 › 스케줄 Job | `tc.ops.schedule` `/ops/schedule-jobs` | `tc.schedule` | 목록·등록(Job 종류를 고름 — 클래스 이름 입력 없앰)·예약·취소·멈춤·재개, 실행 이력 | 클래스 이름 입력 |
+| 운영 › 스케줄 Job | `tc.ops.schedule` `/ops/schedule-jobs` | `tc.schedule` | 목록(최근 실행·최근 결과·최근 실패·다음 실행)·등록(Job 종류를 고름 — 클래스 이름 입력 없앰)·예약·취소·멈춤·재개, 행 아래 **속성 탭·실행 이력 탭**([schedule-jobs.md](schedule-jobs.md)) | 클래스 이름 입력 |
 | 운영 › 설정 변경 이력 | `tc.ops.confighist` `/ops/config-history` | `tc.confighist` | 대상·기간으로 조회, 앞뒤 비교 | 없음 |
 | **관리** › 사용자 | `tc.admin.user` `/admin/users` | `tc.user` | 사용자·역할(ADMIN·OPERATOR·VIEWER)·잠금 해제·비밀번호 초기화, 로그인 이력 | 메뉴만 |
 | 관리 › API 클라이언트 | `tc.admin.apiclient` `/admin/api-clients` | `tc.apiclient` | 클라이언트·허용 opcode·IP·URL 접두어, 키 발급·회전(키는 한 번만 보임)·폐기, 사용량 | 없음 |
@@ -233,7 +233,7 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 |---|---|
 | 송수신 기록 | 기간(부터·까지)·opcode·거래 ID·종류·실패만으로 **서버에서** 찾는다(최신순, 쪽 단위). 행을 누르면 그 거래의 기록 전부(요청·응답·오류·전달). 관리자(`action.tc.redeliver` X)는 골라서 **결과 재전송** — 전달 기록은 같은 대상으로, 응답·오류 기록은 그 인터페이스의 지금 전달 정의 중에서 고른다 |
 | 메시지 모니터 | SSE `audit_message` 로 들어오는 기록을 바로 보인다 — 멈춤·비우기·최대 행·걸러 보기, 받은 것·실패 수. 끊기면 다시 잇는다 |
-| 스케줄 Job | 종류(PLC 요청·송수신 기록 정리·기타)를 고르면 필요한 값만 묻는다(옛 화면의 클래스 이름 입력 대신). cron 또는 시작 지연 + 반복 간격. 저장하면 사용일 때 (다시) 예약, 쓰지 않음이면 예약 취소. 멈춤·재개·예약 취소·다시 예약·실행 이력·삭제 |
+| 스케줄 Job | 종류(PLC 요청·송수신 기록 정리·기타)를 고르면 필요한 값만 묻는다(옛 화면의 클래스 이름 입력 대신). cron 또는 시작 지연 + 반복 간격. 저장하면 사용일 때 (다시) 예약, 쓰지 않음이면 예약 취소. 멈춤·재개·예약 취소·다시 예약·실행 이력·삭제. **2026-11-01 고침**: 속성 표와 실행 이력이 빠져 있었다 — 종류가 "필요한 값" 한두 개만 물어 속성을 보거나 더하거나 지울 수 없었고, 이력은 ⋮ 메뉴 창에만 있었다. 행 아래 속성·실행 이력 탭, 목록의 최근 실행 칸으로 다시 만들었다([schedule-jobs.md](schedule-jobs.md)) |
 | 설정 변경 이력 | 기간·대상 종류·대상 ID·바꾼 사람으로 찾고, 행을 누르면 앞뒤 값(JSON)과 바뀐 칸 |
 
 - 백엔드: `POST /api/v1/ifsvc/audit/search/query`(`AuditQuery` — 기간·opcode·거래 ID·종류·실패만·호출자, 쪽 크기 1~500). framework 일반 검색은 날짜 범위를 문자열로 비교해 쓸 수 없어 JPA Specification 으로 따로. 실패만 = 응답 `ERR…` · 오류 · `OK` 로 시작하지 않는 전달.

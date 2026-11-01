@@ -1,13 +1,20 @@
 package com.wow.be.tc.schedule.impl;
 
 import java.util.Date;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import jakarta.persistence.criteria.Predicate;
 
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition.SortDirection;
@@ -89,5 +96,35 @@ public class DefaultScheduleJobExecHistoryService
 		log.debug("");
 		cond.setPageInfo(pageInfo);
 		return searchScheduleJobExecHistory(cond);
+	}
+
+	@Override
+	public Page<ScheduleJobExecHistoryInfo> query(String jobName, Date from, Date to, String result, int page, int size) {
+		Specification<ScheduleJobExecHistoryEntity> spec = (root, q, cb) -> {
+			List<Predicate> where = new ArrayList<>();
+			if (StringUtils.hasText(jobName)) where.add(cb.equal(root.get("jobName"), jobName));
+			if (from != null) where.add(cb.greaterThanOrEqualTo(root.get("executionTime"), from));
+			if (to != null) where.add(cb.lessThan(root.get("executionTime"), to));
+			if (StringUtils.hasText(result)) where.add(cb.equal(root.get("executionResult"), result));
+			return cb.and(where.toArray(Predicate[]::new));
+		};
+		PageRequest req = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 500), Sort.by(Sort.Direction.DESC, "seqNo"));
+		return scheduleJobExecHistoryRepository.findAll(spec, req).map(ScheduleJobExecHistoryEntity::info);
+	}
+
+	@Override
+	public Map<String, ScheduleJobExecHistoryInfo> latestByJob() {
+		Map<String, ScheduleJobExecHistoryInfo> latest = new HashMap<>();
+		scheduleJobExecHistoryRepository.findLatestPerJob().forEach(e -> latest.put(e.getJobName(), e.info()));
+		return latest;
+	}
+
+	@Override
+	public Map<String, Long> failCountsSince(Date since) {
+		Map<String, Long> counts = new HashMap<>();
+		for (Object[] row : scheduleJobExecHistoryRepository.countFailuresSince(since)) {
+			counts.put((String) row[0], ((Number) row[1]).longValue());
+		}
+		return counts;
 	}
 }

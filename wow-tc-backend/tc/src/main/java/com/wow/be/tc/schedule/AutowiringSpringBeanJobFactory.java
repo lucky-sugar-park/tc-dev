@@ -1,7 +1,5 @@
 package com.wow.be.tc.schedule;
 
-import java.lang.reflect.InvocationTargetException;
-
 import org.quartz.Job;
 import org.quartz.JobDetail;
 import org.quartz.Scheduler;
@@ -14,55 +12,29 @@ import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Job 을 실행마다 새로 만들고 {@code @Autowired} 필드를 채운다. JobDataMap 값은 빈 속성으로 넣지 않는다 — Job 이
+ * {@code context.getMergedJobDataMap()} 에서 읽는다.
+ */
 @Slf4j
 public final class AutowiringSpringBeanJobFactory extends SpringBeanJobFactory implements ApplicationContextAware {
 
 	private AutowireCapableBeanFactory beanFactory;
 
+	@Override
 	public void setApplicationContext(ApplicationContext context) {
 		beanFactory = context.getAutowireCapableBeanFactory();
-		log.info("beanFactory: {}", beanFactory);
 	}
 
 	@Override
 	public Job newJob(TriggerFiredBundle bundle, Scheduler scheduler) throws SchedulerException {
-//		final Object job = super.createJobInstance(bundle);
-//        beanFactory.autowireBean(job);
-//
-//        return job;
-        
 		JobDetail jobDetail = bundle.getJobDetail();
-	    Class<? extends Job> jobClass = jobDetail.getJobClass();
-	    try {
-	      return jobClass.getDeclaredConstructor().newInstance();
-	    } catch (Exception e) {
-	      SchedulerException se = new SchedulerException("Problem instantiating class '" + jobDetail.getJobClass().getName() + "'", e);
-	      throw se;
-	    }
-	}
-
-	@Override
-	protected Object createJobInstance(final TriggerFiredBundle bundle) {
-		log.debug("");
-		Object job = null;
 		try {
-			job = bundle.getJobDetail().getJobClass().getDeclaredConstructor().newInstance();
-		} catch(IllegalAccessException e) {
-			log.warn("");
-		} catch (IllegalArgumentException e) {
-			log.warn("", e);
-		}catch (InstantiationException e) {
-			log.warn("", e);
-		} catch (InvocationTargetException e) {
-			log.warn("", e);
-		} catch (NoSuchMethodException e) {
-			log.warn("", e);
-		} catch (SecurityException e) {
-			log.warn("", e);
+			Job job = jobDetail.getJobClass().getDeclaredConstructor().newInstance();
+			beanFactory.autowireBean(job);
+			return job;
+		} catch (ReflectiveOperationException | RuntimeException e) {
+			throw new SchedulerException("Job 을 만들지 못했습니다: " + jobDetail.getJobClass().getName(), e);
 		}
-		beanFactory.autowireBean(job);
-		beanFactory.initializeBean(job, null);
-		
-		return job;
 	}
 }

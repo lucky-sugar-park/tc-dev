@@ -172,6 +172,12 @@ tc:
   config-history:
     retention-days: 365
     purge-cron: "0 30 3 * * *"
+  # 스케줄 Job(docs/schedule-jobs.md) — 기동 때 읽는다(바꾸면 재기동)
+  schedule:
+    # 정리 Job 이 한 번에 지우는 행 수 — 나눠 지워 큰 표를 오래 잠그지 않는다
+    cleanup-batch-size: ${TC_SCHEDULE_CLEANUP_BATCH_SIZE:5000}
+    # 목록의 "최근 실패" 를 세는 기간(시간)
+    recent-fail-hours: 24
   # Quartz 설정(ScheduleConfig 가 이 값을 그대로 Quartz 속성으로 넘긴다).
   # JobStore 의 DataSource 는 ScheduleConfig 가 앱 DataSource 를 넘기므로 Quartz 자체 DataSource 는 두지 않는다.
   quartz:

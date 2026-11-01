@@ -13,6 +13,7 @@ i18n.tc.common.description	설명	Description	説明	说明
 i18n.tc.common.required	필수입니다	Required	必須です	必填
 i18n.tc.common.searchPlaceholder	이름 검색	Search by name	名前で検索	按名称搜索
 i18n.tc.common.updated	고친 때	Updated	更新日時	更新时间
+i18n.tc.common.refresh	새로 고침	Refresh	更新	刷新
 # 커넥터
 i18n.tc.connector.add	커넥터 등록	Add connector	コネクタ登録	添加连接器
 i18n.tc.connector.edit	커넥터 수정	Edit connector	コネクタ編集	编辑连接器

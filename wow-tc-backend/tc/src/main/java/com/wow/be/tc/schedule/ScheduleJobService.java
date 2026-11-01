@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.wow.be.framework.Condition.PageInfo;
 import com.wow.be.framework.Condition;
+import com.wow.be.tc.ToolControlException;
 
 public interface ScheduleJobService {
 	
@@ -51,10 +52,12 @@ public interface ScheduleJobService {
 	//=================================================================================
 	// Schedule Job Information management
 	// schedule job register
-	public abstract void registerScheduleJob(ScheduleJobInfo scheduleJob);
+	public abstract void registerScheduleJob(ScheduleJobInfo scheduleJob) throws ToolControlException;
 	
 	// schedule job retrieve
 	public abstract List<ScheduleJobInfo> searchScheduleJobs(Condition cond);
+	/** 목록 화면용 — 최근 실행(결과·비고·노드·걸린 시간)·다음 실행·최근 실패 수를 채운다 */
+	public abstract List<ScheduleJobInfo> searchScheduleJobsWithStatus(Condition cond);
 	public abstract List<ScheduleJobInfo> searchScheduleJobs(Condition cond, PageInfo pageInfo);
 	public abstract List<ScheduleJobInfo> searchScheduleJobs();
 	public abstract List<ScheduleJobInfo> searchScheduleJobs(PageInfo pageInfo);
@@ -63,8 +66,7 @@ public interface ScheduleJobService {
 	public abstract ScheduleJobInfo findScheduleJobByName(String scheduleJobName, String schedulerName);
 	
 	// schedule job update
-	public abstract void updateScheduleJob(ScheduleJobInfo scheduleJob);
-	public abstract void updateScheduleJobSchedulerName(String schedulerId, String schedulerName);
+	public abstract void updateScheduleJob(ScheduleJobInfo scheduleJob) throws ToolControlException;
 	public abstract void updateScheduleJobState(String scheduleJobName, String state);
 	
 	// schedule job delete

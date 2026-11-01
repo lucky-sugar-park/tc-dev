@@ -45,6 +45,29 @@ public class ScheduleJobInfo extends AbstractInfo {
 	private List<ScheduleJobDetailInfo> jobDetails;
 	
 	private String description;
+
+	// 아래는 목록 응답에만 채운다(저장하지 않는다) — ScheduleJobService.searchScheduleJobsWithStatus
+
+	/** 종류({@link ScheduleJobKind} 이름) */
+	private String kind;
+
+	private Date lastExecutionTime;
+
+	/** SUCCESS·FAIL */
+	private String lastResult;
+
+	private String lastRemark;
+
+	/** 마지막으로 실행한 Quartz 인스턴스 */
+	private String lastInstanceId;
+
+	private Long lastElapsedMs;
+
+	/** Quartz 트리거의 다음 실행(예약되지 않았으면 null) */
+	private Date nextFireTime;
+
+	/** 최근 {@code tc.schedule.recent-fail-hours} 동안 실패 수 */
+	private Long recentFailCount;
 	
 	public ScheduleJobInfo() {
 		jobDetails=new ArrayList<>();
@@ -56,7 +79,8 @@ public class ScheduleJobInfo extends AbstractInfo {
 		try {
 			this.setJobClass((Class<Job>) (LegacyClassNames.forName(jobClassName)));
 		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+			// 등록할 수 없는 클래스 — 저장할 때 ScheduleJobValidator 가 막는다
+			this.setJobClass(null);
 		}
 	}
 	

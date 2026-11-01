@@ -1,10 +1,15 @@
 package com.wow.be.tc.endpoints;
 
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -14,13 +19,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.wow.be.framework.security.authz.Requires;
 import com.wow.be.framework.Condition;
+import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.schedule.JobDeletionInfo;
 import com.wow.be.tc.schedule.ScheduleJobDetailInfo;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryInfo;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryService;
 import com.wow.be.tc.schedule.ScheduleJobInfo;
+import com.wow.be.tc.schedule.ScheduleJobKind;
 import com.wow.be.tc.schedule.ScheduleJobService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
@@ -39,7 +47,7 @@ public class ScheduleJobManagementController {
 	@RequestMapping(value="/register", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public ScheduleJobInfo registerScheduleJob(@RequestBody ScheduleJobInfo jobAdditionInfo) {
+	public ScheduleJobInfo registerScheduleJob(@RequestBody ScheduleJobInfo jobAdditionInfo) throws ToolControlException {
 		log.debug("");
 		scheduleJobService.registerScheduleJob(jobAdditionInfo);
 		return scheduleJobService.findScheduleJobByName(jobAdditionInfo.getName());
@@ -85,7 +93,7 @@ public class ScheduleJobManagementController {
 	@RequestMapping(value="/update", method=RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
 	@ResponseBody
-	public ScheduleJobInfo updateScheduleJob(@RequestBody ScheduleJobInfo jobUpdateInfo) {
+	public ScheduleJobInfo updateScheduleJob(@RequestBody ScheduleJobInfo jobUpdateInfo) throws ToolControlException {
 		log.debug("");
 		scheduleJobService.updateScheduleJob(jobUpdateInfo);
 		return scheduleJobService.findScheduleJobByName(jobUpdateInfo.getName());
@@ -97,7 +105,7 @@ public class ScheduleJobManagementController {
 	@ResponseBody
 	public List<ScheduleJobInfo> searchScheduleJobs(@RequestBody Condition condition) {
 		log.debug("");
-		return scheduleJobService.searchScheduleJobs(condition);
+		return scheduleJobService.searchScheduleJobsWithStatus(condition);
 	}
 	
 	@RequestMapping(value="/find/byName/{jobName}", method=RequestMethod.GET)
@@ -131,5 +139,29 @@ public class ScheduleJobManagementController {
 	public List<ScheduleJobExecHistoryInfo> searchScheduleJobExecHistory(@RequestBody Condition condition) {
 		log.debug("");
 		return scheduleJobExecHistoryService.searchScheduleJobExecHistory(condition);
+	}
+
+	/** 실행 이력 검색 조건. 모두 선택이다 — result 는 SUCCESS·FAIL */
+	public record ExecHistoryQuery(String jobName, Date from, Date to, String result, Integer page, Integer size) {
+	}
+
+	/** 실행 이력 한 쪽 */
+	public record ExecHistoryPage(List<ScheduleJobExecHistoryInfo> items, long total, int page, int size) {
+	}
+
+	@Operation(summary = "등록할 수 있는 Job 종류", description = "종류마다 Job 클래스와 속성 정의(필수·값 형·기본값·고를 값). 화면의 속성 표 틀.")
+	@Requires(action = 'R')
+	@GetMapping("/job-kinds")
+	public List<ScheduleJobKind.Info> jobKinds() {
+		return Arrays.stream(ScheduleJobKind.values()).map(ScheduleJobKind::info).toList();
+	}
+
+	@Operation(summary = "실행 이력 검색", description = "Job·기간·결과로 찾는다. 최신순, 쪽 크기 최대 500.")
+	@Requires(action = 'R')
+	@PostMapping("/exec-histories/query")
+	public ExecHistoryPage queryExecHistories(@RequestBody ExecHistoryQuery q) {
+		Page<ScheduleJobExecHistoryInfo> page = scheduleJobExecHistoryService.query(q.jobName(), q.from(), q.to(), q.result(),
+			q.page() != null ? q.page() : 0, q.size() != null ? q.size() : 50);
+		return new ExecHistoryPage(page.getContent(), page.getTotalElements(), page.getNumber(), page.getSize());
 	}
 }

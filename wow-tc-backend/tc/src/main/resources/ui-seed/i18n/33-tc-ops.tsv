@@ -36,17 +36,12 @@ i18n.tc.redeliver.send	다시 보내기	Resend	再送	重新发送
 i18n.tc.redeliver.title	결과 재전송	Resend results	結果再送	结果重发
 i18n.tc.schedule.add	스케줄 Job 등록	Add schedule job	スケジュールJob登録	添加计划任务
 i18n.tc.schedule.edit	스케줄 Job 수정	Edit schedule job	スケジュールJob編集	编辑计划任务
-i18n.tc.schedule.className	Job 클래스	Job class	Jobクラス	Job 类
 i18n.tc.schedule.confirmDelete	{name} 을(를) 지울까요? 예약도 지운다.	Delete {name}? Its schedule is removed too.	{name} を削除しますか?予約も削除されます。	删除 {name}?其调度也会被删除。
 i18n.tc.schedule.cronHelp	초 분 시 일 월 요일 — 예: 0 0/1 * * * ? (1분마다)	sec min hour day month weekday — e.g. 0 0/1 * * * ? (every minute)	秒 分 時 日 月 曜日 — 例: 0 0/1 * * * ? (1分ごと)	秒 分 时 日 月 星期 — 例: 0 0/1 * * * ? (每分钟)
-i18n.tc.schedule.daysRule	1일 이상	At least 1 day	1日以上	至少 1 天
 i18n.tc.schedule.history	실행 이력	Run history	実行履歴	执行历史
 i18n.tc.schedule.kind	종류	Kind	種類	类型
 i18n.tc.schedule.kind.plc	PLC 요청	PLC request	PLC要求	PLC 请求
-i18n.tc.schedule.kind.auditClean	송수신 기록 정리	Clean message records	送受信記録の整理	清理收发记录
-i18n.tc.schedule.kind.other	기타(클래스 직접)	Other (class name)	その他(クラス直接)	其他(直接指定类)
 i18n.tc.schedule.next	다음 실행	Next run	次回実行	下次执行
-i18n.tc.schedule.plcHelp	주기마다 이 인터페이스로 PLC 요청 — 결과는 전달 정의대로	Sends a PLC request through this interface each cycle — results follow the delivery rules	周期ごとにこのインターフェースでPLC要求 — 結果は配信定義どおり	每个周期通过此接口发送 PLC 请求 — 结果按投递规则处理
 i18n.tc.schedule.ranAt	실행 시각	Run at	実行時刻	执行时间
 i18n.tc.schedule.remark	비고	Remark	備考	备注
 i18n.tc.schedule.repeat	반복 간격(ms)	Repeat interval (ms)	繰り返し間隔(ms)	重复间隔(ms)
@@ -54,8 +49,6 @@ i18n.tc.schedule.repeatRule	1000ms 이상	At least 1000 ms	1000ms以上	至少 1
 i18n.tc.schedule.reschedule	다시 예약	Reschedule	再予約	重新调度
 i18n.tc.schedule.result	결과	Result	結果	结果
 i18n.tc.schedule.saveHelp	사용이면 저장하면서 이 주기로 (다시) 예약한다. 쓰지 않음으로 저장하면 예약을 취소한다.	When enabled, saving (re)schedules it with this cycle. Saving as disabled cancels the schedule.	使用にすると保存時にこの周期で(再)予約します。不使用で保存すると予約を取り消します。	启用时保存会按此周期(重新)调度。以停用保存会取消调度。
-i18n.tc.schedule.savingDays	보관 일수	Retention days	保管日数	保留天数
-i18n.tc.schedule.savingHelp	이보다 오래된 송수신 기록을 지운다	Deletes message records older than this	これより古い送受信記録を削除します	删除早于此的收发记录
 i18n.tc.schedule.search	이름·설명	Name · description	名前・説明	名称・说明
 i18n.tc.schedule.simple	간격	Interval	間隔	间隔
 i18n.tc.schedule.startDelay	시작 지연(ms)	Start delay (ms)	開始遅延(ms)	启动延迟(ms)
@@ -63,4 +56,31 @@ i18n.tc.schedule.state	상태	State	状態	状态
 i18n.tc.schedule.stateAt	상태 바뀐 때	State changed at	状態変更日時	状态变更时间
 i18n.tc.schedule.trigger	주기	Trigger	周期	周期
 i18n.tc.schedule.unschedule	예약 취소	Unschedule	予約取消	取消调度
-i18n.tc.schedule.values	Job 값	Job values	Job値	Job 值
+i18n.tc.schedule.kind.cleanup	오래된 기록 정리	Clean up old records	古い記録の整理	清理旧记录
+i18n.tc.schedule.properties	속성	Properties	プロパティ	属性
+i18n.tc.schedule.prop.key	키	Key	キー	键
+i18n.tc.schedule.prop.value	값	Value	値	值
+i18n.tc.schedule.prop.valueType	값 형	Value type	値の型	值类型
+i18n.tc.schedule.prop.add	속성 추가	Add property	プロパティ追加	添加属性
+i18n.tc.schedule.prop.fillPoints	쓸 점 채우기	Fill write points	書き込む点を追加	填入写入点
+i18n.tc.schedule.prop.none	속성이 없습니다	No properties	プロパティがありません	没有属性
+i18n.tc.schedule.prop.keyRequired	키를 넣으세요	Enter a key	キーを入力してください	请输入键
+i18n.tc.schedule.prop.keyDup	키가 겹칩니다	Duplicate key	キーが重複しています	键重复
+i18n.tc.schedule.prop.notInteger	정수가 아닙니다	Not an integer	整数ではありません	不是整数
+i18n.tc.schedule.prop.writeHelp	WRITE 인터페이스 — 점 이름마다 쓸 값을 둔다(모든 점)	WRITE interface — give a value for every point name	WRITEインターフェース — すべての点名に書き込む値を置く	WRITE 接口 — 为每个点名设置写入值(全部点)
+i18n.tc.schedule.prop.readHelp	READ 인터페이스는 interfaceName 만 둔다	A READ interface takes only interfaceName	READインターフェースは interfaceName のみ	READ 接口只需 interfaceName
+i18n.tc.schedule.propHelp.interfaceName	주기마다 실행할 인터페이스(opcode). WRITE 인터페이스면 점 이름마다 쓸 값을 속성으로 더한다	Interface (opcode) to run each cycle. For a WRITE interface, add a property per point name with the value to write	周期ごとに実行するインターフェース(opcode)。WRITEなら点名ごとに書き込む値をプロパティで追加	每个周期执行的接口(opcode)。WRITE 接口需为每个点名添加写入值属性
+i18n.tc.schedule.propHelp.cleanupTarget	정리할 표	Table to clean up	整理するテーブル	要清理的表
+i18n.tc.schedule.propHelp.savingDays	보관 일수 — 이보다 오래된 행을 지운다	Retention days — rows older than this are deleted	保管日数 — これより古い行を削除	保留天数 — 删除早于此的行
+i18n.tc.schedule.option.EXCHANGED_MESSAGE_AUDIT	송수신 기록	Message records	送受信記録	收发记录
+i18n.tc.schedule.option.PLC_CONNECTION_HIST	PLC 연결 이벤트 이력	PLC connection events	PLC接続イベント履歴	PLC 连接事件历史
+i18n.tc.schedule.option.SCHEDULE_JOB_EXEC_HIST	스케줄 Job 실행 이력	Schedule job run history	スケジュールJob実行履歴	计划任务执行历史
+i18n.tc.schedule.lastRun	최근 실행	Last run	直近実行	最近执行
+i18n.tc.schedule.lastResult	최근 결과	Last result	直近結果	最近结果
+i18n.tc.schedule.recentFails	최근 24시간 실패	Failures (24h)	直近24時間の失敗	最近24小时失败
+i18n.tc.schedule.elapsed	걸린 시간(ms)	Elapsed (ms)	所要時間(ms)	耗时(ms)
+i18n.tc.schedule.instance	실행 서버	Server	実行サーバー	执行服务器
+i18n.tc.schedule.autoRefresh	자동 새로 고침	Auto refresh	自動更新	自动刷新
+i18n.tc.schedule.autoOff	끔	Off	オフ	关闭
+i18n.tc.schedule.openAudit	송수신 기록 보기	Open message records	送受信記録を見る	查看收发记录
+i18n.tc.schedule.pickJob	행을 고르면 속성과 실행 이력을 본다	Select a row to see its properties and run history	行を選ぶとプロパティと実行履歴を表示	选择一行查看属性和执行历史

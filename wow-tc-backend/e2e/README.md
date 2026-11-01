@@ -7,7 +7,8 @@
 | `setup_e2e.py` | vplc 를 바라보는 커넥터 `plc-e2e` 와 읽기 인터페이스(`plc.e2e.d100.read` — D100·D101 점)를 만들고 게시(여러 번 돌려도 됨). 옛 RAW 정의가 DB 에 남아 있으면 `migration/011_remove_raw.sql` 을 먼저 돌린다 | — |
 | `test_plc_adapter.py` | 가짜 PLC 로 늦은 응답·연결 끊김·동시 요청·재게시, 끊김 뒤 연결 상태의 마지막 오류 (docs/plc-connection-design.md §5) | 11 |
 | `test_api_key.py` | API 키 인증·권한·사용량 제한·회전·만료·삭제 (docs/auth-and-audit-design.md §6) | 40 |
-| `test_paths.py` | WRITE·콜백과 허용 목록·스케줄 Job(멈춤·재개 포함)·커넥터 해제 (docs/dispatch-redesign.md §4.1.2) | 19 |
+| `test_paths.py` | WRITE·콜백과 허용 목록·커넥터 해제 (docs/dispatch-redesign.md §4.1.2) | 10 |
+| `test_schedule_jobs.py` | 스케줄 Job(docs/schedule-jobs.md) — 종류 API, 저장 검사(클래스·인터페이스·점·값 형·주기), 성공·실패 이력과 비고(거래 ID → 송수신 기록), 이력 검색(결과·기간·쪽), WRITE Job 이 쓴 값, 정리 Job, 목록의 최근 실행·다음 실행·최근 실패, 속성 통째로 바꾸기, 멈춤·재개·삭제. 약 40초 | 33 |
 | `test_config_history.py` | 설정 변경 이력 (§5) | 11 |
 | `test_users.py` | 권한(§4)·사용자(§3)·로그인 실패 제한·전환 스위치 | 61 |
 | `test_framework_046.py` | framework 0.8.46 반영 — 공개 경로 설정, 검색 조건(conjType 없음 AND, 없는 항목 400) | 8 |

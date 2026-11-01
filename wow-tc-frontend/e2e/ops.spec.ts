@@ -48,16 +48,18 @@ test('송수신 기록 — 기간·opcode 로 찾고 거래 보기', async ({ pa
   await expect(page.getByRole('dialog').getByText(`거래 — ${trx}`)).toBeVisible();
 });
 
-test('스케줄 Job·설정 변경 이력 — PLC 요청 Job 등록·멈춤·실행 이력·삭제, 이력에 남음', async ({ page }) => {
+test('스케줄 Job·설정 변경 이력 — PLC 요청 Job 등록·속성 탭·실행 이력 탭·멈춤·삭제, 이력에 남음', async ({ page }) => {
   const name = `e2e-ui-job-${RUN}`;
   await openScreen(page, '운영', '스케줄 Job');
   await page.getByRole('button', { name: '추가' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('이름').fill(name);
-  await dialog.getByLabel('인터페이스(opcode)').fill('plc.e2e.d100.read');
-  await page.getByRole('option', { name: 'plc.e2e.d100.read', exact: true }).click();
+  // 종류(PLC 요청)의 속성 interfaceName 이 표에 미리 들어가 있다
+  await dialog.getByLabel('interfaceName 값').fill('plc.e2e.d100.read');
+  await page.getByRole('option', { name: /^plc\.e2e\.d100\.read/ }).click();
   await dialog.getByLabel('주기').click();
   await page.getByRole('option', { name: '간격' }).click();
+  await dialog.getByLabel('시작 지연(ms)').fill('0');
   await dialog.getByLabel('반복 간격(ms)').fill('600000');
   await dialog.getByRole('button', { name: '저장' }).click();
   await expect(dialog).toBeHidden();
@@ -67,12 +69,21 @@ test('스케줄 Job·설정 변경 이력 — PLC 요청 Job 등록·멈춤·실
   await expect(row.getByText('PLC 요청')).toBeVisible();
   await expect(row.getByText('600s')).toBeVisible();
   await expect(row.getByText('NORMAL')).toBeVisible(); // 저장하면서 예약됐다
+
+  // 행을 고르면 아래에 속성·실행 이력 탭 — 시작 지연 0 이라 한 번 돌았다
+  await row.getByText(name).click();
+  await expect(page.getByRole('tab', { name: /속성 \(1\)/ })).toBeVisible();
+  await expect(page.getByLabel('interfaceName 값')).toHaveValue('plc.e2e.d100.read');
+  await page.getByRole('tab', { name: '실행 이력' }).click();
+  await page.getByRole('button', { name: '새로 고침' }).filter({ visible: true }).last().click();
+  const histRow = page.getByRole('row').filter({ hasText: 'SUCCESS' }).filter({ hasText: 'plc.e2e.d100.read 성공' }).first();
+  await expect(histRow).toBeVisible({ timeout: 15000 });
+  await histRow.click();
+  await expect(page.getByRole('button', { name: '송수신 기록 보기' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
   await row.getByRole('button', { name: '멈춤' }).or(row.getByRole('menuitem', { name: '멈춤' })).first().click();
   await expect(row.getByText('PAUSED')).toBeVisible();
-  await row.locator('button[aria-haspopup="menu"]').click();
-  await page.getByRole('menuitem', { name: '실행 이력' }).click();
-  await expect(page.getByRole('dialog').getByText(`실행 이력 — ${name}`)).toBeVisible();
-  await page.keyboard.press('Escape');
 
   await row.locator('button[aria-haspopup="menu"]').click();
   await page.getByRole('menuitem', { name: '삭제' }).click();

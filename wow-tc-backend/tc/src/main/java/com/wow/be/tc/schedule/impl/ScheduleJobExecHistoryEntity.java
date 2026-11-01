@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +22,11 @@ import lombok.ToString;
 @ToString
 @Builder
 @Entity
-@Table(name="SCHEDULE_JOB_EXEC_HIST")
+// 색인: Job 별 최신 이력(목록의 최근 실행)·Job 이력 조회, 기간 조건(최근 실패 수·보관 정리) — migration/015
+@Table(name="SCHEDULE_JOB_EXEC_HIST", indexes={
+	@Index(name="IX_SJEH_JOB_SEQ", columnList="JOB_NAME, SEQ_NO"),
+	@Index(name="IX_SJEH_EXEC_TIME", columnList="EXEC_TIME")
+})
 @Data
 @EqualsAndHashCode(callSuper=false)
 @AllArgsConstructor
@@ -46,8 +51,14 @@ public class ScheduleJobExecHistoryEntity extends PersistentEntity<ScheduleJobEx
 	@Column(name="NEXT_FIRE_TIME")
 	private Date nextFireTime;
 	
-	// 성공한 실행은 PLC 응답 전체가 들어간다. VARCHAR(255)였을 때는 "Data too long" 으로 성공 이력이 하나도 저장되지 않았다.
-	// 이미 만들어진 표는 migration/003_schedule_hist_remark_longtext.sql 로 넓힌다.
+	@Column(name="INSTANCE_ID", length=200)
+	private String instanceId;
+	
+	@Column(name="ELAPSED_MS")
+	private Long elapsedMs;
+	
+	// 성공은 Job 이 돌려준 요약, 실패는 오류 코드와 사유. VARCHAR(255)였을 때는 "Data too long" 으로 긴 비고가 저장되지 않았다
+	// — 이미 만들어진 표는 migration/003_schedule_hist_remark_longtext.sql 로 넓힌다.
 	@Lob
 	@Column(name="REMARK", columnDefinition="LONGTEXT")
 	private String remark;
@@ -64,6 +75,8 @@ public class ScheduleJobExecHistoryEntity extends PersistentEntity<ScheduleJobEx
 		execHist.setExecutionTime(this.getExecutionTime());
 		execHist.setExecutionResult(this.getExecutionResult());
 		execHist.setNextFireTime(this.getNextFireTime());
+		execHist.setInstanceId(this.getInstanceId());
+		execHist.setElapsedMs(this.getElapsedMs());
 		execHist.setRemark(this.getRemark());
 		execHist.setCreatedBy(super.getCreatedBy());
 		execHist.setCreatedDate(super.getCreatedDate());
@@ -81,6 +94,8 @@ public class ScheduleJobExecHistoryEntity extends PersistentEntity<ScheduleJobEx
 		this.setExecutionTime(info.getExecutionTime());
 		this.setExecutionResult(info.getExecutionResult());
 		this.setNextFireTime(info.getNextFireTime());
+		this.setInstanceId(info.getInstanceId());
+		this.setElapsedMs(info.getElapsedMs());
 		this.setRemark(info.getRemark());
 		super.setCreatedBy(info.getCreatedBy());
 		super.setCreatedDate(info.getCreatedDate());

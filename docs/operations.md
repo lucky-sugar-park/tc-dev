@@ -78,6 +78,7 @@
 | `012_interface_cleanup.sql` | `interface` 의 `sync`·`reply`·`web_hook_list` 칼럼 DROP(읽는 곳이 없음 — 동기는 API 가, WebHook 은 전달 정의가 정한다), 없는 인터페이스를 가리키는 스케줄 Job 을 SELECT 로 보여 준다(고치지 않음) |
 | `013_point_scaling.sql` | `interface_point` 에 `scale`·`offset_value`·`unit`·`min_value`·`max_value` 추가(점 배율·단위·쓰기 범위, 결정 I3). ddl-auto 환경은 앱이 만든다 |
 | `014_connector_password.sql` | `plc_connector` 에 `password_enc` 추가(OPC UA 로그인 비밀번호 암호문, docs/opcua-design.md O13). ddl-auto 환경은 앱이 만든다 |
+| `015_schedule_job_monitoring.sql` | 스케줄 실행 이력에 `instance_id`·`elapsed_ms`·색인, 정리 Job 속성을 `cleanupTarget` 으로, 빈 Spy Job 삭제, `SCHED_NAME` 의 `NO_ASSIGNED` 되돌림(docs/schedule-jobs.md §7). 2~4 는 스크립트로만 된다 |
 
 ```bash
 mysql -u root -p tc < migration/002_api_client.sql

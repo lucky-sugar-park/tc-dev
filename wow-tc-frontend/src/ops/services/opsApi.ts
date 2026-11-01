@@ -1,7 +1,6 @@
 import { apiClient } from 'wow-mes-frontend-shared';
-import { pageCondition } from '../../shared/format';
 import type {
-  AuditPage, AuditQuery, ConfigChange, JobDetail, JobHistory, RedeliveryResult, RedeliveryTarget, ScheduleJob,
+  AuditPage, AuditQuery, ConfigChange, JobDetail, JobHistoryPage, JobHistoryQuery, JobKind, RedeliveryResult, RedeliveryTarget, ScheduleJob,
 } from '../types/ops';
 
 const enc = encodeURIComponent;
@@ -50,9 +49,13 @@ export const scheduleApi = {
   async control(op: 'pauseScheduleJob' | 'resumeScheduleJob' | 'unscheduleJob' | 'rescheduleJob', name: string): Promise<void> {
     await apiClient.post(`${MON}/${op}/${enc(name)}`);
   },
-  async history(name: string, page: number, size: number): Promise<JobHistory[]> {
-    const body = pageCondition([{ name: 'jobName', condType: 'EQUALS', value: name }], page, size, ['seqNo']);
-    return (await apiClient.post<JobHistory[]>(`${J}/search/job-exec-histories`, body)).data;
+  /** 실행 이력 한 쪽 — 최신순. 결과·기간은 선택 */
+  async history(q: JobHistoryQuery): Promise<JobHistoryPage> {
+    return (await apiClient.post<JobHistoryPage>(`${J}/exec-histories/query`, q)).data;
+  },
+  /** 등록할 수 있는 Job 종류와 속성 정의 */
+  async kinds(): Promise<JobKind[]> {
+    return (await apiClient.get<JobKind[]>(`${J}/job-kinds`)).data;
   },
 };
 

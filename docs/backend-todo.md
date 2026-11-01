@@ -58,6 +58,7 @@
 | 15 | 비동기 어댑터 큐(죽은 코드) 제거 | ✅ | 어댑터의 타이머·큐·`request(holder, callback)`, `PlcReqAndResHolder`·`PlcRequestCallback`, 커넥터 설정 `asyncRequestUse`·`asyncTimer*`(API 필드 포함) 제거(2026-10-31). DB 칼럼은 남긴다 — `migration/007` 이 NULL 허용으로, DROP 은 주석 |
 | 16 | 운영 환경의 실제 호출 시스템 API 키 전환(감사 `PRINCIPAL` 로 대상 확인 → 키 발급·교체 → 옛 계정 중지) | ⬜ 운영 작업 — 이 버전 배포 전 전환이 안 끝났으면 배포 직후 전환 스위치를 켠다 |
 | 17 | 인터페이스 세부 정의 — [interface-detail-design.md](interface-detail-design.md) | 🔄 A(요청 미리보기)·B(인터페이스 settings)·C(워드 안 비트 `D100.3`·`HR1.15` 읽기 전용·배율·오프셋·단위·쓰기 범위 — [word-bit-points.md](word-bit-points.md)) 완료. D1(OPC UA 읽기·쓰기·찾아보기·구독 → 전달 정의, [opcua-design.md](opcua-design.md)) 완료. 남은 것: D2 OPC UA 인증·보안 정책, 문자열 인코딩(Shift-JIS·UTF-16LE — 요구가 나오면) |
+| 19 | 스케줄 Job 속성·실행 이력 — [schedule-jobs.md](schedule-jobs.md) | ✅ 2026-11-01 — 성공·실패 판정(정상 종료 = SUCCESS, 예외 = FAIL·사유), 정리 Job 재작성(실패를 SUCCESS 로 기록·건수 덮어씀 고침, 표 고정·나눠 지우기·실행 이력 정리), 빈 Spy Job 삭제, 저장 검사·Job 종류 API, 속성 통째로 바꾸기, SCHED_NAME 덮어쓰기 중단·이력에 실행 서버·걸린 시간, 목록 최근 실행·이력 검색. migration 015, 재기동 필요 |
 | 18 | vplc 단위 테스트 | ✅ 2026-11-01 — `McResponderTest`(3E·4E 바이너리·ASCII 워드·비트·루프백·오류 종료 코드)·`MemoryTest`. 가상 Modbus·OPC UA 장비(`vplc-modbus`·`vplc-opcua`)는 [virtual-devices.md](virtual-devices.md), 단위 시험 각각 |
 
 ## 진행 기록
@@ -105,3 +106,4 @@
 - 2026-11-01: OPC UA D2 — 사용자 이름 로그인(비밀번호는 TC_SECRET_KEY 암호화, migration 014), 보안 정책(Basic256Sha256·Aes128·Aes256)·모드, tc 클라이언트 인증서(client.pfx)·서버 인증서 TOFU·잊기, `nsu=` 주소(찾아보기도 nsu=). vplc-opcua 에 보안 엔드포인트·시험 사용자·네임스페이스 번호 3. 단위(tc OpcUaSecurityTest 4, vplc-opcua 2), e2e test_plc_opcua 30개 통과.
 - 2026-11-01: 가상 PLC 를 vplc 한 앱으로 합침(docs/virtual-devices.md V1~V10) — VPLC 에 PROTOCOL·SETTINGS, Modbus(한 포트 여러 단위 ID)·OPC UA(태그 VPLC_OPCUA_TAG) 가상 PLC 가 MELSEC 과 같은 상태 단계·연결 이력, 종류별 REST(/modbus·/opcua·delay·drop-connections). 동작이 된 뒤 DB 상태 갱신, 게시된 채 지우면 먼저 내림. vplc 단위 18, e2e vplc 35·vmodbus 8·opcua 30, Playwright 24. vplc-modbus·vplc-opcua 프로젝트는 확인 뒤 지운다.
 - 2026-11-01: vplc 구조 정리(docs/vplc-architecture.md) — core(VirtualPlc·AbstractVirtualPlc 상태 규칙·VirtualPlcProvider SPI·Registry·메모리 능력 AreaMemory·TagMemory)와 melsec·modbus·opcua 구현, 공통 /memory API(화면·e2e 가 그쪽으로). vplc 단위 20, e2e vplc 43·vmodbus 8·opcua 30·points 44, Playwright 24.
+- 2026-11-01: #19 스케줄 Job — 화면에 속성·실행 이력이 빠진 원인(종류별 입력값 한두 개로 줄인 설계 + 지우지 못하는 수정·ref/list/map 결함)을 고치고 Job 세 클래스 정리. 단위 테스트 121개, e2e `test_schedule_jobs.py` 33·test_paths 10·test_config_history 11·test_http_methods 71·test_ui_api 37 통과, Playwright ops 3 통과.
