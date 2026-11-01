@@ -165,6 +165,25 @@ s, raw = call("GET", f"/management/find/{tmp_id}")
 check("정지 상태가 DB 에 남음(STOPPED)", s == 200 and json.loads(raw).get("status") == "STOPPED", raw[:200])
 for x in socks:
     x.close()
+
+# 연결 이력 찾기(가상 PLC 연결 이력 화면) — 이 가상 PLC 의 연결·끊김이 이름·종류와 함께, 종류로 거른다
+s, page = post_json("/management/connection-histories/query", {"search": TMP, "page": 0, "size": 50})
+mine = [h for h in page.get("items", [])] if s == 200 else []
+check("연결 이력: 이름으로 찾으면 연결 둘·끊김 둘, 이름·종류가 붙는다",
+      sum(h["connOrDisconn"] == "CONNECTED" for h in mine) >= 2 and sum(h["connOrDisconn"] == "DISCONNECTED" for h in mine) >= 2
+      and all(h.get("vplcName") == TMP and h.get("protocol") == "MODBUS_TCP" for h in mine), (s, mine[:2]))
+s, page = post_json("/management/connection-histories/query", {"search": TMP, "protocol": "OPC_UA", "page": 0, "size": 50})
+check("연결 이력: 다른 종류로 거르면 없다", s == 200 and page["total"] == 0, (s, page))
+
+# 이름으로 해제·게시 — 예전에는 빈 아이디로 상태를 바꾸려다 있는 가상 PLC 도 404 였다
+s, b = call("POST", f"/management/release/byName/{TMP}")
+check("이름으로 해제 → 200", s == 200, (s, b[:200]))
+s, b = call("POST", f"/management/publish/byName/{TMP}")
+check("이름으로 게시 → 200", s == 200, (s, b[:200]))
+s, raw = call("GET", f"/management/find/byName/{TMP}")
+check("이름으로 게시한 상태가 남음(PUBLISHED)", s == 200 and json.loads(raw).get("status") == "PUBLISHED", raw[:200])
+s, b = call("POST", f"/management/publish/byName/{TMP}")
+check("이름으로 다시 게시 → 409", s == 409 and error_code(b) == "ERR_409", (s, b[:200]))
 call("POST", f"/management/release/{tmp_id}")
 call("DELETE", f"/management/delete/{tmp_id}")
 

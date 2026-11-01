@@ -271,12 +271,8 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	@Transactional
 	public void publishVirtualPlcByName(String vplcName) throws VirtualPlcException {
 		log.debug("");
-		VirtualPlcInfo vInfo=this.findVirtualPlcByName(vplcName);
-		if(vInfo.getStatus()==PlcStatus.PUBLISHED || (vInfo.getStatus()!=PlcStatus.REGISTERED && vInfo.getStatus()!=PlcStatus.RELEASED)) {
-			throw publishNotAllowed(vInfo);
-		}
-		VirtualPlcInfo vplcInfo = updateVirtualPlcStatus("", vplcName, PlcStatus.PUBLISHED, true);
-		this.publishVirtualProgrammableController(vplcInfo);
+		// 상태 변경(updateVirtualPlcStatus)은 아이디로 찾는다 — 예전에는 빈 아이디를 넘겨 있는 가상 PLC 도 404 였다
+		publishVirtualPlc(this.findVirtualPlcByName(vplcName).getId());
 	}
 
 	private VirtualPlcException publishNotAllowed(VirtualPlcInfo vInfo) {
@@ -305,12 +301,8 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	@Transactional
 	public void releaseVirtualPlcByName(String vplcName) throws VirtualPlcException {
 		log.debug("");
-		VirtualPlcInfo vInfo=this.findVirtualPlcByName(vplcName);
-		if(vInfo.getStatus()==PlcStatus.RELEASED || vInfo.getStatus()==PlcStatus.RUNNING) {
-			throw releaseNotAllowed(vInfo);
-		}
-		VirtualPlcInfo vplcInfo = updateVirtualPlcStatus("", vplcName, PlcStatus.RELEASED, false);
-		this.releaseVirtualProgrammableController(vplcInfo);
+		// 게시와 같은 까닭으로 아이디로 넘긴다
+		releaseVirtualPlc(this.findVirtualPlcByName(vplcName).getId());
 	}
 
 	@Override
