@@ -36,7 +36,7 @@ public class ModbusDeviceController {
 
 	private final ModbusDevices devices;
 
-	public record DeviceView(String name, int port, int unitId, int size, long delayMs, boolean silent, int connections) {
+	public record DeviceView(String name, String bindAddress, int port, int unitId, int size, long delayMs, boolean silent, int connections) {
 	}
 
 	public record Values(int start, List<Object> values) {
@@ -47,7 +47,7 @@ public class ModbusDeviceController {
 
 	private DeviceView view(ModbusDevice d) {
 		ModbusTcpServer s = devices.server(d.port());
-		return new DeviceView(d.name(), d.port(), d.unitId(), d.size(), d.delayMs(), d.silent(), s != null ? s.connections() : 0);
+		return new DeviceView(d.name(), devices.bindAddress(), d.port(), d.unitId(), d.size(), d.delayMs(), d.silent(), s != null ? s.connections() : 0);
 	}
 
 	@GetMapping

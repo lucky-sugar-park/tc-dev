@@ -4,7 +4,7 @@ import { DataGridPro, type GridColDef } from '@mui/x-data-grid-pro';
 import { DialogFooter, DialogTitleClose, DraggablePaper, extractApiError, useI18n } from 'wow-mes-frontend-shared';
 import { fmtTime } from '../../shared/format';
 import { MEMORY_TYPES, vplcApi } from '../services/vplcApi';
-import type { Vplc, VplcConnection } from '../types/vplc';
+import type { ModbusDevice, Vplc, VplcConnection } from '../types/vplc';
 
 const EMPTY: Vplc = {
   id: '', name: '', frameFormat: 'BINARY', manufacturer: 'MITSUBISHI', ipAddress: '127.0.0.1', startPort: 15100, portCount: 1, portConnLimit: 4,
@@ -71,6 +71,77 @@ export function VplcFormDialog({ open, initial, onClose, onSubmit, error }: {
             renderInput={(p) => <TextField {...p} label={t('i18n.tc.vplc.memoryTypes', '메모리 종류')} error={!!errors.mem} helperText={errors.mem} />} />
           <TextField label={t('i18n.tc.vplc.manufacturer', '제조사')} value={v.manufacturer ?? ''} onChange={(e) => set({ manufacturer: e.target.value })} />
           <TextField label={t('i18n.tc.common.description', '설명')} value={v.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
+        </Stack>
+      </DialogContent>
+      <DialogFooter onClose={onClose}><Button type="submit" variant="contained">{t('i18n.common.save', '저장')}</Button></DialogFooter>
+    </Dialog>
+  );
+}
+
+export type ModbusDeviceForm = { name: string; port: number; unitId: number; size: number; delayMs: number };
+
+const MODBUS_EMPTY: ModbusDeviceForm = { name: '', port: 15021, unitId: 1, size: 1000, delayMs: 0 };
+
+/**
+ * 가상 Modbus 장치 더하기·지연 바꾸기(vplc-modbus) — 장치 = 포트 + 단위 ID. 같은 포트에 단위 ID 를 달리 두면 게이트웨이 뒤 장치들.
+ * 이미 있는 장치는 지연(ms)만 바꾼다(포트·단위 ID·칸은 지우고 다시 더한다).
+ */
+export function ModbusDeviceDialog({ open, initial, onClose, onSubmit, error }: {
+  open: boolean;
+  initial?: ModbusDevice;
+  onClose: () => void;
+  onSubmit: (d: ModbusDeviceForm) => void;
+  error?: string | null;
+}): ReactElement {
+  const { t } = useI18n();
+  const edit = !!initial;
+  const [v, setV] = useState<ModbusDeviceForm>(MODBUS_EMPTY);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!open) return;
+    setV(initial ? { name: initial.name, port: initial.port, unitId: initial.unitId, size: initial.size, delayMs: initial.delayMs } : MODBUS_EMPTY);
+    setErrors({});
+  }, [open, initial]);
+  const set = (patch: Partial<ModbusDeviceForm>) => setV((s) => ({ ...s, ...patch }));
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const errs: Record<string, string> = {};
+    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(v.name)) errs.name = t('i18n.tc.vplc.modbusNameRule', '영숫자·_ . - 64자까지');
+    if (!(Number.isInteger(v.port) && v.port >= 1 && v.port <= 65535)) errs.port = t('i18n.tc.vplc.portRule', '1~65535 안');
+    if (!(Number.isInteger(v.unitId) && v.unitId >= 0 && v.unitId <= 255)) errs.unitId = '0~255';
+    if (!(Number.isInteger(v.size) && v.size >= 1 && v.size <= 65536)) errs.size = '1~65536';
+    if (!(Number.isInteger(v.delayMs) && v.delayMs >= 0)) errs.delayMs = t('i18n.tc.vplc.zeroOrMore', '0 이상');
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    onSubmit(v);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperComponent={DraggablePaper}
+      slotProps={{ paper: { component: 'form', onSubmit: submit } as never }}>
+      <DialogTitleClose onClose={onClose}>
+        {edit ? t('i18n.tc.vplc.modbusEdit', 'Modbus 장치 — 응답 지연') : t('i18n.tc.vplc.modbusAdd', 'Modbus 장치 추가')}
+      </DialogTitleClose>
+      <DialogContent dividers>
+        <Stack spacing={2} sx={{ mt: 0.5 }}>
+          {error && <Alert severity="error">{error}</Alert>}
+          {!edit && (
+            <Alert severity="info">
+              {t('i18n.tc.vplc.modbusAddHelp', '가상 Modbus 장비는 메모리에만 둡니다 — 장비를 다시 띄우면 설정(application.yml)의 장치만 남습니다.')}
+            </Alert>
+          )}
+          <TextField label={t('i18n.tc.point.name', '이름')} required value={v.name} disabled={edit} onChange={(e) => set({ name: e.target.value })}
+            error={!!errors.name} helperText={errors.name} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 2 }}>
+            <TextField label={t('i18n.tc.vplc.port', '포트')} type="number" value={v.port} disabled={edit} onChange={(e) => set({ port: Number(e.target.value) })}
+              error={!!errors.port} helperText={errors.port} />
+            <TextField label={t('i18n.tc.vplc.unitId', '단위 ID')} type="number" value={v.unitId} disabled={edit}
+              onChange={(e) => set({ unitId: Number(e.target.value) })} error={!!errors.unitId} helperText={errors.unitId} />
+            <TextField label={t('i18n.tc.vplc.size', '칸 수')} type="number" value={v.size} disabled={edit} onChange={(e) => set({ size: Number(e.target.value) })}
+              error={!!errors.size} helperText={errors.size} />
+            <TextField label={t('i18n.tc.vplc.delayMs', '응답 지연(ms)')} type="number" value={v.delayMs} onChange={(e) => set({ delayMs: Number(e.target.value) })}
+              error={!!errors.delayMs} helperText={errors.delayMs} />
+          </Box>
         </Stack>
       </DialogContent>
       <DialogFooter onClose={onClose}><Button type="submit" variant="contained">{t('i18n.common.save', '저장')}</Button></DialogFooter>

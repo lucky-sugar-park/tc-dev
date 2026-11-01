@@ -4,6 +4,10 @@
 export type TcConfig = {
   /** 가상 PLC(vplc) 주소 — 비우면 가상 PLC 메뉴를 숨긴다(운영 설치에는 vplc 가 없다, 결정 F8) */
   vplcUrl?: string;
+  /** 가상 Modbus 장비(vplc-modbus) 주소 — 비우면 목록·메모리 화면에서 뺀다 */
+  vplcModbusUrl?: string;
+  /** 가상 OPC UA 서버(vplc-opcua) 주소 — 비우면 목록·메모리 화면에서 뺀다 */
+  vplcOpcuaUrl?: string;
 };
 
 let loaded: TcConfig = {};

@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 가상 OPC UA 서버 REST (docs/virtual-devices.md) — 엔드포인트, 태그 목록·더하기, 값 보기·바꾸기. 경로는 {@code Line1.Temp} 처럼.
+ * 가상 OPC UA 서버 REST (docs/virtual-devices.md) — 엔드포인트·세션 수, 태그 목록·더하기·지우기, 값 보기·바꾸기. 경로는 {@code Line1.Temp} 처럼.
  */
 @RestController
 @RequestMapping("/api/v1/opcua")
@@ -38,6 +39,7 @@ public class TagController {
 		out.put("namespaceUri", VirtualOpcUaServer.NAMESPACE_URI);
 		out.put("namespaceIndex", server.namespaceIndex());
 		out.put("tags", server.list().size());
+		out.put("sessions", server.sessionCount());
 		return out;
 	}
 
@@ -60,6 +62,11 @@ public class TagController {
 	@PutMapping("/tags/{path}")
 	public VirtualOpcUaServer.TagView set(@PathVariable("path") String path, @RequestBody Value body) {
 		return server.set(path, body.value());
+	}
+
+	@DeleteMapping("/tags/{path}")
+	public void remove(@PathVariable("path") String path) {
+		server.remove(path);
 	}
 
 	@ExceptionHandler(NoSuchElementException.class)

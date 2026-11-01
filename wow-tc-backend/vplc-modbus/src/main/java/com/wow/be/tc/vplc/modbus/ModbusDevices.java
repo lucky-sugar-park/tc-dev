@@ -115,6 +115,10 @@ public class ModbusDevices {
 		return d;
 	}
 
+	public String bindAddress() {
+		return settings.bindAddress();
+	}
+
 	public ModbusTcpServer server(int port) {
 		return servers.get(port);
 	}

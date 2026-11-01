@@ -11,6 +11,11 @@ spring:
   application:
     name: wow-tc-vplc-modbus
 
+vplc:
+  cors:
+    # 화면 출처(쉼표) — tc 화면이 바로 부른다(docs/frontend-design.md F8). 개발 서버 5180, tc 가 서빙하는 화면 8087
+    allowed-origin-patterns: ${VPLC_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:5180,http://localhost:8087}
+
 vplc-modbus:
   # 로컬 시험 장비 — 바깥에서 붙지 않게 기본은 127.0.0.1
   bind-address: ${VPLC_MODBUS_BIND:127.0.0.1}

@@ -235,6 +235,18 @@ public final class VirtualOpcUaServer implements AutoCloseable {
 		return view(t);
 	}
 
+	/** 태그를 지운다(폴더는 둔다) */
+	public synchronized void remove(String path) {
+		Tag t = require(path);
+		namespace.remove(path, t.node);
+		tags.remove(path);
+	}
+
+	/** 지금 열린 세션 수(tc 커넥터 등) */
+	public int sessionCount() {
+		return server.getSessionManager().getCurrentSessionCount().intValue();
+	}
+
 	private Tag require(String path) {
 		Tag t = tags.get(path);
 		if (t == null) {
@@ -325,6 +337,16 @@ public final class VirtualOpcUaServer implements AutoCloseable {
 			super(server, NAMESPACE_URI);
 			model = new SubscriptionModel(server, this);
 			getLifecycleManager().addLifecycle(model);
+		}
+
+		/** 변수를 지운다 — 폴더의 Organizes 참조도 */
+		void remove(String path, UaVariableNode node) {
+			int dot = path.lastIndexOf('.');
+			UaFolderNode parent = dot > 0 ? folders.get(path.substring(0, dot)) : null;
+			if (parent != null) {
+				parent.removeOrganizes(node);
+			}
+			node.delete();
 		}
 
 		/** 경로 앞부분 폴더를 만들고(없으면) 변수를 더한다 */

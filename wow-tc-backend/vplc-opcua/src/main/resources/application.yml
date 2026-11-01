@@ -1,6 +1,6 @@
 # vplc-opcua — 가상 OPC UA 서버 (docs/virtual-devices.md)
 #
-# DB 를 쓰지 않는다 — 태그·값은 메모리. SecurityPolicy None·익명만(tc D1 과 같음).
+# DB 를 쓰지 않는다 — 태그·값은 메모리. 보안은 아래 security·users.
 # 태그 경로 Line1.Temp 의 NodeId 는 nsu=urn:wow:tc:vplc-opcua;s=Line1.Temp(번호가 바뀌어도 같다) 또는 ns=3;s=Line1.Temp
 # — 앞에 네임스페이스를 하나 더 두어 번호가 3 이다(GET /api/v1/opcua).
 
@@ -11,6 +11,11 @@ server:
 spring:
   application:
     name: wow-tc-vplc-opcua
+
+vplc:
+  cors:
+    # 화면 출처(쉼표) — tc 화면이 바로 부른다(docs/frontend-design.md F8). 개발 서버 5180, tc 가 서빙하는 화면 8087
+    allowed-origin-patterns: ${VPLC_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:5180,http://localhost:8087}
 
 vplc-opcua:
   bind-address: ${VPLC_OPCUA_BIND:127.0.0.1}

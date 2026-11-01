@@ -9,7 +9,8 @@
     3) dist 를 화면 폴더(기본 run\ui — run-backend.ps1 이 TC_UI_DIR 로 넘긴다)에 맞춘다. **tc 재기동 없음.**
          새 자산(이름에 해시)을 먼저 넣고 → index.html 등 맨 위 파일 → 옛 자산 정리. 그래서 보던 화면이 깨지지 않는다.
          복사 뒤 index.html 이 dist 와 같은지 확인한다.
-    4) tc-config.json(배포한 곳의 값 — 가상 PLC 주소)은 덮지 않는다. 없으면 만든다(기본 vplcUrl http://localhost:8088).
+    4) tc-config.json(배포한 곳의 값 — 가상 장비 주소)은 덮지 않는다. 없으면 만든다(기본 vplcUrl http://localhost:8088,
+         vplcModbusUrl http://localhost:8091, vplcOpcuaUrl http://localhost:8092). 주소 인자를 주면 그 칸만 바꾼다.
          dist 의 tc-config.json(개발 서버용 /vplc-api)은 복사하지 않는다.
 
   운영 tc 처럼 다른 폴더를 서빙한다면 -UiDir 로 그 폴더(tc 의 TC_UI_DIR)를 준다. 가상 PLC 가 없는 곳은 -NoVplc.
@@ -26,6 +27,12 @@
 
 .PARAMETER VplcUrl
   tc-config.json 의 가상 PLC 주소를 이 값으로 쓴다(주면 기존 값을 덮는다). vplc 의 CORS 허용 출처에 tc 화면 주소가 있어야 한다.
+
+.PARAMETER VplcModbusUrl
+  tc-config.json 의 가상 Modbus 장비(vplc-modbus) 주소. 빈 문자열이면 그 칸을 지운다(목록·메모리 화면에서 빠진다).
+
+.PARAMETER VplcOpcuaUrl
+  tc-config.json 의 가상 OPC UA 서버(vplc-opcua) 주소. 빈 문자열이면 그 칸을 지운다.
 
 .PARAMETER NoVplc
   tc-config.json 을 {} 로 쓴다 — 가상 PLC 메뉴를 숨긴다(운영).
@@ -47,6 +54,8 @@ param(
   [switch]$SkipDeploy,
   [string]$UiDir,
   [string]$VplcUrl,
+  [string]$VplcModbusUrl,
+  [string]$VplcOpcuaUrl,
   [switch]$NoVplc
 )
 $ErrorActionPreference = 'Stop'
@@ -105,10 +114,22 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)   # BOM 없이(브라우저�
 if ($NoVplc) {
   [IO.File]::WriteAllText($cfg, '{}', $utf8)
   Write-Host '  tc-config.json = {} (가상 PLC 메뉴 숨김)' -ForegroundColor DarkGray
-} elseif ($VplcUrl -or -not (Test-Path $cfg)) {
-  $url = if ($VplcUrl) { $VplcUrl } else { 'http://localhost:8088' }
-  [IO.File]::WriteAllText($cfg, (@{ vplcUrl = $url } | ConvertTo-Json -Compress), $utf8)
-  Write-Host "  tc-config.json vplcUrl = $url" -ForegroundColor DarkGray
+} elseif (-not (Test-Path $cfg) -or $PSBoundParameters.ContainsKey('VplcUrl') -or $PSBoundParameters.ContainsKey('VplcModbusUrl') -or $PSBoundParameters.ContainsKey('VplcOpcuaUrl')) {
+  # 있던 값에 준 칸만 덮는다(없던 파일은 기본값 셋)
+  $values = [ordered]@{}
+  if (Test-Path $cfg) {
+    (Get-Content $cfg -Raw | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $values[$_.Name] = $_.Value }
+  } else {
+    $values.vplcUrl = 'http://localhost:8088'; $values.vplcModbusUrl = 'http://localhost:8091'; $values.vplcOpcuaUrl = 'http://localhost:8092'
+  }
+  foreach ($k in 'VplcUrl', 'VplcModbusUrl', 'VplcOpcuaUrl') {
+    if ($PSBoundParameters.ContainsKey($k)) {
+      $key = $k.Substring(0, 1).ToLower() + $k.Substring(1)
+      if ($PSBoundParameters[$k]) { $values[$key] = $PSBoundParameters[$k] } else { $values.Remove($key) }
+    }
+  }
+  [IO.File]::WriteAllText($cfg, ($values | ConvertTo-Json -Compress), $utf8)
+  Write-Host "  tc-config.json = $((Get-Content $cfg -Raw).Trim())" -ForegroundColor DarkGray
 } else {
   Write-Host "  tc-config.json 은 그대로 둡니다: $((Get-Content $cfg -Raw).Trim())" -ForegroundColor DarkGray
 }

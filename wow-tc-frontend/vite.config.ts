@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 
 /** 빌드 식별자(yyMMdd-HHmm) — 화면(머리말)에 보여 "지금 보는 게 최신 배포본인가"를 확인한다(mes-dev 와 같음). */
@@ -7,9 +7,21 @@ const builtAt = new Date();
 const BUILD_ID = `${String(builtAt.getFullYear()).slice(2)}${pad2(builtAt.getMonth() + 1)}${pad2(builtAt.getDate())}`
   + `-${pad2(builtAt.getHours())}${pad2(builtAt.getMinutes())}`;
 
-/** 개발 서버가 넘길 곳 — 바꾸려면 TC_DEV_API·VPLC_DEV_API */
+/** 개발 서버가 넘길 곳 — 바꾸려면 TC_DEV_API·VPLC_DEV_API·VPLC_MODBUS_DEV_API·VPLC_OPCUA_DEV_API */
 const TC_API = process.env.TC_DEV_API ?? 'http://localhost:8087';
 const VPLC_API = process.env.VPLC_DEV_API ?? 'http://localhost:8088';
+const VPLC_MODBUS_API = process.env.VPLC_MODBUS_DEV_API ?? 'http://localhost:8091';
+const VPLC_OPCUA_API = process.env.VPLC_OPCUA_DEV_API ?? 'http://localhost:8092';
+
+/** 가상 장비 — 접두어를 떼고 넘긴다. Origin 을 지워 장비의 CORS 검사를 피한다 */
+const device = (prefix: string, target: string): ProxyOptions => ({
+  target,
+  changeOrigin: true,
+  rewrite: (p: string) => p.replace(new RegExp(`^${prefix}`), ''),
+  configure: (proxy) => {
+    proxy.on('proxyReq', (proxyReq) => proxyReq.removeHeader('origin'));
+  },
+});
 
 export default defineConfig({
   define: { __APP_BUILD__: JSON.stringify(BUILD_ID) },
@@ -26,14 +38,9 @@ export default defineConfig({
         },
       },
       // 가상 PLC(시험 장비) — 운영은 tc-config.json 의 vplcUrl 로 바로 부른다(결정 F8)
-      '/vplc-api': {
-        target: VPLC_API,
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/vplc-api/, ''),
-        configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq) => proxyReq.removeHeader('origin'));
-        },
-      },
+      '/vplc-api': device('/vplc-api', VPLC_API),
+      '/vplc-modbus-api': device('/vplc-modbus-api', VPLC_MODBUS_API),
+      '/vplc-opcua-api': device('/vplc-opcua-api', VPLC_OPCUA_API),
     },
   },
   // 화면마다 지연 로드라 처음 연 화면이 새 의존성(아이콘 등)을 찾으면 개발 서버가 다시 묶고 페이지를 새로 고친다 — 시작할 때 모든 화면을 훑는다

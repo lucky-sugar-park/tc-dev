@@ -126,11 +126,11 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 | 관리 › 운영 옵션 | `tc.admin.option` `/admin/options` | `tc.option` | 재기동 없이 바꾸는 옵션 | 없음 |
 | 관리 › 다국어 | `tc.admin.i18n` `/admin/i18n` | `tc.option` | 코드별 KO·EN·JA·ZH 값 | 없음 |
 | 관리 › 공통 코드 | `tc.admin.code` `/admin/common-codes` | `tc.option` | 그룹·코드·이름 | 없음 |
-| **가상 PLC** › 목록 | `tc.vplc.list` `/vplc/list` | `tc.plc` | 가상 PLC 등록·게시·시작·멈춤·연결된 클라이언트 | 유지·정리 |
-| 가상 PLC › 메모리 | `tc.vplc.memory` `/vplc/memory` | `tc.plc` | 메모리 표(주소·비트·워드·ASCII), 값 쓰기·지우기, 시작·멈춤·멈춤(무응답)·재개, 자동 새로 고침 | 새로 고침 없음 |
+| **가상 PLC** › 목록 | `tc.vplc.list` `/vplc/list` | `tc.plc` | 가상 장비(MELSEC·Modbus·OPC UA) 한 표, 등록·게시·시작·멈춤·연결된 클라이언트 | 유지·정리 |
+| 가상 PLC › 메모리 | `tc.vplc.memory` `/vplc/memory` | `tc.plc` | 메모리 표(주소·비트·워드·ASCII)·OPC UA 태그 표, 값 쓰기·지우기, 시작·멈춤·멈춤(무응답)·재개, 자동 새로 고침 | 새로 고침 없음 |
 
 - 머리말: 북마크(shared), 언어, 테마, 설정 대화상자(shared), 내 정보·비밀번호 변경·로그아웃.
-- 가상 PLC 메뉴는 `tc-config.json` 에 vplc 주소가 있을 때만 보인다(운영 설치에는 vplc 가 없다).
+- 가상 PLC 메뉴는 `tc-config.json` 에 가상 장비 주소(`vplcUrl`·`vplcModbusUrl`·`vplcOpcuaUrl`)가 하나라도 있을 때만 보인다(운영 설치에는 가상 장비가 없다).
 - 화면 → 자원 표(§4.1 `uiroute.tc.*`)는 백엔드 한 곳(`UiRoutePermissions`)에 둔다. 화면을 볼 수 있으면 `A`, 그 자원의 동작(`C·R·U·D·X`)을 그대로 붙인다 — `ScreenAction` 이 버튼을 숨긴다.
 
 ## 6. 결정
@@ -274,3 +274,18 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 - 시험: e2e `test_vplc_http_methods.py` 35(메모리 4 더함 — vplc-e2e D950~ 를 쓰고 0 으로 되돌림), test_plc_points 23 그대로 통과. Playwright `e2e/vplc.spec.ts`(2) — 목록(등록·게시·시작·연결·정지·해제·삭제), 메모리(여러 값·10진 칸 고치기·비트·문자열, D900~ 를 쓰고 되돌림). 전체 화면 시험 18개 통과.
 - 화면이 주소(`?id=`)를 다시 쓰면 같은 화면 탭이 하나 더 열려서, 목록에서 들어올 때만 읽고 다시 쓰지 않는다.
 - 운영 반영: 운영 설치에는 vplc 가 없다(메뉴도 숨김). tc 는 문구 씨앗만 바뀌었다(jar 교체 때 함께). vplc 는 시험 장비라 재기동해도 된다.
+
+### 16.1 Modbus·OPC UA 가상 장비 (2026-11-01)
+
+가상 PLC 화면이 vplc 뿐 아니라 vplc-modbus·vplc-opcua(docs/virtual-devices.md)도 다룬다. 장비가 메모리에만 두므로 DB 에 따로 넣지 않고, 화면이 세 장비를 함께 불러 한 표로 보인다.
+
+| 화면 | 내용 |
+|---|---|
+| 가상 PLC 목록 | 종류 칸(MELSEC MC·Modbus TCP·OPC UA). Modbus 장치 — 명령 줄 **Modbus 장치 추가**(이름·포트·단위 ID·칸 수·응답 지연), 일시정지(무응답)·재개, 응답 지연 바꾸기, 연결 끊기(tc 재연결 시험), 삭제, 메모리로. OPC UA 서버 — 한 줄(엔드포인트·네임스페이스 번호·태그 수·세션 수), 태그 화면으로. 떠 있지 않은 장비는 경고만 띄우고 나머지를 보인다 |
+| 메모리 보기·제어 | 장비 고르기는 종류별로 묶었다(`?kind=modbus&id=`·`?kind=opcua`). Modbus — 영역 HR·IR·CO·DI(입력 영역도 화면에서 바꾼다), 번호는 프로토콜 주소(0부터 — tc 의 HR1 = HR0), 코일·입력 비트는 16개를 한 줄로 묶어 비트를 눌러 켜고 끈다(영역 끝에서 자름), 문자열은 높은 바이트가 앞 글자, 모두 지우기는 영역 전체를 0. OPC UA — 태그 표(경로·형·값·값 흉내·NodeId(nsu=)·설명), 값 칸을 고쳐 쓰기(형에 맞춰 바꿈), **태그 추가**(경로·형·처음 값·설명·흉내), 지우기, 태그 검색 |
+
+- 설정: `tc-config.json` 에 `vplcModbusUrl`·`vplcOpcuaUrl`(개발은 `/vplc-modbus-api`·`/vplc-opcua-api` 프록시). `deploy-frontend.ps1 -VplcModbusUrl … -VplcOpcuaUrl …` 은 그 칸만 바꾼다(빈 값이면 지움), 새로 만드는 파일에는 셋 다 기본값.
+- 장비 고침: 두 장비에 CORS(`vplc.cors.allowed-origin-patterns`, vplc 와 같은 기본값 5180·8087), vplc-modbus 장치 응답에 `bindAddress`, vplc-opcua 에 세션 수(`GET /api/v1/opcua` 의 `sessions`)와 태그 지우기(`DELETE /api/v1/opcua/tags/{path}`).
+- 문구: `35-tc-vplc.tsv` 에 30개(4개 언어) — tc 기동 때 씨앗으로 들어간다. 그 전에는 화면의 기본 문구(한국어).
+- 시험: vplc-opcua 단위(지우기·세션 수), Playwright `vplc.spec.ts` 5개(목록 — Modbus·OPC UA 줄과 Modbus 장치 추가·일시정지·재개·삭제, 메모리 — Modbus 레지스터·문자열·코일 비트(mb-e2e-2 의 900~ 를 쓰고 되돌림), OPC UA 태그 추가·값 고치기·지우기). 전체 화면 시험 23개 통과.
+- 운영 반영: 운영 설치에는 가상 장비가 없다. tc 는 문구 씨앗만(jar 교체 때 함께), 가상 장비는 재기동해도 된다.

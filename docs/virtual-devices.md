@@ -12,9 +12,11 @@ tc 의 Modbus·OPC UA 드라이버를 개발·시험할 상대 장비다. MELSEC
 | REST | 8088 | **8091** | **8092** |
 | DB | MariaDB(장비·이력) | 없음(메모리) | 없음(메모리) |
 | 사내 프레임워크 | 씀 | 안 씀 | 안 씀 |
-| 화면 | tc 화면의 가상 PLC 메뉴 | 없음(REST) | 없음(REST) |
+| 화면 | tc 화면의 가상 PLC 메뉴 | tc 화면의 가상 PLC 메뉴(목록·메모리) | tc 화면의 가상 PLC 메뉴(목록·태그) |
 
 REST 포트는 8089·8090 이 이 PC 에서 다른 앱(옛 vplc, mes-dev 서비스)과 겹쳐 8091·8092 로 잡았다. 환경 변수 `VPLC_MODBUS_HTTP_PORT`·`VPLC_OPCUA_HTTP_PORT` 로 바꾼다.
+
+tc 화면(가상 PLC 메뉴, docs/frontend-design.md §16.1)이 REST 를 바로 부른다 — `tc-config.json` 의 `vplcModbusUrl`·`vplcOpcuaUrl`, CORS 허용 출처는 `VPLC_CORS_ALLOWED_ORIGIN_PATTERNS`(기본 5180·8087).
 
 ## 1. 띄우기
 
@@ -43,7 +45,7 @@ cd wow-tc-backend
 
 | 요청 | 내용 |
 |---|---|
-| `GET /` | 장치 목록(지연·무응답·연결 수) |
+| `GET /` | 장치 목록(바인드 주소·지연·무응답·연결 수) |
 | `POST /` `{name, port, unitId, size, delayMs}` | 장치 더하기(그 포트가 처음이면 서버를 연다) |
 | `DELETE /{name}` | 지우기(그 포트의 마지막 장치면 서버를 닫는다) |
 | `GET /{name}/{co\|di\|ir\|hr}?start=&count=` | 값 보기 — 비트는 true/false, 레지스터는 0~65535 |
@@ -80,10 +82,11 @@ Eclipse Milo 1.1.8 서버. 네임스페이스 `urn:wow:tc:vplc-opcua` — 앞에
 
 | 요청 | 내용 |
 |---|---|
-| `GET /` | 엔드포인트·네임스페이스 번호·태그 수 |
+| `GET /` | 엔드포인트·네임스페이스 번호·태그 수·세션 수 |
 | `GET /tags` | 태그 목록(NodeId·형·지금 값·흉내) |
 | `POST /tags` `{path, type, value, simulation, description}` | 태그 더하기(폴더는 경로대로 만든다) |
 | `GET /tags/{path}` · `PUT /tags/{path}` `{value}` | 값 보기·바꾸기(흉내 중인 태그는 다음 주기에 다시 흉내 값) |
+| `DELETE /tags/{path}` | 태그 지우기(폴더는 둔다) |
 
 ## 4. tc 에서 쓰기
 

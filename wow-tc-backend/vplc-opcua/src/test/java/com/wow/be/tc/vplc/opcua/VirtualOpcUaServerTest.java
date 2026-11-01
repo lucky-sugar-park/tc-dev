@@ -49,9 +49,18 @@ class VirtualOpcUaServerTest {
 				Object first = server.get("Line1.Counter").value();
 				Thread.sleep(500);
 				assertThat(server.get("Line1.Counter").value()).isNotEqualTo(first);
+				assertThat(server.sessionCount()).isEqualTo(1);
+				// 지우면 목록·찾아보기에서 빠지고 같은 경로로 다시 더할 수 있다
+				server.remove("Line1.Speed");
+				assertThat(server.list()).extracting(VirtualOpcUaServer.TagView::path).doesNotContain("Line1.Speed");
+				assertThat(client.getAddressSpace().browse(NodeId.parse("ns=" + server.namespaceIndex() + ";s=Line1")))
+					.extracting(r -> r.getBrowseName().getName()).doesNotContain("Speed");
+				server.add(new TagSpec("Line1.Speed", TagType.UINT16, 7, null, null));
+				assertThat(server.get("Line1.Speed").value()).isEqualTo(7);
 			} finally {
 				client.disconnect();
 			}
+			assertThatThrownBy(() -> server.remove("Nope")).hasMessageContaining("없는");
 			assertThatThrownBy(() -> server.add(new TagSpec("1bad", TagType.INT16, 0, null, null))).hasMessageContaining("태그 경로");
 			assertThatThrownBy(() -> server.add(new TagSpec("Top", TagType.BOOL, false, null, null))).hasMessageContaining("이미");
 			assertThatThrownBy(() -> server.set("Line1.Speed", 70000)).hasMessageContaining("범위");
