@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Box, Chip } from '@mui/material';
+import { Box, Chip, Link } from '@mui/material';
 import { GridActionsCellItem, type GridColDef } from '@mui/x-data-grid-pro';
 import { useNavigate } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
@@ -20,12 +20,11 @@ import { StandardGrid } from '../../shared/components/StandardGrid';
 import { matches } from '../../shared/format';
 import { usePerm } from '../../shared/usePerm';
 import { DelayDialog, VplcConnectionsDialog, VplcFormDialog } from '../components/VplcDialogs';
-import { PROTOCOL_LABEL, STATUS_COLOR, isPublished, protocolOf, vplcApi, type VplcControl } from '../services/vplcApi';
+import { PROTOCOL_COLOR, PROTOCOL_LABEL, STATUS_COLOR, isPublished, protocolOf, vplcApi, type VplcControl } from '../services/vplcApi';
 import type { Vplc, VplcProtocol } from '../types/vplc';
 
 const SCREEN = 'tc.vplc.list';
 
-const PROTOCOL_COLOR: Record<VplcProtocol, 'default' | 'primary' | 'secondary'> = { MELSEC_MC: 'default', MODBUS_TCP: 'primary', OPC_UA: 'secondary' };
 
 /**
  * 가상 PLC 목록 (docs/frontend-design.md §5, docs/virtual-devices.md) — 한 vplc 가 띄우는 MELSEC·Modbus·OPC UA 가상 PLC. 종류와 관계없이 같은
@@ -123,6 +122,15 @@ export default function VplcListPage(): ReactElement {
     {
       field: 'connected', headerName: t('i18n.tc.vplc.connected', '연결 수'), width: 90, type: 'number',
       valueGetter: (_v, r) => (r.connections ?? []).reduce((n, c) => n + (c.connectedCount ?? 0), 0),
+      // 누르면 연결 클라이언트 보기(작업 메뉴와 같은 창)
+      renderCell: ({ row, value }) => (
+        <Link component="button" type="button" underline="hover" aria-label={`clients-${row.name}`}
+          title={t('i18n.tc.vplc.viewClients', '연결 클라이언트 보기')}
+          onClick={(e) => { e.stopPropagation(); setConnOf(row); }}
+          sx={{ width: '100%', textAlign: 'right', fontSize: 'inherit' }}>
+          {value as number}
+        </Link>
+      ),
     },
     {
       field: 'memoryTypeList', headerName: t('i18n.tc.vplc.memoryTypes', '메모리 종류'), width: 150, sortable: false,
@@ -151,7 +159,7 @@ export default function VplcListPage(): ReactElement {
             acts.push(<GridActionsCellItem key="start" icon={<PlayArrowIcon />} label={t('i18n.tc.vplc.start', '시작')} onClick={() => control('start', row)} />);
           }
         }
-        acts.push(<GridActionsCellItem key="conn" icon={<CableIcon />} label={t('i18n.tc.vplc.connections', '연결')} onClick={() => setConnOf(row)} showInMenu />);
+        acts.push(<GridActionsCellItem key="conn" icon={<CableIcon />} label={t('i18n.tc.vplc.viewClients', '연결 클라이언트 보기')} onClick={() => setConnOf(row)} showInMenu />);
         if (perm('X') && (row.status === 'RUNNING' || row.status === 'PAUSED')) {
           acts.push(<GridActionsCellItem key="drop" icon={<LinkOffIcon />} label={t('i18n.tc.vplc.dropConnections', '연결 끊기')} showInMenu
             onClick={() => act(t('i18n.tc.vplc.confirmDropAll', '{name} 에 붙은 연결을 모두 끊을까요? (tc 재연결 시험)').replace('{name}', row.name),

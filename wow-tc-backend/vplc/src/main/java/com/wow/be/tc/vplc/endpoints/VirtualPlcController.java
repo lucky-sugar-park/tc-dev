@@ -15,6 +15,8 @@ import com.wow.be.framework.Condition;
 import com.wow.be.tc.vplc.VirtualPlcException;
 import com.wow.be.tc.vplc.melsec.MemoryInfo;
 import com.wow.be.tc.vplc.management.ConnectionClientHistoryInfo;
+import com.wow.be.tc.vplc.management.ConnectionHistoryPage;
+import com.wow.be.tc.vplc.management.ConnectionHistoryQuery;
 import com.wow.be.tc.vplc.management.ConnectionInfo;
 import com.wow.be.tc.vplc.management.PortUpdateInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcHistoryInfo;
@@ -159,6 +161,13 @@ public class VirtualPlcController {
 	public List<ConnectionClientHistoryInfo> searchConnectionClientHistory(@RequestBody Condition cond) throws VirtualPlcException {
 		log.debug("");
 		return virtualPlcManagementService.searchConnectionClientHistory(cond);
+	}
+
+	/** 연결 이력 한 쪽 — 가상 PLC 이름·IP, 종류, 기간으로 찾는다(화면 가상 PLC › 가상 PLC 연결 이력). 최신순 */
+	@PostMapping("/management/connection-histories/query")
+	public ConnectionHistoryPage queryConnectionHistories(@RequestBody ConnectionHistoryQuery query) {
+		log.debug("");
+		return virtualPlcManagementService.queryConnectionHistories(query);
 	}
 
 	/** 가상 PLC 의 포트별 연결 상태. */

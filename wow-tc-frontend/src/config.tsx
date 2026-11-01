@@ -29,6 +29,7 @@ const PAGES: Record<string, Loader> = {
   'tc.admin.code': () => import('./admin/pages/CommonCodePage'),
   'tc.vplc.list': () => import('./vplc/pages/VplcListPage'),
   'tc.vplc.memory': () => import('./vplc/pages/VplcMemoryPage'),
+  'tc.vplc.connhist': () => import('./vplc/pages/VplcConnectionHistoryPage'),
 };
 
 const comingSoon = (m: ScreenMeta): Loader => () =>

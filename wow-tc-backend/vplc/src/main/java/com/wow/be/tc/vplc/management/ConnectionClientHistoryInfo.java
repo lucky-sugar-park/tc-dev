@@ -30,7 +30,13 @@ public class ConnectionClientHistoryInfo extends AbstractInfo {
 	private Date timestamp;
 	
 	private String description;
-	
+
+	/** 가상 PLC 이름 — 이력 찾기가 채운다(지운 가상 PLC 는 비어 있다) */
+	private String vplcName;
+
+	/** 가상 PLC 종류 — 이력 찾기가 채운다 */
+	private String protocol;
+
 	public ConnectionClientHistoryInfo () {
 		super();
 	}

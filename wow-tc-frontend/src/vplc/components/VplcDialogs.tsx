@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactElement } from 'react';
 import {
-  Alert, Autocomplete, Box, Button, Chip, Dialog, DialogContent, FormControlLabel, MenuItem, Stack, Switch, TextField,
+  Alert, Autocomplete, Box, Button, Chip, Dialog, DialogContent, FormControlLabel, MenuItem, Paper, Stack, Switch, TextField, Tooltip, Typography,
 } from '@mui/material';
-import { DataGridPro, type GridColDef } from '@mui/x-data-grid-pro';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { DialogFooter, DialogTitleClose, DraggablePaper, extractApiError, useI18n } from 'wow-mes-frontend-shared';
 import { fmtTime } from '../../shared/format';
 import { MEMORY_TYPES, PROTOCOL_LABEL, protocolOf, vplcApi } from '../services/vplcApi';
@@ -189,36 +189,96 @@ export function DelayDialog({ vplc, onClose, onSubmit }: {
   );
 }
 
-type ClientRow = { key: string; port: number; clientIp?: string; clientChannelId?: string; connTimestamp?: string };
+/** 왼쪽 머리 칸 — 이름과 (합계) */
+function HeadCell({ title, sum }: { title: string; sum: string }): ReactElement {
+  return (
+    <Box component="th" scope="row" sx={{
+      bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 600, fontSize: 13, px: 1.5, py: 1, minWidth: 150,
+      textAlign: 'center', border: 1, borderColor: 'divider', position: 'sticky', left: 0, zIndex: 1, whiteSpace: 'nowrap',
+    }}>
+      {title}<Box sx={{ fontWeight: 500 }}>( {sum} )</Box>
+    </Box>
+  );
+}
 
-/** 포트별 연결과 붙어 있는 클라이언트(tc 커넥터 등) */
+const cellSx = { border: 1, borderColor: 'divider', px: 1.5, py: 1, minWidth: 96, textAlign: 'center', fontSize: 13, verticalAlign: 'middle' } as const;
+
+/**
+ * 연결 클라이언트 보기 — 포트마다 연결 수와 붙어 있는 클라이언트(tc 커넥터 등)를 가로 표로(VPLC_CONNECTED_CLIENT).
+ * 포트가 많으면 표가 옆으로 넘어가고 왼쪽 머리 칸은 고정이다. 클라이언트 칸에 마우스를 올리면 연결된 때·채널.
+ */
 export function VplcConnectionsDialog({ vplc, onClose }: { vplc: Vplc | null; onClose: () => void }): ReactElement {
   const { t } = useI18n();
   const [conns, setConns] = useState<VplcConnection[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const load = useCallback((v: Vplc) => {
+    setError(null); setLoading(true);
+    vplcApi.connections(v.id)
+      .then((c) => setConns([...c].sort((a, b) => a.port - b.port)))
+      .catch((e) => setError(extractApiError(e)))
+      .finally(() => setLoading(false));
+  }, []);
   useEffect(() => {
-    setConns([]); setError(null);
-    if (vplc) vplcApi.connections(vplc.id).then(setConns).catch((e) => setError(extractApiError(e)));
-  }, [vplc]);
-  const rows = useMemo<ClientRow[]>(() => conns.flatMap((c) => (c.connectedClientList?.length
-    ? c.connectedClientList.map((x, i) => ({ key: `${c.port}-${i}`, port: c.port, clientIp: x.clientIp, clientChannelId: x.clientChannelId, connTimestamp: x.connTimestamp }))
-    : [{ key: `${c.port}-none`, port: c.port }])), [conns]);
-  const cols = useMemo<GridColDef<ClientRow>[]>(() => [
-    { field: 'port', headerName: t('i18n.tc.vplc.port', '포트'), width: 90 },
-    { field: 'clientIp', headerName: t('i18n.tc.vplc.client', '클라이언트'), width: 160, valueGetter: (v) => v ?? t('i18n.tc.vplc.noClient', '(없음)') },
-    { field: 'connTimestamp', headerName: t('i18n.tc.vplc.connectedAt', '연결된 때'), width: 170, valueFormatter: (v: string) => fmtTime(v) },
-    { field: 'clientChannelId', headerName: t('i18n.tc.vplc.channel', '채널'), flex: 1, minWidth: 160 },
-  ], [t]);
+    setConns([]);
+    if (vplc) load(vplc);
+  }, [vplc, load]);
+  const totalClients = conns.reduce((n, c) => n + (c.connectedCount ?? 0), 0);
+  const unit = t('i18n.tc.vplc.ea', '개');
   return (
-    <Dialog open={!!vplc} onClose={onClose} maxWidth="md" fullWidth PaperComponent={DraggablePaper}>
-      <DialogTitleClose onClose={onClose}>{t('i18n.tc.vplc.connections', '연결')} — {vplc?.name}</DialogTitleClose>
+    <Dialog open={!!vplc} onClose={onClose} maxWidth="lg" fullWidth PaperComponent={DraggablePaper}>
+      <DialogTitleClose onClose={onClose}>{t('i18n.tc.vplc.viewClients', '연결 클라이언트 보기')}</DialogTitleClose>
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-        <Box sx={{ height: 320, position: 'relative' }}>
-          <Box sx={{ position: 'absolute', inset: 0 }}>
-            <DataGridPro rows={rows} columns={cols} getRowId={(r) => r.key} density="compact" disableRowSelectionOnClick hideFooter />
-          </Box>
-        </Box>
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.5 }}>
+            <Typography variant="subtitle1">{t('i18n.tc.vplc.vplc', '가상 PLC')} :</Typography>
+            <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>{vplc?.name}</Typography>
+            {vplc && <Chip size="small" variant="outlined" label={PROTOCOL_LABEL[protocolOf(vplc)]} />}
+            {vplc && <Typography variant="body2" color="text.secondary">{vplc.ipAddress}</Typography>}
+            <Box sx={{ flex: 1 }} />
+            <Button size="small" startIcon={<RefreshIcon />} disabled={loading || !vplc} onClick={() => vplc && load(vplc)}>
+              {t('i18n.tc.common.refresh', '새로 고침')}
+            </Button>
+          </Stack>
+          {conns.length === 0 && !loading ? (
+            <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+              {t('i18n.tc.vplc.noPorts', '포트가 없습니다 — 게시한 가상 PLC 만 포트가 있습니다.')}
+            </Typography>
+          ) : (
+            <Box sx={{ overflowX: 'auto' }}>
+              <Box component="table" aria-label="connected-clients" sx={{ borderCollapse: 'collapse', minWidth: '100%' }}>
+                <tbody>
+                  <tr>
+                    <HeadCell title={t('i18n.tc.vplc.portNumber', '포트 번호')} sum={`${conns.length} ${unit}`} />
+                    {conns.map((c) => <Box component="td" key={c.port} sx={{ ...cellSx, fontWeight: 600 }}>{c.port}</Box>)}
+                  </tr>
+                  <tr>
+                    <HeadCell title={t('i18n.tc.vplc.connectionCount', '연결 수')} sum={`${totalClients} ${unit}`} />
+                    {conns.map((c) => (
+                      <Box component="td" key={c.port} sx={{ ...cellSx, color: c.connectedCount > 0 ? 'success.main' : 'text.secondary', fontWeight: c.connectedCount > 0 ? 700 : 400 }}>
+                        {c.connectedCount ?? 0}
+                      </Box>
+                    ))}
+                  </tr>
+                  <tr>
+                    <HeadCell title={t('i18n.tc.vplc.clientIp', '클라이언트 IP')} sum={`${totalClients} ${unit}`} />
+                    {conns.map((c) => (
+                      <Box component="td" key={c.port} sx={cellSx}>
+                        {c.connectedClientList?.length ? c.connectedClientList.map((x, i) => (
+                          <Tooltip key={x.clientChannelId ?? i} arrow
+                            title={`${t('i18n.tc.vplc.connectedAt', '연결된 때')}: ${fmtTime(x.connTimestamp)} · ${t('i18n.tc.vplc.channel', '채널')}: ${x.clientChannelId ?? '-'}`}>
+                            <Box sx={{ whiteSpace: 'nowrap' }}>{x.clientIp ?? '-'}</Box>
+                          </Tooltip>
+                        )) : <Box sx={{ color: 'text.disabled' }}>-</Box>}
+                      </Box>
+                    ))}
+                  </tr>
+                </tbody>
+              </Box>
+            </Box>
+          )}
+        </Paper>
       </DialogContent>
       <DialogFooter onClose={onClose} />
     </Dialog>

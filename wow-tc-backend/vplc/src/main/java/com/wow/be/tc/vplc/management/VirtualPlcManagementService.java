@@ -44,6 +44,9 @@ public interface VirtualPlcManagementService {
 	public List<VirtualPlcHistoryInfo> searchVirtualPlcHistory(Condition cond) throws VirtualPlcException;
 	
 	public List<ConnectionClientHistoryInfo> searchConnectionClientHistory(Condition cond) throws VirtualPlcException;
+
+	/** 연결 이력 한 쪽 — 가상 PLC 이름·IP, 종류, 기간으로 찾는다. 최신순, 항목에 가상 PLC 이름·종류를 채운다 */
+	public ConnectionHistoryPage queryConnectionHistories(ConnectionHistoryQuery query);
 	
 	public List<ConnectionInfo> searchConnections(String vplcId) throws VirtualPlcException;
 	

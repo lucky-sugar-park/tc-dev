@@ -25,4 +25,5 @@ i18n.menu.tc.admin.i18n	다국어	Translations	多言語	多语言
 i18n.menu.tc.admin.code	공통 코드	Common codes	共通コード	通用代码
 i18n.menu.tc.vplc	가상 PLC	Virtual PLC	仮想PLC	虚拟PLC
 i18n.menu.tc.vplc.list	가상 PLC 목록	Virtual PLCs	仮想PLC一覧	虚拟PLC列表
+i18n.menu.tc.vplc.connhist	가상 PLC 연결 이력	Virtual PLC connections	仮想PLC接続履歴	虚拟PLC连接历史
 i18n.menu.tc.vplc.memory	메모리 보기·제어	Memory & control	メモリ表示・制御	内存查看与控制

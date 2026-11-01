@@ -1,5 +1,7 @@
 import { tcConfig } from '../../shared/tcConfig';
-import type { MemoryInfo, OpcUaInfo, OpcUaTag, OpcUaTagSpec, Vplc, VplcConnection, VplcProtocol } from '../types/vplc';
+import type {
+  MemoryInfo, OpcUaInfo, OpcUaTag, OpcUaTagSpec, Vplc, VplcConnection, VplcConnectionHistoryPage, VplcConnectionHistoryQuery, VplcProtocol,
+} from '../types/vplc';
 
 const enc = encodeURIComponent;
 
@@ -34,6 +36,8 @@ export const vplcApi = {
   publish: (id: string) => call<void>('POST', `/management/publish/${enc(id)}`),
   release: (id: string) => call<void>('POST', `/management/release/${enc(id)}`),
   connections: (id: string) => call<VplcConnection[]>('GET', `/management/search/connection/${enc(id)}`),
+  /** 연결 이력 한 쪽 — 가상 PLC 이름·IP, 종류, 기간. 최신순 */
+  connectionHistories: (q: VplcConnectionHistoryQuery) => call<VplcConnectionHistoryPage>('POST', '/management/connection-histories/query', q),
   control: (op: VplcControl, id: string) => call<Vplc>('POST', `/control/${op}/${enc(id)}`),
   /** 붙은 연결을 모두 끊는다(모든 종류) — tc 재연결 시험 */
   dropConnections: (id: string) => call<{ dropped: number }>('POST', `/control/drop-connections/${enc(id)}`),
@@ -64,6 +68,9 @@ export const OPCUA_TYPES = ['BOOL', 'INT16', 'UINT16', 'INT32', 'UINT32', 'INT64
 
 /** 종류 이름 */
 export const PROTOCOL_LABEL: Record<VplcProtocol, string> = { MELSEC_MC: 'MELSEC MC', MODBUS_TCP: 'Modbus TCP', OPC_UA: 'OPC UA' };
+
+/** 종류 칩 색 */
+export const PROTOCOL_COLOR: Record<VplcProtocol, 'default' | 'primary' | 'secondary'> = { MELSEC_MC: 'default', MODBUS_TCP: 'primary', OPC_UA: 'secondary' };
 
 /** 종류(예전 줄은 MELSEC_MC) */
 export const protocolOf = (v: Pick<Vplc, 'protocol'>): VplcProtocol => v.protocol ?? 'MELSEC_MC';

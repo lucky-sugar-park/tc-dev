@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +22,10 @@ import lombok.extern.slf4j.Slf4j;
 @ToString
 @Builder
 @Entity
-@Table(name="CONNECTED_CLIENT_HIST")
+// 색인: 연결 이력 화면의 기간 조건·최신순
+@Table(name="CONNECTED_CLIENT_HIST", indexes={
+	@Index(name="IX_CCH_TIMESTAMP", columnList="TIMESTAMP")
+})
 @Data
 @EqualsAndHashCode(callSuper=false)
 @AllArgsConstructor

@@ -38,6 +38,7 @@ public final class UiRoutePermissions {
 		SCREENS.put("tc.admin.code", "tc.option");
 		SCREENS.put("tc.vplc.list", "tc.plc");
 		SCREENS.put("tc.vplc.memory", "tc.plc");
+		SCREENS.put("tc.vplc.connhist", "tc.plc");
 	}
 
 	private UiRoutePermissions() {

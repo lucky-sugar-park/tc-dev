@@ -89,3 +89,20 @@ i18n.tc.vplc.trustAllClients	클라이언트 인증서 모두 믿기	Trust all c
 i18n.tc.vplc.delayHelp	요청마다 이만큼 늦게 답한다 — tc 시간 초과 시험	Each reply is delayed by this much — tc timeout test	要求ごとにこの分だけ遅れて応答 — tc タイムアウト試験	每次请求延迟这么多再应答 — tc 超时测试
 i18n.tc.vplc.confirmDropAll	{name} 에 붙은 연결을 모두 끊을까요? (tc 재연결 시험)	Drop all connections to {name}? (tc reconnect test)	{name} の接続をすべて切断しますか?(tc 再接続試験)	断开 {name} 的所有连接吗?(tc 重连测试)
 i18n.tc.vplc.tagSaved	태그 정의는 vplc DB 에 남습니다 — 지금 값은 메모리(정지했다 시작하면 처음 값).	Tag definitions are stored in the vplc DB — current values live in memory (reset to initial on restart).	タグ定義は vplc DB に残ります — 現在値はメモリ(停止・開始で初期値)。	标签定义保存在 vplc DB — 当前值在内存(停止再启动恢复初始值)。
+i18n.tc.vplc.viewClients	연결 클라이언트 보기	View connected clients	接続クライアント表示	查看连接客户端
+i18n.tc.vplc.ea	개	EA	個	个
+i18n.tc.vplc.portNumber	포트 번호	Port number	ポート番号	端口号
+i18n.tc.vplc.connectionCount	연결 수	Connections	接続数	连接数
+i18n.tc.vplc.clientIp	클라이언트 IP	Client IP	クライアントIP	客户端IP
+i18n.tc.vplc.vplc	가상 PLC	Virtual PLC	仮想PLC	虚拟PLC
+i18n.tc.vplc.noPorts	포트가 없습니다 — 게시한 가상 PLC 만 포트가 있습니다.	No ports — only published virtual PLCs have ports.	ポートがありません — 公開した仮想PLCのみポートがあります。	没有端口 — 只有已发布的虚拟PLC有端口。
+i18n.tc.vplc.eventTime	시각	Time	時刻	时间
+i18n.tc.vplc.event	연결·끊김	Event	接続・切断	连接/断开
+i18n.tc.vplc.event.connected	연결	Connected	接続	已连接
+i18n.tc.vplc.event.disconnected	끊김	Disconnected	切断	已断开
+i18n.tc.vplc.event.released	강제 해제	Released by force	強制解除	强制解除
+i18n.tc.vplc.kindOfVplc	가상 PLC 종류	Virtual PLC kind	仮想PLC種類	虚拟PLC类型
+i18n.tc.vplc.connFrom	연결 기간 시작	Connected from	接続期間開始	连接期间开始
+i18n.tc.vplc.connTo	연결 기간 끝	Connected to	接続期間終了	连接期间结束
+i18n.tc.vplc.histSearch	가상 PLC 이름·IP	Virtual PLC name·IP	仮想PLC名・IP	虚拟PLC名称·IP
+i18n.tc.vplc.connHistTitle	가상 PLC 연결 이력	Virtual PLC connection history	仮想PLC接続履歴	虚拟PLC连接历史

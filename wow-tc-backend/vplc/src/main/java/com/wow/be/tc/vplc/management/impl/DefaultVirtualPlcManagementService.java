@@ -2,7 +2,9 @@ package com.wow.be.tc.vplc.management.impl;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,8 @@ import com.wow.be.tc.vplc.core.VirtualPlcProviders;
 import com.wow.be.tc.vplc.core.VirtualPlcRegistry;
 import com.wow.be.tc.vplc.management.ConnectionClientHistoryInfo;
 import com.wow.be.tc.vplc.management.ConnectionClientInfo;
+import com.wow.be.tc.vplc.management.ConnectionHistoryPage;
+import com.wow.be.tc.vplc.management.ConnectionHistoryQuery;
 import com.wow.be.tc.vplc.management.ConnectionInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcHistoryInfo;
 import com.wow.be.tc.vplc.management.VirtualPlcInfo;
@@ -439,6 +443,49 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 				new EntityConverter<ConnectionClientHistoryEntity, ConnectionClientHistoryInfo>(){};
 
 		return converter.entitiesToInfos(connectionClientHistoryHistEntityList);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public ConnectionHistoryPage queryConnectionHistories(ConnectionHistoryQuery q) {
+		// 가상 PLC 는 많지 않다 — 이름·종류는 한 번에 읽어 아이디로 바꿔 건다(이력 표에는 아이디만 있다)
+		Map<String, VirtualPlcEntity> vplcs = new HashMap<>();
+		virtualPlcRepository.findAll().forEach(v -> vplcs.put(v.getId(), v));
+		String text = q.search() == null ? "" : q.search().trim().toLowerCase();
+		String protocol = q.protocol() == null ? "" : q.protocol().trim();
+
+		Specification<ConnectionClientHistoryEntity> spec = (root, cq, cb) -> {
+			List<jakarta.persistence.criteria.Predicate> ps = new ArrayList<>();
+			if (!text.isEmpty()) {
+				List<String> named = vplcs.values().stream()
+					.filter(v -> v.getName() != null && v.getName().toLowerCase().contains(text)).map(VirtualPlcEntity::getId).toList();
+				jakarta.persistence.criteria.Predicate byIp = cb.like(cb.lower(root.get("clientIp")), "%" + text + "%");
+				ps.add(named.isEmpty() ? byIp : cb.or(byIp, root.get("vplcId").in(named)));
+			}
+			if (!protocol.isEmpty()) {
+				// 종류가 비어 있는 예전 줄은 MELSEC_MC
+				List<String> ofKind = vplcs.values().stream()
+					.filter(v -> protocol.equals(v.getProtocol() == null || v.getProtocol().isBlank() ? "MELSEC_MC" : v.getProtocol()))
+					.map(VirtualPlcEntity::getId).toList();
+				ps.add(ofKind.isEmpty() ? cb.disjunction() : root.get("vplcId").in(ofKind));
+			}
+			if (q.from() != null) ps.add(cb.greaterThanOrEqualTo(root.get("timestamp"), q.from()));
+			if (q.to() != null) ps.add(cb.lessThanOrEqualTo(root.get("timestamp"), q.to()));
+			return cb.and(ps.toArray(jakarta.persistence.criteria.Predicate[]::new));
+		};
+		PageRequest pr = PageRequest.of(q.pageOrDefault(), q.sizeOrDefault(),
+			Sort.by(Sort.Order.desc("timestamp"), Sort.Order.desc("seqNo")));
+		org.springframework.data.domain.Page<ConnectionClientHistoryEntity> found = connectionClientHistoryRepository.findAll(spec, pr);
+		List<ConnectionClientHistoryInfo> items = found.getContent().stream().map(e -> {
+			ConnectionClientHistoryInfo info = e.info();
+			VirtualPlcEntity v = vplcs.get(e.getVplcId());
+			if (v != null) {
+				info.setVplcName(v.getName());
+				info.setProtocol(v.getProtocol() == null || v.getProtocol().isBlank() ? "MELSEC_MC" : v.getProtocol());
+			}
+			return info;
+		}).toList();
+		return new ConnectionHistoryPage(items, found.getTotalElements(), q.pageOrDefault(), q.sizeOrDefault());
 	}
 
 	@Override

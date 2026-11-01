@@ -40,6 +40,7 @@ export const SCREENS: ScreenMeta[] = [
   { key: 'tc.admin.code', path: '/admin/common-codes', label: '공통 코드', group: 'tc.admin', icon: 'commonCode' },
   { key: 'tc.vplc.list', path: '/vplc/list', label: '가상 PLC 목록', group: 'tc.vplc', icon: 'vplc' },
   { key: 'tc.vplc.memory', path: '/vplc/memory', label: '메모리 보기·제어', group: 'tc.vplc', icon: 'memory' },
+  { key: 'tc.vplc.connhist', path: '/vplc/connection-history', label: '가상 PLC 연결 이력', group: 'tc.vplc', icon: 'history' },
 ];
 
 /** 다국어 코드 — 백엔드 씨앗 ui-seed/i18n/20-tc-menu.tsv 와 같다 */

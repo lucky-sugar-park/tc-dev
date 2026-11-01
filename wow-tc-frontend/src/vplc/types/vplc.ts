@@ -12,6 +12,25 @@ export type VplcConnection = {
   connectedClientList?: ConnectedClient[];
 };
 
+/** 연결 이력 한 줄(CONNECTED_CLIENT_HIST) — 이름·종류는 지운 가상 PLC 면 비어 있다 */
+export type VplcConnectionHistory = {
+  seqNo: number;
+  vplcId: string;
+  vplcName?: string;
+  protocol?: VplcProtocol;
+  port: number;
+  clientIp?: string;
+  clientChannelId?: string;
+  /** CONNECTED · DISCONNECTED · VPLC_RELEASED_BY_FORCED */
+  connOrDisconn: string;
+  timestamp: string;
+  description?: string;
+};
+
+export type VplcConnectionHistoryQuery = { search?: string; protocol?: VplcProtocol; from?: string; to?: string; page: number; size: number };
+
+export type VplcConnectionHistoryPage = { items: VplcConnectionHistory[]; total: number; page: number; size: number };
+
 /** 가상 PLC 종류 — 한 vplc 가 세 종류를 여러 대 띄운다. tc 커넥터 프로토콜과 같은 이름 */
 export type VplcProtocol = 'MELSEC_MC' | 'MODBUS_TCP' | 'OPC_UA';
 

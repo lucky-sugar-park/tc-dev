@@ -131,6 +131,7 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 | 관리 › 공통 코드 | `tc.admin.code` `/admin/common-codes` | `tc.option` | 그룹·코드·이름 | 없음 |
 | **가상 PLC** › 목록 | `tc.vplc.list` `/vplc/list` | `tc.plc` | 가상 장비(MELSEC·Modbus·OPC UA) 한 표, 등록·게시·시작·멈춤·연결된 클라이언트 | 유지·정리 |
 | 가상 PLC › 메모리 | `tc.vplc.memory` `/vplc/memory` | `tc.plc` | 메모리 표(주소·비트·워드·ASCII)·OPC UA 태그 표, 값 쓰기·지우기, 시작·멈춤·멈춤(무응답)·재개, 자동 새로 고침 | 새로 고침 없음 |
+| 가상 PLC › 가상 PLC 연결 이력 | `tc.vplc.connhist` `/vplc/connection-history` | `tc.plc` | 클라이언트가 붙고 끊긴 기록(`CONNECTED_CLIENT_HIST`) — 통합검색(가상 PLC 이름·IP)·가상 PLC 종류·연결 기간, 서버 쪽 쪽 넘김·최신순. vplc `POST /api/v1/vplc/management/connection-histories/query`(2026-11-01) | 없음 |
 
 - 머리말: 북마크(shared), 언어, 테마, 설정 대화상자(shared), 내 정보·비밀번호 변경·로그아웃.
 - 가상 PLC 메뉴는 `tc-config.json` 에 가상 장비 주소(`vplcUrl`·`vplcModbusUrl`·`vplcOpcuaUrl`)가 하나라도 있을 때만 보인다(운영 설치에는 가상 장비가 없다).
