@@ -124,5 +124,49 @@ check("RUNNING 에 재개 → 409", s == 409 and error_code(b) == "ERR_409", (s,
 s, b = call("POST", "/control/start/vplc-e2e")
 check("RUNNING 에 시작 → 409", s == 409 and error_code(b) == "ERR_409", (s, b[:200]))
 
+# 같은 PC 의 연결 여러 개 — 각각 남고, 연결이 붙은 채 정지해도 200(docs/vplc-stop-error.md)
+import socket  # noqa: E402
+import time  # noqa: E402
+
+TMP = "e2e-conn-key"
+TMP_PORT = 15991
+call("POST", f"/control/stop/byName/{TMP}")
+call("POST", f"/management/release/byName/{TMP}")
+call("DELETE", f"/management/delete/byName/{TMP}")
+post_json("/management/register", {"name": TMP, "protocol": "MODBUS_TCP", "ipAddress": "127.0.0.1", "startPort": TMP_PORT,
+                                   "published": False, "memoryTypeList": [], "settings": {"unitId": 1, "size": 10}})
+s, raw = call("GET", f"/management/find/byName/{TMP}")
+tmp_id = json.loads(raw)["id"]
+call("POST", f"/management/publish/{tmp_id}")
+call("POST", f"/control/start/{tmp_id}")
+socks = [socket.create_connection(("127.0.0.1", TMP_PORT), timeout=5) for _ in range(2)]
+
+
+def connected_clients():
+    st, r = call("GET", f"/management/search/connection/{tmp_id}")
+    conns = json.loads(r) if st == 200 else []
+    return sum(len(c.get("connectedClientList") or []) for c in conns), sum(c.get("connectedCount", 0) for c in conns)
+
+
+def wait_for(want):
+    deadline = time.time() + 5
+    while time.time() < deadline and connected_clients() != want:
+        time.sleep(0.2)
+    return connected_clients()
+
+
+got = wait_for((2, 2))
+check("같은 IP 연결 둘 → 연결 목록 2·연결 수 2(예전에는 한 줄로 겹쳤다)", got == (2, 2), got)
+s, b = call("POST", f"/control/stop/{tmp_id}")
+check("연결이 붙은 채 정지 → 200(예전 간헐적 500 — 끊김 이력 저장 실패가 정지까지 롤백)", s == 200, (s, b[:300]))
+got = wait_for((0, 0))
+check("정지 뒤 연결 목록 0·연결 수 0", got == (0, 0), got)
+s, raw = call("GET", f"/management/find/{tmp_id}")
+check("정지 상태가 DB 에 남음(STOPPED)", s == 200 and json.loads(raw).get("status") == "STOPPED", raw[:200])
+for x in socks:
+    x.close()
+call("POST", f"/management/release/{tmp_id}")
+call("DELETE", f"/management/delete/{tmp_id}")
+
 print(f"\n{sum(results)}/{len(results)} PASS")
 sys.exit(0 if all(results) else 1)

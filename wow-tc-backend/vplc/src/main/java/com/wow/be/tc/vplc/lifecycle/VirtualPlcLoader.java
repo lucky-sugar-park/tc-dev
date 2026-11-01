@@ -37,6 +37,8 @@ public class VirtualPlcLoader {
 	private void loadVirtualPlcs() {
 		log.debug("VirtualPlcLoader.loadVirtualPlcs()...");
 		try {
+			// 붙어 있던 연결은 지난 실행의 것 — 지우고 새로 센다
+			vplcManagementService.resetConnectedClients();
 			List<VirtualPlcInfo> vplcList=vplcManagementService.searchAllVirtualPlc();
 			if(vplcList==null) return;
 			

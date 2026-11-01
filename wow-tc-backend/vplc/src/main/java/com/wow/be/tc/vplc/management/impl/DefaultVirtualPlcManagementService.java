@@ -484,75 +484,69 @@ public class DefaultVirtualPlcManagementService implements VirtualPlcManagementS
 	
 	@Override
 	@Transactional
-	public void saveConnectionClient(ConnectionClientInfo ccInfo) throws VirtualPlcException {
-		log.debug("");
-		ConnectionEntity centity=this.findConnectionEntity(ccInfo.getVplcId(), ccInfo.getPort());
-		// 등록되지 않은 connection (IP, PORT) -> 이런 경우가 발생하면 안됨
-		if(centity==null) return;
-		
-		centity.setUpdatedBy("SYSTEM");
-		centity.setUpdatedDate(new Date());
-		
-		ConnectionClientEntity ccentity=null;
+	public void resetConnectedClients() {
+		connectionClientRepository.deleteAllInBatch();
+		connectionRepository.findAll().forEach(c->{
+			c.setConnectedCount(0);
+			c.setConnected(false);
+			connectionRepository.save(c);
+		});
+	}
 
-		ConnectionClientEntityId cceId=new ConnectionClientEntityId();
-		cceId.setVplcId(ccInfo.getVplcId());
-		cceId.setClientIp(ccInfo.getClientIp());
-		cceId.setPort(ccInfo.getPort());
+	/**
+	 * 연결·끊김 이력 — 붙어 있는 연결(CONNECTED_CLIENT)·포트의 연결 수·이력(CONNECTION_CLIENT_HISTORY).
+	 * 연결 이벤트 스레드에서 따로 부른다(ClientConnectionEventDispatcher) — 정지·해제 요청의 트랜잭션과 섞이지 않는다.
+	 * 이미 지워진 가상 PLC·포트, 이미 없는 연결은 넘어간다(예전에는 NoSuchElementException 으로 요청까지 롤백됐다, docs/vplc-stop-error.md).
+	 */
+	@Override
+	@Transactional
+	public void saveConnectionClient(ConnectionClientInfo ccInfo) throws VirtualPlcException {
+		ConnectionEntityId cid=new ConnectionEntityId();
+		cid.setVplcId(ccInfo.getVplcId());
+		cid.setPort(ccInfo.getPort());
+		ConnectionEntity centity=connectionRepository.findById(cid).orElse(null);
+		if(centity==null) {
+			log.debug("연결 이력을 남길 포트가 없습니다(지워진 가상 PLC?): {} {}", ccInfo.getVplcId(), ccInfo.getPort());
+			return;
+		}
+		// 연결 아이디가 없으면(예전 이벤트) IP 로
+		String channelId=ccInfo.getClientChannelId()!=null ? ccInfo.getClientChannelId() : ccInfo.getClientIp();
+		ConnectionClientEntityId key=new ConnectionClientEntityId(ccInfo.getVplcId(), ccInfo.getPort(), channelId);
 
 		switch(ccInfo.getConnOrDisconn()) {
-		case "CONNECTED":
-			centity.setConnected(true);
-			centity.setConnectedCount(centity.getConnectedCount()+1);
-			
-			ccentity=new ConnectionClientEntity();
-			cceId.setVplcId(ccInfo.getVplcId());
-			cceId.setClientIp(ccInfo.getClientIp());
-			cceId.setPort(ccInfo.getPort());
-			ccentity.setConnectionClientEntityId(cceId);
-
-			ccentity.setClientChannelId(ccInfo.getClientChannelId());
-			ccentity.setConnedTimestamp(ccInfo.getConnTimestamp());
-			ccentity.setCreatedBy("SYSTEM");
-			ccentity.setCreatedDate(new Date());
+		case "CONNECTED": {
+			ConnectionClientEntity ccentity=connectionClientRepository.findById(key).orElseGet(ConnectionClientEntity::new);
+			ccentity.setConnectionClientEntityId(key);
+			ccentity.setClientIp(ccInfo.getClientIp());
+			ccentity.setConnedTimestamp(ccInfo.getConnTimestamp()!=null ? ccInfo.getConnTimestamp() : new Date());
+			if(ccentity.getCreatedDate()==null) {
+				ccentity.setCreatedBy("SYSTEM");
+				ccentity.setCreatedDate(new Date());
+			}
 			ccentity.setUpdatedBy("SYSTEM");
 			ccentity.setUpdatedDate(new Date());
 			connectionClientRepository.save(ccentity);
 			break;
+		}
 		case "DISCONNECTED":
-			centity.setConnectedCount(centity.getConnectedCount()-1);
-			if(centity.getConnectedCount()==0) {
-				centity.setConnected(false);
-			}
-			ConnectionClientEntity delOne=findConnectionClientEntity(ccInfo.getVplcId(), ccInfo.getPort(), ccInfo.getClientIp());
-			if(delOne!=null) connectionClientRepository.delete(delOne);
+			connectionClientRepository.findById(key).ifPresent(connectionClientRepository::delete);
 			break;
 		default:
-			log.warn("");
+			log.warn("모르는 연결 이벤트입니다: {}", ccInfo.getConnOrDisconn());
 			return;
 		}
+		connectionClientRepository.flush();
 
 		ConnectionClientHistoryEntity cchEntity=new ConnectionClientHistoryEntity();
 		cchEntity.from(ccInfo.getConnectionClientHistoryList().get(0));
 		connectionClientHistoryRepository.save(cchEntity);
-		
-		connectionRepository.save(centity);
-	}
-	
-	private ConnectionEntity findConnectionEntity (String vplcId, int port) {
-		ConnectionEntityId id=new ConnectionEntityId();
-		id.setVplcId(vplcId);
-		id.setPort(port);
-		
-		return connectionRepository.findById(id).get();
-	}
-	
-	private ConnectionClientEntity findConnectionClientEntity(String vplcId, int port, String clientIp) {
-		ConnectionClientEntityId id=new ConnectionClientEntityId();
-		id.setVplcId(vplcId);
-		id.setPort(port);
-		id.setClientIp(clientIp);
 
-		return connectionClientRepository.findById(id).get();
+		// 연결 수는 붙어 있는 연결 줄 수로(예전에는 +1·-1 이라 겹치거나 빠지면 어긋났다)
+		int count=(int)connectionClientRepository.countByVplcIdAndPort(ccInfo.getVplcId(), ccInfo.getPort());
+		centity.setConnectedCount(count);
+		centity.setConnected(count>0);
+		centity.setUpdatedBy("SYSTEM");
+		centity.setUpdatedDate(new Date());
+		connectionRepository.save(centity);
 	}
 }

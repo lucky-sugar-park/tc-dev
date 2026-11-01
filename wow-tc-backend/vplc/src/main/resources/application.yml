@@ -30,7 +30,7 @@ spring:
   application:
     name: wow-tc-vplc
   datasource:
-    url: ${VPLC_DB_URL:jdbc:mariadb://localhost:3306/quartz-test}
+    url: ${VPLC_DB_URL:jdbc:mariadb://localhost:3306/tc}
     username: ${VPLC_DB_USERNAME:root}
     password: ${VPLC_DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver

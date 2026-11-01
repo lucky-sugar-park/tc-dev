@@ -38,7 +38,7 @@ cd wow-tc-backend
 java -jar vplc/build/libs/vplc-0.4.0.jar --spring.config.import=optional:file:vplc/src/main/resources/application-local.yml
 ```
 
-기동 때 DB 의 가상 PLC 중 게시·실행 상태였던 것을 다시 올린다(RUNNING 이던 것은 시작). OPC UA 서버 인증서는 시작할 때마다 새로 만든다(메모리) — tc 의 TOFU 커넥터는 거절하므로 "서버 인증서 잊기".
+기동 때 DB(기본 `tc`, `VPLC_DB_URL`)의 가상 PLC 를 마지막 상태로 되살린다(RUNNING 은 시작, PAUSED 는 시작 뒤 일시정지). 종료 때는 포트만 닫고 DB 상태는 그대로 둔다. OPC UA 서버 인증서는 시작할 때마다 새로 만든다(메모리) — tc 의 TOFU 커넥터는 거절하므로 "서버 인증서 잊기".
 
 ## 3. REST (`/api/v1/vplc`)
 

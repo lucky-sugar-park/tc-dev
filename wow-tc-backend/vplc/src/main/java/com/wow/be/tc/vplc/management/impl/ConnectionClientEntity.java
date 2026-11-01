@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @ToString
 @Builder
 @Entity
-@Table(name="CONNECTED_CLIENT")
+@Table(name="VPLC_CONNECTED_CLIENT")
 @Data
 @EqualsAndHashCode(callSuper=false)
 @AllArgsConstructor
@@ -40,8 +40,8 @@ public class ConnectionClientEntity extends PersistentEntity<ConnectionClientInf
 	})
 	private ConnectionEntity connectionEntity;
 	
-	@Column(name="CLIENT_CHANNEL_ID")
-	private String clientChannelId;
+	@Column(name="CLIENT_IP_ADDRESS")
+	private String clientIp;
 
 	@Column(name="CONNED_TIMESTAMP")
 	private Date connedTimestamp;
@@ -53,10 +53,10 @@ public class ConnectionClientEntity extends PersistentEntity<ConnectionClientInf
 	@Override
 	public ConnectionClientInfo info() {
 		ConnectionClientInfo info=new ConnectionClientInfo();
-		info.setClientIp(this.getConnectionClientEntityId().getClientIp());
+		info.setClientIp(this.getClientIp());
 		info.setVplcId(this.getConnectionClientEntityId().getVplcId());
 		info.setPort(this.getConnectionClientEntityId().getPort());
-		info.setClientChannelId(this.getClientChannelId());
+		info.setClientChannelId(this.getConnectionClientEntityId().getClientChannelId());
 		info.setConnTimestamp(this.getConnedTimestamp());
 		
 		info.setCreatedBy(this.getCreatedBy());
@@ -72,10 +72,10 @@ public class ConnectionClientEntity extends PersistentEntity<ConnectionClientInf
 		ConnectionClientEntityId connectionClientEntityId=new ConnectionClientEntityId();
 		connectionClientEntityId.setVplcId(info.getVplcId());
 		connectionClientEntityId.setPort(info.getPort());
-		connectionClientEntityId.setClientIp(info.getClientIp());
+		connectionClientEntityId.setClientChannelId(info.getClientChannelId());
 
 		this.setConnectionClientEntityId(connectionClientEntityId);
-		this.setClientChannelId(info.getClientChannelId());
+		this.setClientIp(info.getClientIp());
 		this.setConnedTimestamp(info.getConnTimestamp()==null?new Date():info.getConnTimestamp());
 		
 		super.setCreatedBy(info.getCreatedBy());

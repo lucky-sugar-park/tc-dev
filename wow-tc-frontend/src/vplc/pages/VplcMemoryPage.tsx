@@ -144,13 +144,19 @@ export default function VplcMemoryPage(): ReactElement {
   }, []);
   useEffect(() => { if (active) void loadDevices(); }, [active, loadDevices]);
 
-  /** 영역 — 서버(GET /memory/{id})가 알려 준다(종류를 모른다). BIT 영역(Modbus 코일·입력)은 16개를 한 줄로 묶는다 */
-  const [areas, setAreas] = useState<MemoryArea[]>([]);
+  /**
+   * 영역 — 서버(GET /memory/{id})가 알려 준다(종류를 모른다). BIT 영역(Modbus 코일·입력)은 16개를 한 줄로 묶는다.
+   * 어느 가상 PLC 의 영역인지 함께 둔다 — 가상 PLC 를 바꾼 첫 렌더에 이전 PLC 의 영역(예: Modbus hr)으로 새 PLC(OPC UA)를 읽어
+   * 400 이 나던 것을 막는다(docs/vplc-stop-error.md).
+   */
+  const [areaInfo, setAreaInfo] = useState<{ vplcId: string; areas: MemoryArea[] }>({ vplcId: '', areas: [] });
   useEffect(() => {
-    setAreas([]);
     if (!device || protocol === 'OPC_UA') return;
-    vplcApi.memory(device.id).then((m) => setAreas(m.kind === 'AREA' ? m.areas : [])).catch((e) => setError(extractApiError(e)));
+    const vplcId = device.id;
+    vplcApi.memory(vplcId).then((m) => setAreaInfo({ vplcId, areas: m.kind === 'AREA' ? m.areas : [] }))
+      .catch((e) => setError(extractApiError(e)));
   }, [device?.id, protocol]); // eslint-disable-line react-hooks/exhaustive-deps
+  const areas = useMemo(() => (device && protocol !== 'OPC_UA' && areaInfo.vplcId === device.id ? areaInfo.areas : []), [areaInfo, device, protocol]);
   const area = areas.find((a) => a.code === memType) ?? null;
   const bitArea = area?.unit === 'BIT';
 

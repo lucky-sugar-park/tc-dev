@@ -50,5 +50,8 @@ public interface VirtualPlcManagementService {
 	public List<ConnectionInfo> searchConnectionsByVplcName(String vplcName) throws VirtualPlcException;
 	
 	public void saveConnectionClient(ConnectionClientInfo ccInfo) throws VirtualPlcException;
+
+	/** 기동 때 — 붙어 있던 연결을 모두 지운다(다시 띄우면 연결은 모두 새로 붙는다. 종료 때의 끊김은 DB 가 닫혀 남기지 못한다) */
+	public void resetConnectedClients();
 		
 }
