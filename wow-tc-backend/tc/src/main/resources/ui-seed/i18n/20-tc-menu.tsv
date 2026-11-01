@@ -15,6 +15,7 @@ i18n.menu.tc.ops	운영	Operations	運用	运维
 i18n.menu.tc.ops.audit	송수신 기록	Message log	送受信記録	收发记录
 i18n.menu.tc.ops.monitor	메시지 모니터	Message monitor	メッセージモニター	消息监控
 i18n.menu.tc.ops.schedule	스케줄 Job	Scheduled jobs	スケジュールジョブ	计划任务
+i18n.menu.tc.ops.schedulehist	스케줄 Job 실행 이력	Schedule job runs	スケジュールジョブ実行履歴	计划任务执行历史
 i18n.menu.tc.ops.confighist	설정 변경 이력	Configuration history	設定変更履歴	配置变更历史
 i18n.menu.tc.admin	관리	Administration	管理	管理
 i18n.menu.tc.admin.user	사용자	Users	ユーザー	用户

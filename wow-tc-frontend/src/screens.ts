@@ -31,6 +31,7 @@ export const SCREENS: ScreenMeta[] = [
   { key: 'tc.ops.audit', path: '/ops/audit', label: '송수신 기록', group: 'tc.ops', icon: 'log' },
   { key: 'tc.ops.monitor', path: '/ops/monitor', label: '메시지 모니터', group: 'tc.ops', icon: 'analytics' },
   { key: 'tc.ops.schedule', path: '/ops/schedule-jobs', label: '스케줄 Job', group: 'tc.ops', icon: 'schedule' },
+  { key: 'tc.ops.schedulehist', path: '/ops/schedule-job-histories', label: '스케줄 Job 실행 이력', group: 'tc.ops', icon: 'scheduleHistory' },
   { key: 'tc.ops.confighist', path: '/ops/config-history', label: '설정 변경 이력', group: 'tc.ops', icon: 'history' },
   { key: 'tc.admin.user', path: '/admin/users', label: '사용자', group: 'tc.admin', icon: 'users' },
   { key: 'tc.admin.apiclient', path: '/admin/api-clients', label: 'API 클라이언트', group: 'tc.admin', icon: 'key' },

@@ -3,8 +3,10 @@ package com.wow.be.tc.schedule.impl;
 import java.util.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import com.wow.be.framework.Condition.SortDirection;
 import com.wow.be.framework.Condition;
 import com.wow.be.framework.persist.PersistentService;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryInfo;
+import com.wow.be.tc.schedule.ScheduleJobExecHistoryQuery;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +35,9 @@ public class DefaultScheduleJobExecHistoryService
 
 	@Autowired
 	private ScheduleJobExecHistoryRepository scheduleJobExecHistoryRepository;
+
+	@Autowired
+	private ScheduleJobRepository scheduleJobRepository;
 
 	@Override
 	public void saveScheduleJobExecHistory(ScheduleJobExecHistoryInfo scheduleJobExecHistoryInfo) {
@@ -99,17 +105,45 @@ public class DefaultScheduleJobExecHistoryService
 	}
 
 	@Override
-	public Page<ScheduleJobExecHistoryInfo> query(String jobName, Date from, Date to, String result, int page, int size) {
-		Specification<ScheduleJobExecHistoryEntity> spec = (root, q, cb) -> {
+	public Page<ScheduleJobExecHistoryInfo> query(ScheduleJobExecHistoryQuery q) {
+		// Job 이름·설명·상태 조건 → 그 Job 들의 이름(이력에는 이름만 있다). 상태를 고르면 지금 있는 Job 의 이력만,
+		// 글만 주면 지운 Job 의 이력도 이름으로 찾는다
+		String search = StringUtils.hasText(q.jobSearch()) ? q.jobSearch().trim().toLowerCase() : null;
+		String state = StringUtils.hasText(q.jobState()) ? q.jobState().trim() : null;
+		Set<String> jobNames = null;
+		if (search != null || state != null) {
+			jobNames = new HashSet<>();
+			for (ScheduleJobEntity job : scheduleJobRepository.findAll()) {
+				boolean text = search == null || contains(job.getName(), search) || contains(job.getDescription(), search);
+				if (text && (state == null || state.equals(job.getTriggerState()))) jobNames.add(job.getName());
+			}
+		}
+		Set<String> names = jobNames;
+		Specification<ScheduleJobExecHistoryEntity> spec = (root, cq, cb) -> {
 			List<Predicate> where = new ArrayList<>();
-			if (StringUtils.hasText(jobName)) where.add(cb.equal(root.get("jobName"), jobName));
-			if (from != null) where.add(cb.greaterThanOrEqualTo(root.get("executionTime"), from));
-			if (to != null) where.add(cb.lessThan(root.get("executionTime"), to));
-			if (StringUtils.hasText(result)) where.add(cb.equal(root.get("executionResult"), result));
+			if (StringUtils.hasText(q.jobName())) where.add(cb.equal(root.get("jobName"), q.jobName()));
+			if (names != null) {
+				Predicate inJobs = names.isEmpty() ? cb.disjunction() : root.get("jobName").in(names);
+				where.add(state == null ? cb.or(inJobs, cb.like(cb.lower(root.get("jobName")), "%" + likeEscape(search) + "%", '!')) : inJobs);
+			}
+			if (q.from() != null) where.add(cb.greaterThanOrEqualTo(root.get("executionTime"), q.from()));
+			if (q.to() != null) where.add(cb.lessThan(root.get("executionTime"), q.to()));
+			if (StringUtils.hasText(q.result())) where.add(cb.equal(root.get("executionResult"), q.result()));
 			return cb.and(where.toArray(Predicate[]::new));
 		};
-		PageRequest req = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 500), Sort.by(Sort.Direction.DESC, "seqNo"));
+		int page = q.page() != null ? Math.max(q.page(), 0) : 0;
+		int size = q.size() != null ? Math.min(Math.max(q.size(), 1), 500) : 50;
+		PageRequest req = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seqNo"));
 		return scheduleJobExecHistoryRepository.findAll(spec, req).map(ScheduleJobExecHistoryEntity::info);
+	}
+
+	private static boolean contains(String value, String lowerNeedle) {
+		return value != null && value.toLowerCase().contains(lowerNeedle);
+	}
+
+	/** LIKE 의 % _ 를 글자 그대로 — 탈출 문자는 '!' */
+	private static String likeEscape(String s) {
+		return s.replace("!", "!!").replace("%", "!%").replace("_", "!_");
 	}
 
 	@Override

@@ -101,3 +101,47 @@ test('스케줄 Job·설정 변경 이력 — PLC 요청 Job 등록·속성 탭�
   await hist.filter({ hasText: 'CREATE' }).first().click();
   await expect(page.getByRole('dialog').getByLabel('뒤')).toHaveValue(new RegExp(name));
 });
+
+test('스케줄 Job 실행 이력 — Job 이름·결과·최근 24시간으로 찾고 비고 보기', async ({ page }) => {
+  const name = `e2e-ui-hist-${RUN}`;
+  const token = await page.evaluate(() => JSON.parse(localStorage.getItem('wow-mes-session') ?? '{}').state?.token as string);
+  const headers = { Authorization: `Bearer ${token}` };
+  const M = '/api/v1/schedule-job/management';
+  // 곧 한 번 도는 PLC 요청 Job(시작 지연 0, 긴 간격)을 만들고 예약한다
+  expect((await page.request.post(`${M}/register`, { headers, data: {
+    name, use: true, jobClassName: 'com.wow.be.tc.schedule.jobs.PlcGeneralScheduleJob', triggerType: 'simple', startDelay: 0, repeatInterval: 600000,
+    description: 'e2e ui history', jobDetails: [{ entryKey: 'interfaceName', entryValue: 'plc.e2e.d100.read', entryValueType: 'string' }],
+  } })).status()).toBe(200);
+  await page.request.post(`/api/v1/schedule-job/monitoring/rescheduleJob/${name}`, { headers });
+  try {
+    await openScreen(page, '운영', '스케줄 Job 실행 이력');
+    await searchFor(page, name);
+    const search = page.getByRole('button', { name: '검색', exact: true }).filter({ visible: true });
+    const row = page.getByRole('row').filter({ hasText: name }).filter({ visible: true });
+    await expect(async () => {
+      await search.click();
+      await expect(row.first()).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 20000 });
+    await expect(row.first().getByText('SUCCESS')).toBeVisible();
+
+    await page.getByRole('button', { name: '실패', exact: true }).click();
+    await search.click();
+    await expect(row).toHaveCount(0);
+    await page.getByRole('button', { name: '성공', exact: true }).click();
+    await page.getByLabel('최근 24시간').click();
+    await expect(page.getByLabel('실행 시작')).toBeDisabled();
+    await search.click();
+    await expect(row.first()).toBeVisible();
+
+    await row.first().click();
+    await expect(page.getByRole('dialog').getByText(/plc\.e2e\.d100\.read 성공/)).toBeVisible();
+    await expect(page.getByRole('button', { name: '송수신 기록 보기' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', { name: '초기화' }).filter({ visible: true }).click();
+    await expect(page.getByLabel('통합검색').filter({ visible: true })).toHaveValue('');
+    await expect(page.getByLabel('실행 시작')).toBeEnabled();
+  } finally {
+    await page.request.delete(`${M}/delete/byName/${name}`, { headers });
+  }
+});

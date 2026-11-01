@@ -184,6 +184,17 @@ check("수정에서 빠진 속성은 지워진다(예전: 남아서 계속 쓰�
 # ── 6. 멈춤·재개·삭제 ──
 s, b = call("POST", f"{MON}/pauseScheduleJob/{ok}")
 check("멈춤 → PAUSED", s == 200 and listed(ok)["triggerState"] == "PAUSED", (s, listed(ok)))
+
+# 실행 이력 화면 — 모든 Job 의 이력을 Job 이름·설명·상태로
+Q = f"{M}/exec-histories/query"
+s, p = call("POST", Q, {"jobSearch": f"SJ-OK-{RUN}", "page": 0, "size": 100})
+check("이력: Job 이름 글(대소문자 무시) → 그 Job 만", s == 200 and p["total"] > 0 and {x["jobName"] for x in p["items"]} == {ok}, p.get("total"))
+s, p = call("POST", Q, {"jobSearch": RUN, "jobState": "PAUSED", "page": 0, "size": 100})
+check("이력: Job 상태 PAUSED + 글 → 멈춘 Job 만", s == 200 and p["total"] > 0 and {x["jobName"] for x in p["items"]} == {ok}, p.get("total"))
+s, p = call("POST", Q, {"jobSearch": RUN, "jobState": "NORMAL", "result": "FAIL", "page": 0, "size": 100})
+check("이력: 상태 NORMAL + 실패 → 실패한 Job 만", s == 200 and p["total"] > 0 and {x["jobName"] for x in p["items"]} == {bad}, (p.get("total"), {x["jobName"] for x in p.get("items", [])}))
+s, p = call("POST", Q, {"jobSearch": "100%_없는", "page": 0, "size": 10})
+check("이력: % _ 는 글자 그대로 → 0건", s == 200 and p["total"] == 0, p)
 s, b = call("POST", f"{MON}/resumeScheduleJob/{ok}")
 check("재개 → NORMAL", s == 200 and listed(ok)["triggerState"] == "NORMAL", (s, listed(ok)))
 for n in created:
@@ -193,6 +204,10 @@ time.sleep(4)
 after = sql(f"select count(*) from SCHEDULE_JOB_EXEC_HIST where JOB_NAME='{ok}'")
 q = sql(f"select count(*) from QRTZ_JOB_DETAILS where JOB_NAME like 'e2e-sj-%-{RUN}'")
 check("삭제한 Job 은 더 실행되지 않고 Quartz 에서도 내려감", before == after and q == "0", (before, after, q))
+s, p = call("POST", f"{M}/exec-histories/query", {"jobSearch": ok, "page": 0, "size": 10})
+check("이력: 지운 Job 의 이력도 이름으로 찾는다", s == 200 and p["total"] > 0, p.get("total"))
+s, p = call("POST", f"{M}/exec-histories/query", {"jobSearch": ok, "jobState": "NORMAL", "page": 0, "size": 10})
+check("이력: 상태를 고르면 지운 Job 의 이력은 빠진다", s == 200 and p["total"] == 0, p.get("total"))
 
 print(f"\n{sum(results)}/{len(results)} passed")
 sys.exit(0 if all(results) else 1)

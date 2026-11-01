@@ -7,6 +7,7 @@ import WebhookIcon from '@mui/icons-material/Webhook';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import HistoryIcon from '@mui/icons-material/History';
+import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import TranslateIcon from '@mui/icons-material/Translate';
 import MemoryIcon from '@mui/icons-material/Memory';
@@ -22,6 +23,7 @@ export function registerTcIcons(): void {
   registerIcon('log', (p) => <ReceiptLongIcon {...p} />);
   registerIcon('schedule', (p) => <ScheduleIcon {...p} />);
   registerIcon('history', (p) => <HistoryIcon {...p} />);
+  registerIcon('scheduleHistory', (p) => <WorkHistoryIcon {...p} />);
   registerIcon('key', (p) => <VpnKeyIcon {...p} />);
   registerIcon('translate', (p) => <TranslateIcon {...p} />);
   registerIcon('vplc', (p) => <DeveloperBoardIcon {...p} />);

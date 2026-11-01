@@ -29,6 +29,7 @@ public final class UiRoutePermissions {
 		SCREENS.put("tc.ops.audit", "tc.audit");
 		SCREENS.put("tc.ops.monitor", "tc.audit");
 		SCREENS.put("tc.ops.schedule", "tc.schedule");
+		SCREENS.put("tc.ops.schedulehist", "tc.schedule");
 		SCREENS.put("tc.ops.confighist", "tc.confighist");
 		SCREENS.put("tc.admin.user", "tc.user");
 		SCREENS.put("tc.admin.apiclient", "tc.apiclient");

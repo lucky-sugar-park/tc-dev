@@ -20,6 +20,7 @@ const PAGES: Record<string, Loader> = {
   'tc.ops.audit': () => import('./ops/pages/AuditPage'),
   'tc.ops.monitor': () => import('./ops/pages/MessageMonitorPage'),
   'tc.ops.schedule': () => import('./ops/pages/ScheduleJobPage'),
+  'tc.ops.schedulehist': () => import('./ops/pages/ScheduleHistoryPage'),
   'tc.ops.confighist': () => import('./ops/pages/ConfigHistoryPage'),
   'tc.admin.user': () => import('./admin/pages/UserPage'),
   'tc.admin.apiclient': () => import('./admin/pages/ApiClientPage'),

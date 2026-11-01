@@ -48,6 +48,14 @@
   - **실행 이력**: 서버 쪽 쪽 넘김(최신순), 결과·기간으로 걸러 보기, 자동 새로 고침(5·30초), 실패 행 강조. 행을 누르면 비고 전체와 송수신 기록.
 - 등록·수정 창: 이름·종류·주기·속성 표·사용·설명. 종류를 고르면 그 종류의 속성이 기본값과 함께 들어간다.
 
+### 5.1 운영 › 스케줄 Job 실행 이력 (`tc.ops.schedulehist`, `/ops/schedule-job-histories`)
+
+모든 Job 의 실행 이력을 한 표로 본다(권한은 스케줄 Job 과 같은 `tc.schedule`).
+
+- 필터바(송수신 기록과 같은 모양 — 라벨 위, 검색·초기화 오른쪽): 통합검색(Job 이름·설명), Job 상태(기본 전체), 실행 시작·끝, 실행 결과 토글(전체·성공·실패, 기본 전체), 최근 24시간 스위치(켜면 실행 기간 대신 지금부터 24시간 전까지 — 기간 칸은 잠긴다).
+- 표: 번호·스케줄 Job·실행 결과·걸린 시간·실행 서버·실행 시간·다음 실행·비고. 서버 쪽 쪽 넘김(50·100·200·500), 최신순, 실패 행은 붉게. 행을 누르면 비고 전체와 송수신 기록.
+- Job 상태를 고르면 지금 있는 Job 의 이력만 나온다. 글만 주면 지운 Job 의 이력도 이름으로 찾는다.
+
 ## 6. API
 
 | 경로 | 내용 |
@@ -55,7 +63,7 @@
 | `GET /api/v1/schedule-job/management/job-kinds` | 종류와 속성 정의 |
 | `POST /api/v1/schedule-job/management/search` | 목록 — `kind`·`lastExecutionTime`·`lastResult`·`lastRemark`·`lastInstanceId`·`lastElapsedMs`·`nextFireTime`·`recentFailCount` 를 채운다 |
 | `POST /api/v1/schedule-job/management/register`·`/update` | 저장(검사, 속성 통째로) — 예약은 따로 `monitoring/rescheduleJob/{name}` |
-| `POST /api/v1/schedule-job/management/exec-histories/query` | 이력 `{jobName, from, to, result, page, size}` → `{items, total, page, size}`, 최신순, 쪽 크기 최대 500 |
+| `POST /api/v1/schedule-job/management/exec-histories/query` | 이력 `{jobName, jobSearch, jobState, from, to, result, page, size}` → `{items, total, page, size}`, 최신순, 쪽 크기 최대 500. `jobName` 은 같음, `jobSearch` 는 Job 이름·설명에 든 글(대소문자 무시, 지운 Job 은 이름으로), `jobState` 는 지금 있는 Job 의 상태 |
 
 ## 7. 운영 반영
 

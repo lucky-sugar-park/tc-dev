@@ -84,3 +84,13 @@ i18n.tc.schedule.autoRefresh	자동 새로 고침	Auto refresh	自動更新	自�
 i18n.tc.schedule.autoOff	끔	Off	オフ	关闭
 i18n.tc.schedule.openAudit	송수신 기록 보기	Open message records	送受信記録を見る	查看收发记录
 i18n.tc.schedule.pickJob	행을 고르면 속성과 실행 이력을 본다	Select a row to see its properties and run history	行を選ぶとプロパティと実行履歴を表示	选择一行查看属性和执行历史
+i18n.tc.schedule.no	번호	No.	番号	序号
+i18n.tc.schedule.job	스케줄 Job	Schedule job	スケジュールJob	计划任务
+i18n.tc.schedule.jobState	Job 상태	Job state	Job状態	任务状态
+i18n.tc.schedule.runResult	실행 결과	Result	実行結果	执行结果
+i18n.tc.schedule.runTime	실행 시간	Run time	実行時間	执行时间
+i18n.tc.schedule.runFrom	실행 시작	Run from	実行開始	执行开始
+i18n.tc.schedule.runTo	실행 끝	Run to	実行終了	执行结束
+i18n.tc.schedule.success	성공	Success	成功	成功
+i18n.tc.schedule.fail	실패	Failure	失敗	失败
+i18n.tc.schedule.recent24h	최근 24시간	Last 24 hours	直近24時間	最近24小时

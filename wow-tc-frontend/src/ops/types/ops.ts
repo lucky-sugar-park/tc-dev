@@ -77,7 +77,10 @@ export type JobHistory = {
   remark?: string;
 };
 
-export type JobHistoryQuery = { jobName: string; from?: string; to?: string; result?: string; page: number; size: number };
+/** 실행 이력 검색 — jobName 은 같음, jobSearch 는 Job 이름·설명에 든 글, jobState 는 Job 상태(지금 있는 Job 만) */
+export type JobHistoryQuery = {
+  jobName?: string; jobSearch?: string; jobState?: string; from?: string; to?: string; result?: string; page: number; size: number;
+};
 
 export type JobHistoryPage = { items: JobHistory[]; total: number; page: number; size: number };
 

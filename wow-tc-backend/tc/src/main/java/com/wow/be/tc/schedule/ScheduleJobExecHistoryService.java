@@ -20,12 +20,8 @@ public interface ScheduleJobExecHistoryService {
 	public abstract List<ScheduleJobExecHistoryInfo> searchScheduleJobExecHistory(Condition cond);
 	public abstract List<ScheduleJobExecHistoryInfo> searchScheduleJobExecHistory(Condition cond, PageInfo pageInfo);
 
-	/**
-	 * 한 Job 의 실행 이력 — 최신순 한 쪽. 조건은 모두 선택이다.
-	 *
-	 * @param result SUCCESS·FAIL, 비면 모두
-	 */
-	public abstract Page<ScheduleJobExecHistoryInfo> query(String jobName, Date from, Date to, String result, int page, int size);
+	/** 실행 이력 — 최신순 한 쪽 */
+	public abstract Page<ScheduleJobExecHistoryInfo> query(ScheduleJobExecHistoryQuery q);
 
 	/** Job 이름 → 가장 최근 실행 이력 */
 	public abstract Map<String, ScheduleJobExecHistoryInfo> latestByJob();

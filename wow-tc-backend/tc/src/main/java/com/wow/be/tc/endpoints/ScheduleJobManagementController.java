@@ -23,6 +23,7 @@ import com.wow.be.tc.ToolControlException;
 import com.wow.be.tc.schedule.JobDeletionInfo;
 import com.wow.be.tc.schedule.ScheduleJobDetailInfo;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryInfo;
+import com.wow.be.tc.schedule.ScheduleJobExecHistoryQuery;
 import com.wow.be.tc.schedule.ScheduleJobExecHistoryService;
 import com.wow.be.tc.schedule.ScheduleJobInfo;
 import com.wow.be.tc.schedule.ScheduleJobKind;
@@ -141,10 +142,6 @@ public class ScheduleJobManagementController {
 		return scheduleJobExecHistoryService.searchScheduleJobExecHistory(condition);
 	}
 
-	/** 실행 이력 검색 조건. 모두 선택이다 — result 는 SUCCESS·FAIL */
-	public record ExecHistoryQuery(String jobName, Date from, Date to, String result, Integer page, Integer size) {
-	}
-
 	/** 실행 이력 한 쪽 */
 	public record ExecHistoryPage(List<ScheduleJobExecHistoryInfo> items, long total, int page, int size) {
 	}
@@ -156,12 +153,11 @@ public class ScheduleJobManagementController {
 		return Arrays.stream(ScheduleJobKind.values()).map(ScheduleJobKind::info).toList();
 	}
 
-	@Operation(summary = "실행 이력 검색", description = "Job·기간·결과로 찾는다. 최신순, 쪽 크기 최대 500.")
+	@Operation(summary = "실행 이력 검색", description = "Job 이름(같음)·Job 이름·설명 글·Job 상태·기간·결과로 찾는다. 최신순, 쪽 크기 최대 500.")
 	@Requires(action = 'R')
 	@PostMapping("/exec-histories/query")
-	public ExecHistoryPage queryExecHistories(@RequestBody ExecHistoryQuery q) {
-		Page<ScheduleJobExecHistoryInfo> page = scheduleJobExecHistoryService.query(q.jobName(), q.from(), q.to(), q.result(),
-			q.page() != null ? q.page() : 0, q.size() != null ? q.size() : 50);
+	public ExecHistoryPage queryExecHistories(@RequestBody ScheduleJobExecHistoryQuery q) {
+		Page<ScheduleJobExecHistoryInfo> page = scheduleJobExecHistoryService.query(q);
 		return new ExecHistoryPage(page.getContent(), page.getTotalElements(), page.getNumber(), page.getSize());
 	}
 }

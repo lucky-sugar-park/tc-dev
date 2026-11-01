@@ -120,6 +120,7 @@ wow-tc-frontend/                     # npm 프로젝트 하나(앱 하나 — �
 | **운영** › 송수신 기록 | `tc.ops.audit` `/ops/audit` | `tc.audit` | 범위 조회(기간·opcode·성공 여부·트랜잭션 ID), 요청·응답·전달 묶어 보기, **결과 재전송**(관리자) | 무한 스크롤 표 유지 |
 | 운영 › 메시지 모니터 | `tc.ops.monitor` `/ops/monitor` | `tc.audit` | 들어오는 요청·응답을 SSE 로(멈춤·필터·최대 행) | SSE 버그로 동작 안 함 |
 | 운영 › 스케줄 Job | `tc.ops.schedule` `/ops/schedule-jobs` | `tc.schedule` | 목록(최근 실행·최근 결과·최근 실패·다음 실행)·등록(Job 종류를 고름 — 클래스 이름 입력 없앰)·예약·취소·멈춤·재개, 행 아래 **속성 탭·실행 이력 탭**([schedule-jobs.md](schedule-jobs.md)) | 클래스 이름 입력 |
+| 운영 › 스케줄 Job 실행 이력 | `tc.ops.schedulehist` `/ops/schedule-job-histories` | `tc.schedule` | 모든 Job 의 실행 이력 — Job 이름·설명·상태·실행 기간·결과·최근 24시간으로 찾기(2026-11-01, [schedule-jobs.md](schedule-jobs.md) §5.1) | 행 아래 탭으로만 |
 | 운영 › 설정 변경 이력 | `tc.ops.confighist` `/ops/config-history` | `tc.confighist` | 대상·기간으로 조회, 앞뒤 비교 | 없음 |
 | **관리** › 사용자 | `tc.admin.user` `/admin/users` | `tc.user` | 사용자·역할(ADMIN·OPERATOR·VIEWER)·잠금 해제·비밀번호 초기화, 로그인 이력 | 메뉴만 |
 | 관리 › API 클라이언트 | `tc.admin.apiclient` `/admin/api-clients` | `tc.apiclient` | 클라이언트·허용 opcode·IP·URL 접두어, 키 발급·회전(키는 한 번만 보임)·폐기, 사용량 | 없음 |

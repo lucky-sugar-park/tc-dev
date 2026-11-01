@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Box, Button, Chip, Dialog, DialogContent, IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Chip, IconButton, MenuItem, Stack, TextField, Tooltip } from '@mui/material';
 import type { GridColDef, GridPaginationModel } from '@mui/x-data-grid-pro';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { DialogFooter, DialogTitleClose, DraggablePaper, extractApiError, showToast, useI18n } from 'wow-mes-frontend-shared';
+import { extractApiError, showToast, useI18n } from 'wow-mes-frontend-shared';
 import { StandardGrid } from '../../shared/components/StandardGrid';
 import { fmtTime } from '../../shared/format';
 import { scheduleApi } from '../services/opsApi';
 import type { JobHistory } from '../types/ops';
-import { AuditDetailDialog } from './AuditDetailDialog';
-
-/** PLC 요청 Job 의 비고에 든 거래 ID — 송수신 기록으로 이어 본다 */
-const trxOf = (remark?: string): string | null => /\(trx ([^)\s]+)\)/.exec(remark ?? '')?.[1] ?? null;
+import { JobRemarkDialog } from './JobRemarkDialog';
 
 /** datetime-local 값 → ISO(비면 undefined) */
 const iso = (local: string): string | undefined => (local ? new Date(local).toISOString() : undefined);
@@ -30,7 +27,6 @@ export function JobHistoryPanel({ jobName, reloadKey }: { jobName: string; reloa
   const [auto, setAuto] = useState(0);
   const [pageModel, setPageModel] = useState<GridPaginationModel>({ page: 0, pageSize: 25 });
   const [open, setOpen] = useState<JobHistory | null>(null);
-  const [trx, setTrx] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,18 +92,7 @@ export function JobHistoryPanel({ jobName, reloadKey }: { jobName: string; reloa
           sx: { '& .row--fail': { color: 'error.main' }, '& .MuiDataGrid-row': { cursor: 'pointer' } },
         }} />
 
-      <Dialog open={!!open} onClose={() => setOpen(null)} maxWidth="md" fullWidth PaperComponent={DraggablePaper}>
-        <DialogTitleClose onClose={() => setOpen(null)}>{t('i18n.tc.schedule.remark', '비고')} — {fmtTime(open?.executionTime)} {open?.executionResult}</DialogTitleClose>
-        <DialogContent dividers>
-          <Typography component="pre" variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', m: 0 }}>{open?.remark}</Typography>
-        </DialogContent>
-        <DialogFooter onClose={() => setOpen(null)}>
-          {trxOf(open?.remark) && (
-            <Button onClick={() => setTrx(trxOf(open?.remark))}>{t('i18n.tc.schedule.openAudit', '송수신 기록 보기')}</Button>
-          )}
-        </DialogFooter>
-      </Dialog>
-      <AuditDetailDialog transactionId={trx} onClose={() => setTrx(null)} />
+      <JobRemarkDialog history={open} onClose={() => setOpen(null)} />
     </Box>
   );
 }
