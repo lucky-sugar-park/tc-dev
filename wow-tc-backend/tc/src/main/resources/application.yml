@@ -22,6 +22,10 @@ server:
 spring:
   config:
     import: optional:classpath:application-local.yml
+  # framework-core(0.8.63~)가 Liquibase 와 MES 스키마 changelog 를 함께 싣는다. tc 의 DB 는 wow-tc-backend/migration 의 SQL 로 바꾸므로
+  # 켜지 않는다 — 켜면 MES 기준 스키마를 tc DB 에 적용하려 한다
+  liquibase:
+    enabled: false
   # 종료 단계마다 기다리는 상한 — 진행 중 PLC 요청의 시간 초과(20초)보다 조금 길게
   lifecycle:
     timeout-per-shutdown-phase: 25s

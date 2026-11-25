@@ -4,6 +4,7 @@
 // - 스택: Java 25 · Spring Boot 4.x (Spring Framework 7 / Security 7)
 // - 사내 프레임워크 wow-mes-backend-framework-core 를 Nexus 아티팩트로 참조한다.
 //   framework-core 가 Boot 4 / Java 25 로 빌드되므로 이 프로젝트도 같은 버전을 쓴다.
+//   0.8.64 부터 dispatch·인증 실행부가 별도 jar(framework-core-dispatch·framework-core-security)로 나뉘었다 — 쓰는 모듈만 더한다(tc·vplc).
 // - tc, vplc 는 둘 다 실행형이라 각자 build.gradle 에서 boot 플러그인을 적용한다.
 
 plugins {
@@ -16,8 +17,8 @@ ext {
     // Swagger UI(springdoc) — Spring Boot 4 / Framework 7 대응은 3.x 계열
     springdocVersion  = '3.0.3'
 
-    // 사내 프레임워크. wow-mes-backend 의 frameworkCoreVersion 과 맞춘다.
-    frameworkCoreVersion = '0.8.46'
+    // 사내 프레임워크. wow-mes-backend 의 frameworkCoreVersion 과 맞춘다 — core·core-dispatch·core-security 세 jar 모두 이 버전
+    frameworkCoreVersion = '0.8.64'
 
     // 사내 Nexus (localhost HTTP)
     nexusGroupUrl     = 'http://localhost:8081/repository/inzi-mes-platform-maven-group/'
@@ -60,7 +61,7 @@ subprojects {
     }
 
     dependencies {
-        // 사내 프레임워크 — 보안/JWT, 세션 컨텍스트, Dispatch, Postbox, SSE, 영속성 기반 타입
+        // 사내 프레임워크 core — 세션 컨텍스트, Postbox, SSE, 영속성 기반 타입, 권한 선언. Dispatch·인증 실행부는 쓰는 모듈이 따로 더한다
         implementation "com.wow.be:wow-mes-backend-framework-core:${frameworkCoreVersion}"
 
         // Lombok — 전 모듈 공통

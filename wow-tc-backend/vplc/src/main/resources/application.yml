@@ -27,6 +27,9 @@ vplc:
 spring:
   config:
     import: optional:classpath:application-local.yml
+  # framework-core(0.8.63~)가 Liquibase 와 MES 스키마 changelog 를 함께 싣는다. vplc 의 표는 JPA(ddl-auto)가 만들므로 켜지 않는다
+  liquibase:
+    enabled: false
   application:
     name: wow-tc-vplc
     # SpringApplication 관리 MBean — Windows 에는 SIGTERM 이 없어 scripts/run-vplc.ps1 이 로컬 JMX(attach)로 정상 종료를 요청한다
