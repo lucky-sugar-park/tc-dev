@@ -59,6 +59,9 @@ __pycache__/
 # --- 로컬 실행 폴더(scripts/run-backend.ps1 — jar·화면·로그·로컬 비밀값) ---
 /run/
 
+# --- jar 에 넣는 화면 빌드 결과(scripts/deploy-frontend-in-jar.ps1) ---
+/wow-tc-backend/tc/src/main/resources/static/
+
 # --- Eclipse 작업 공간·Vite 캐시 ---
 .metadata/
 .vite/

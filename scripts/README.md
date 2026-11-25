@@ -8,6 +8,11 @@ Windows 기준. 레포 루트(`D:\Source\claude-code\Projects\tc-dev`)에서 실
 | `deploy-backend.ps1` | 백엔드(tc) 빌드(+테스트) → Nexus 배포(`com.wow.be:wow-tc:<버전>`) → Nexus 에서 받아 **재기동** |
 | `run-backend.ps1` | 백엔드(tc) 구동 — 띄우기·멈추기·재기동·상태 |
 | `run-vplc.ps1` | 가상 PLC(vplc, 8088) 구동 — 빌드·띄우기·멈추기·재기동·상태. Nexus 에 올리지 않는다 |
+| `deploy-frontend-in-jar.ps1` | 화면 빌드 → tc 프로젝트 `resources\static` 으로 복사 — 이후 만드는 jar 와 Eclipse 실행이 이 화면을 쓴다 |
+| `run-backend-in-jar.ps1` | 화면이 든 tc jar 를 만들어 구동 — 띄우기·멈추기·재기동·상태 |
+| `stop-backend.ps1` | 백엔드(tc)만 멈춤(정상 종료) |
+| `stop-vplc.ps1` | 가상 PLC(vplc)만 멈춤(정상 종료) |
+| `stop-all.ps1` | 백엔드(tc)와 가상 PLC(vplc)를 함께 멈춤(정상 종료) |
 
 실행 폴더는 레포 루트의 `run\`(git 에 넣지 않는다):
 
@@ -160,6 +165,38 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-vplc.ps1 -Restar
 - 멈출 때는 tc 와 같이 로컬 JMX 로 정상 종료를 요청한다(가상 PLC 포트를 닫고 끊김 이력을 남김). 60초 안에 끝나지 않거나 JMX 가 꺼진 예전 jar(0.5.0 전)면 강제로 끝낸다.
 - 스크립트 없이 띄운 vplc(pid 파일 없음)도 8088 을 쥔 프로세스가 vplc jar 면 알아보고 멈춘다.
 - **재기동하면 붙어 있던 tc 커넥터가 끊겼다가 다시 붙는다.** 게시·실행 중이던 가상 PLC 는 vplc 가 기동하며 되살린다(기동 완료 때 목록을 보여 준다).
+
+## 5) 멈추기 (`stop-backend.ps1` · `stop-vplc.ps1` · `stop-all.ps1`)
+
+```powershell
+.\scripts\stop-backend.ps1    # tc 만
+.\scripts\stop-vplc.ps1       # vplc 만
+.\scripts\stop-all.ps1        # tc → vplc 차례로
+```
+
+- `stop-backend.ps1`·`stop-vplc.ps1` 은 `run-backend.ps1 -Stop`·`run-vplc.ps1 -Stop` 을 부른다. `-Port`·`-RunDir`·`-StopTimeoutSeconds` 를 그대로 넘길 수 있고, 종료 코드는 0 멈춤(또는 떠 있지 않음), 그 밖은 실패다.
+- `stop-all.ps1` 은 `run-backend.ps1 -Stop` → `run-vplc.ps1 -Stop` 차례로 부른다. tc 를 먼저 멈춘다 — vplc 를 먼저 멈추면 그 사이 tc 커넥터가 끊김 이력을 남기고 다시 연결을 시도한다.
+- `stop-all.ps1` 은 하나를 멈추지 못해도 나머지는 멈춘다. 떠 있지 않은 것은 그냥 지나간다. 종료 코드: 0 모두 멈춤(또는 떠 있지 않음), 1 멈추지 못한 것이 있음.
+- **tc 를 멈추면 tc 를 부르는 MES 등의 PLC 요청이 다시 띄울 때까지 실패한다.**
+- 스크립트 없이 띄운 tc 는 멈추지 않는다 — tc 는 pid 파일(`run\tc\tc.pid`)로 찾는다(이때 "떠 있지 않습니다"로 나온다).
+- 포트·실행 폴더를 기본값과 다르게 띄웠으면 `stop-all.ps1` 대신 `stop-backend.ps1`·`stop-vplc.ps1` 을 그 옵션과 함께 부른다.
+
+## 6) 화면을 jar 에 넣어 구동 (`deploy-frontend-in-jar.ps1` · `run-backend-in-jar.ps1`)
+
+```powershell
+.\scripts\deploy-frontend-in-jar.ps1       # 화면 빌드 → resources\static (-Install · -VplcUrl · -NoVplc)
+.\scripts\run-backend-in-jar.ps1           # jar 를 만들어 띄운다. 이미 떠 있으면 새 jar 는 대기
+.\scripts\run-backend-in-jar.ps1 -Restart  # jar 를 새로 만들어 재기동
+.\scripts\run-backend-in-jar.ps1 -NoBuild  # 있는 jar 로(화면이 없는 jar 면 멈춘다)
+.\scripts\run-backend-in-jar.ps1 -Status   # -Stop · -Foreground 도 있다
+```
+
+- 기존 폴더 방식(`deploy-frontend.ps1` · `run-backend.ps1`, `run\ui`)은 그대로다. tc 는 `TC_UI_DIR` 가 있으면 그 폴더를, 없으면 jar 안의 화면을 서빙한다.
+- **Eclipse:** `deploy-frontend-in-jar.ps1` 뒤 tc 프로젝트를 새로 고치고(F5) 다시 실행한다. 실행 설정에 `TC_UI_DIR` 가 없어야 한다.
+- 화면을 바꾸면 **tc 재기동이 필요하다**(그동안 MES 등의 PLC 요청이 끊긴다). 재기동 없이 바꾸려면 폴더 방식을 쓴다.
+- `run-backend.ps1` 과 실행 폴더·pid 를 함께 쓴다 — 한 번에 하나만 뜨고 `stop-backend.ps1` · `stop-all.ps1` 로도 멈춘다. 같은 jar 를 `run-backend.ps1` 로 띄우면 `run\ui` 를 서빙한다.
+- `resources\static` 은 git 에 넣지 않는다. 남아 있으면 `deploy-backend.ps1` 이 Nexus 에 올리는 jar 에도 화면이 들어간다(서버에서 `TC_UI_DIR` 를 쓰면 동작은 같다). 빼려면 그 폴더를 지운다.
+- `tc-config.json` 은 jar 안에 굳는다 — 가상 PLC 주소를 바꾸려면 `-VplcUrl`·`-NoVplc` 로 다시 배포하고 jar 를 새로 만든다.
 
 ## 일반 흐름
 

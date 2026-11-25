@@ -105,6 +105,8 @@ Windows 기준, 레포 루트에서 실행한다. 사용법(PowerShell·cmd)은 
 | `deploy-frontend.ps1` | 화면 빌드(`npm run build`) → tc 가 서빙하는 폴더(기본 `run\ui`, 다른 tc 면 `-UiDir` 로 그 `TC_UI_DIR`)로 배포. **재기동 없음.** 새 자산 → `index.html` → 옛 자산 정리 순서라 보던 화면이 깨지지 않는다. `tc-config.json`(가상 PLC 주소)은 덮지 않는다(`-VplcUrl`·`-NoVplc` 때만) |
 | `deploy-backend.ps1` | `gradlew :tc:build`(+단위 테스트) → `:tc:publish` 로 실행 jar 를 Nexus `com.wow.be:wow-tc:<버전>`(SNAPSHOT 이면 `-private-snapshot`, 아니면 `-private`)에 올림 → Nexus 에서 받아 빌드한 것과 같은지(SHA-256) 확인 → `run\tc\tc.jar.new` → **재기동**(`run-backend.ps1 -Restart`). `-SkipRestart` 면 대기만, `-SkipPublish` 면 Nexus 없이 |
 | `run-backend.ps1` | `run\tc\tc.jar` 를 띄우고·멈추고(`-Stop`)·재기동(`-Restart`)·상태(`-Status`). 기본은 백그라운드 + `/api/health` 확인, `-Foreground` 는 이 창에서 |
+| `deploy-frontend-in-jar.ps1` | 화면 빌드 → `tc\src\main\resources\static`(git 제외)에 복사. 이후 만드는 jar 와 IDE 실행이 이 화면을 쓴다. 떠 있는 tc 에는 반영되지 않는다 |
+| `run-backend-in-jar.ps1` | `gradlew :tc:bootJar` → 화면 확인 → `run\tc\tc.jar.new` → `TC_UI_DIR` 를 비우고 `run-backend.ps1` 로 띄움(`-Restart`·`-Stop`·`-Status`·`-NoBuild`·`-Foreground`). 이미 떠 있으면 재기동하지 않는다. 화면을 바꾸려면 **재기동이 필요하다** |
 
 - **재기동은 정상 종료(§4.1)다.** Windows 에는 SIGTERM 이 없어 로컬 JMX 로 Spring 에 종료를 요청한다(`spring.application.admin.enabled`, 기본 켬 — 같은 PC·같은 사용자만 붙는다, `TC_APP_ADMIN_ENABLED`). 90초 안에 끝나지 않을 때만 강제로 끝낸다.
 - 새 jar 로 2분 안에 `/api/health` 가 `UP`·`DEGRADED` 가 되지 않으면 **전 jar(`tc.jar.prev`)로 되돌려 다시 띄운다**(종료 코드 2, 실패한 jar 는 `run\tc\tc.jar.failed`).

@@ -37,6 +37,9 @@
 .PARAMETER Status
   실행 여부·health·대기 중인 jar 를 보여 준다. 종료 코드 0 = 실행 중, 3 = 멈춤.
 
+.PARAMETER UiInJar
+  TC_UI_DIR 를 비워 jar 안의 화면을 서빙한다(run-backend-in-jar.ps1 이 쓴다).
+
 .PARAMETER RunDir
   실행 폴더 (기본 레포 루트 run\).
 
@@ -58,6 +61,7 @@ param(
   [switch]$Stop,
   [switch]$Restart,
   [switch]$Status,
+  [switch]$UiInJar,
   [string]$RunDir,
   [int]$StartTimeoutSeconds = 120,
   [int]$StopTimeoutSeconds = 90
@@ -167,7 +171,7 @@ function Set-TcEnv {
   $env:TC_JWT_SECRET = Get-LocalSecret 'TC_JWT_SECRET' 'jwt-secret.txt' 48
   $env:TC_SECRET_KEY = Get-LocalSecret 'TC_SECRET_KEY' 'secret-key.txt' 32
   $env:TC_SERVER_PORT = "$Port"
-  if (-not $env:TC_UI_DIR) { $env:TC_UI_DIR = $uiDir }
+  if ($UiInJar) { $env:TC_UI_DIR = '' } elseif (-not $env:TC_UI_DIR) { $env:TC_UI_DIR = $uiDir }
 }
 
 function Start-Tc {

@@ -107,7 +107,7 @@ springdoc:
 #============================================================================
 tc:
   ui:
-    # 화면(빌드한 wow-tc-frontend) 폴더 — 값이 있으면 / 에서 서빙한다. 화면 배포는 폴더만 바꾸고 재기동하지 않는다(docs/frontend-design.md §4.3)
+    # 화면(빌드한 wow-tc-frontend) 폴더 — 값이 있으면 / 에서 서빙한다. 화면 배포는 폴더만 바꾸고 재기동하지 않는다. 비우면 jar(classpath:/static) 안의 화면을 쓴다(docs/frontend-design.md §4.3)
     dir: ${TC_UI_DIR:}
     # 기동 때 화면 문구(다국어)·공통 코드 씨앗 중 없는 줄만 넣는다(ui-seed/). 고친 값은 덮지 않는다
     seed-enabled: ${TC_UI_SEED_ENABLED:true}

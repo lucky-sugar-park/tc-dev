@@ -7,6 +7,7 @@ import java.time.Duration;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -19,7 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 화면 서빙 (docs/frontend-design.md §4.3, 결정 U6). {@code tc.ui.dir} 폴더(빌드한 화면)를 {@code /} 에서 내준다 — 화면을 바꿀 때
- * 폴더만 바꾸면 되고 tc 를 재기동하지 않는다. 비우면 서빙하지 않는다.
+ * 폴더만 바꾸면 되고 tc 를 재기동하지 않는다. 비우면 jar(classpath:/static — scripts/deploy-frontend-in-jar.ps1 이 넣는다, IDE 실행 포함) 안의
+ * 화면을 내주고, 그것도 없으면 서빙하지 않는다.
  *
  * <ul>
  *   <li>모르는 경로는 {@code index.html}(SPA 경로) — 단 {@code /api}·{@code /internal}·문서({@code /swagger-ui}·{@code /api-docs})는 아니다.</li>
@@ -31,7 +33,11 @@ import lombok.extern.slf4j.Slf4j;
 @Configuration
 public class UiStaticConfig implements WebMvcConfigurer {
 
+	private static final String CLASSPATH_UI = "classpath:/static/";
+
 	private final String dir;
+
+	private final Resource classpathIndex = new ClassPathResource("static/index.html");
 
 	public UiStaticConfig(@Value("${tc.ui.dir:}") String dir) {
 		this.dir = dir == null ? "" : dir.trim();
@@ -40,6 +46,10 @@ public class UiStaticConfig implements WebMvcConfigurer {
 	@Override
 	public void addResourceHandlers(ResourceHandlerRegistry registry) {
 		if (dir.isEmpty()) {
+			if (classpathIndex.exists()) {
+				log.info("jar(classpath:/static) 안의 화면을 서빙합니다");
+				register(registry, CLASSPATH_UI, classpathIndex);
+			}
 			return;
 		}
 		Path root = Path.of(dir).toAbsolutePath().normalize();
@@ -50,6 +60,10 @@ public class UiStaticConfig implements WebMvcConfigurer {
 		}
 		// 폴더가 기동 뒤에 생겨도 되게 끝 / 를 직접 붙인다(Path.toUri 는 폴더가 있을 때만 붙인다)
 		String location = "file:" + root.toString().replace('\\', '/') + "/";
+		register(registry, location, new FileSystemResource(root.resolve("index.html")));
+	}
+
+	private static void register(ResourceHandlerRegistry registry, String location, Resource index) {
 		registry.addResourceHandler("/assets/**")
 			.addResourceLocations(location + "assets/")
 			.setCacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable());
@@ -57,13 +71,13 @@ public class UiStaticConfig implements WebMvcConfigurer {
 			.addResourceLocations(location)
 			.setCacheControl(CacheControl.noCache())
 			.resourceChain(false)
-			.addResolver(new SpaResolver(root));
+			.addResolver(new SpaResolver(index));
 	}
 
 	/** {@code /} — 자원 처리기는 빈 경로를 받지 않으므로 index.html 로 넘긴다 */
 	@Override
 	public void addViewControllers(ViewControllerRegistry registry) {
-		if (!dir.isEmpty()) {
+		if (!dir.isEmpty() || classpathIndex.exists()) {
 			registry.addViewController("/").setViewName("forward:/index.html");
 		}
 	}
@@ -71,10 +85,10 @@ public class UiStaticConfig implements WebMvcConfigurer {
 	/** 있는 파일은 그대로, 없으면 index.html — API·내부·문서 경로는 아니다 */
 	static final class SpaResolver extends PathResourceResolver {
 
-		private final Path root;
+		private final Resource index;
 
-		SpaResolver(Path root) {
-			this.root = root;
+		SpaResolver(Resource index) {
+			this.index = index;
 		}
 
 		@Override
@@ -87,7 +101,6 @@ public class UiStaticConfig implements WebMvcConfigurer {
 					|| resourcePath.startsWith("api-docs") || resourcePath.startsWith("assets/")) {
 				return null;
 			}
-			FileSystemResource index = new FileSystemResource(root.resolve("index.html"));
 			return index.exists() ? index : null;
 		}
 	}
