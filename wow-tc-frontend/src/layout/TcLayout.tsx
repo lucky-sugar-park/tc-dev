@@ -163,7 +163,7 @@ function Shell({ config }: LayoutContext): ReactElement {
           <ThemeProvider theme={getTheme(mode)}>
             <CssBaseline />
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-              <RichHeader title="WOW-TC" onToggleMenu={() => setPanelOpen((o) => !o)} />
+              <RichHeader title="INZI-TC" onToggleMenu={() => setPanelOpen((o) => !o)} />
               <SystemBannerHost />
               <ConnectionSystemNotice />
               <PwaUpdateSystemNotice />
